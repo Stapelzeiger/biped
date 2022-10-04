@@ -1,0 +1,10 @@
+moteus:
+  ros__parameters:
+    test: 42
+    joints: ['test']
+    # joints: ['LHAA', 'LHFE', 'LKFE']
+    test/can_id: 1
+    test/can_bus: 1
+    LHAA/can_id: 20
+    LHFE/can_id: 21
+    LKFE/can_id: 22
