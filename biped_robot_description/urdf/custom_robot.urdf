@@ -277,7 +277,7 @@
         iyz="2.90644772891908E-13"
         izz="4.30705177925079E-06" />
     </inertial>
-    <!-- <visual>
+    <visual>
       <origin
         xyz="0 0 0"
         rpy="0 0 0" />
@@ -290,7 +290,7 @@
         <color
           rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
       </material>
-    </visual> -->
+    </visual>
     <collision>
       <origin
         xyz="0 0 0"
@@ -548,7 +548,7 @@
         iyz="2.90644772485E-13"
         izz="4.30705177925094E-06" />
     </inertial>
-    <!-- <visual>
+    <visual>
       <origin
         xyz="0 0 0"
         rpy="0 0 0" />
@@ -561,7 +561,7 @@
         <color
           rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
       </material>
-    </visual> -->
+    </visual>
     <collision>
       <origin
         xyz="0 0 0"
