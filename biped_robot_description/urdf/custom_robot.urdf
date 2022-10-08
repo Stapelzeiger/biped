@@ -258,11 +258,6 @@
       link="FR_LOWER_LEG" />
     <axis
       xyz="0 1 0" />
-    <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
     <limit effort="1000" lower="-10" upper="10" velocity="1000"/>
 
   </joint>
@@ -318,12 +313,7 @@
       link="FR_FOOT" />
     <axis
       xyz="0 1 0" />
-    <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
-      <limit effort="1000" lower="-10" upper="10" velocity="1000"/>
+    <limit effort="1000" lower="-10" upper="10" velocity="1000"/>
   </joint>
   <link
     name="FL_HIP">
@@ -377,7 +367,7 @@
       link="FL_HIP" />
     <axis
       xyz="0 0 1" />
-      <limit effort="1000" lower="-10" upper="10" velocity="1000"/>
+    <limit effort="1000" lower="-10" upper="10" velocity="1000"/>
   </joint>
   <link
     name="FL_SHOULDER">
@@ -539,11 +529,6 @@
       link="FL_LOWER_LEG" />
     <axis
       xyz="0 1 0" />
-    <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
     <limit effort="1000" lower="-10" upper="10" velocity="1000"/>
 
   </joint>
@@ -599,12 +584,7 @@
       link="FL_FOOT" />
     <axis
       xyz="0 1 0" />
-    <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
-      <limit effort="1000" lower="-10" upper="10" velocity="1000"/>
+    <limit effort="1000" lower="-10" upper="10" velocity="1000"/>
   </joint>
 
 </robot>
