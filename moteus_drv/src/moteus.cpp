@@ -1,6 +1,8 @@
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp_components/register_node_macro.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
+#include "sensor_msgs/msg/temperature.hpp"
+#include "std_msgs/msg/float32.hpp"
 #include "trajectory_msgs/msg/joint_trajectory.hpp"
 
 #include <stdexcept>
@@ -54,6 +56,10 @@ public:
         joint_pub_ = this->create_publisher<sensor_msgs::msg::JointState>("~/joint_states", 10);
         joint_sub_ = this->create_subscription<trajectory_msgs::msg::JointTrajectory>(
             "~/joint_traj", 10, std::bind(&MoteusServo::traj_cb, this, std::placeholders::_1));
+        for (auto joint_name : joint_names_) {
+            volt_pub_.push_back(this->create_publisher<std_msgs::msg::Float32>("~/" + joint_name + "/voltage", 10));
+            temp_pub_.push_back(this->create_publisher<sensor_msgs::msg::Temperature>("~/" + joint_name + "/temperature", 10));
+        }
 
         // const int r = ::mlockall(MCL_CURRENT | MCL_FUTURE);
         // if (r < 0) {
@@ -140,14 +146,20 @@ private:
         // publish joint states
         sensor_msgs::msg::JointState msg;
         msg.header.stamp = this->now();
-        for (auto joint : joint_names_)
+        for (size_t joint_idx = 0; joint_idx < joint_names_.size(); joint_idx++)
         {
+            auto joint = joint_names_[joint_idx];
             if (std::isfinite(values[joint].position)) {
                 msg.name.push_back(joint);
                 msg.position.push_back(values[joint].position * 2 * M_PI);
                 msg.velocity.push_back(values[joint].velocity * 2 * M_PI);
                 msg.effort.push_back(values[joint].torque);
-                // TODO publish voltage & temperature
+                sensor_msgs::msg::Temperature temp_msg;
+                temp_msg.temperature = values[joint].temperature;
+                temp_pub_[joint_idx]->publish(temp_msg);
+                std_msgs::msg::Float32 volt_msg;
+                volt_msg.data = values[joint].voltage;
+                volt_pub_[joint_idx]->publish(volt_msg);
             }
         }
         joint_pub_->publish(msg);
@@ -194,6 +206,8 @@ private:
     std::vector<std::string> joint_names_;
     std::map<int, std::string> joint_uid_to_name_;
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_pub_;
+    std::vector<rclcpp::Publisher<sensor_msgs::msg::Temperature>::SharedPtr> temp_pub_;
+    std::vector<rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr> volt_pub_;
     rclcpp::Subscription<trajectory_msgs::msg::JointTrajectory>::SharedPtr joint_sub_;
     std::vector<trajectory_msgs::msg::JointTrajectory> joint_traj_;
     rclcpp::TimerBase::SharedPtr timer_;
