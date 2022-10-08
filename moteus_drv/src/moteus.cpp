@@ -91,14 +91,15 @@ private:
             moteus_command_buf_[joint_idx].query = query;
 
             if (joint_traj_[joint_idx].points.size() > 0) {
+                const double scale = 1/(2*M_PI);
                 // TODO check for timeout and index in trajectory
                 size_t traj_idx = 0;
                 moteus_command_buf_[joint_idx].mode = moteus::Mode::kPosition;
                 if (joint_traj_[joint_idx].points[traj_idx].positions.size() == 1) {
-                    moteus_command_buf_[joint_idx].position.position = joint_traj_[joint_idx].points[traj_idx].positions[0];
+                    moteus_command_buf_[joint_idx].position.position = scale * joint_traj_[joint_idx].points[traj_idx].positions[0];
                 }
                 if (joint_traj_[joint_idx].points[traj_idx].velocities.size() == 1) {
-                    moteus_command_buf_[joint_idx].position.velocity = joint_traj_[joint_idx].points[traj_idx].velocities[0];
+                    moteus_command_buf_[joint_idx].position.velocity = scale * joint_traj_[joint_idx].points[traj_idx].velocities[0];
                 }
                 if (joint_traj_[joint_idx].points[traj_idx].effort.size() == 1) {
                     moteus_command_buf_[joint_idx].position.feedforward_torque = joint_traj_[joint_idx].points[traj_idx].effort[0];
@@ -141,11 +142,13 @@ private:
         msg.header.stamp = this->now();
         for (auto joint : joint_names_)
         {
-            msg.name.push_back(joint);
-            msg.position.push_back(values[joint].position);
-            msg.velocity.push_back(values[joint].velocity);
-            msg.effort.push_back(values[joint].torque);
-            // TODO publish voltage & temperature
+            if (std::isfinite(values[joint].position)) {
+                msg.name.push_back(joint);
+                msg.position.push_back(values[joint].position * 2 * M_PI);
+                msg.velocity.push_back(values[joint].velocity * 2 * M_PI);
+                msg.effort.push_back(values[joint].torque);
+                // TODO publish voltage & temperature
+            }
         }
         joint_pub_->publish(msg);
     }
