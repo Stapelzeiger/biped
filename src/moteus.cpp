@@ -22,29 +22,28 @@ public:
     MoteusServo(const rclcpp::NodeOptions & options) : Node("MoteusServo", options)
     {
         RCLCPP_INFO(this->get_logger(), "Moteus Servo Driver");
-        // this->declare_parameter<int64_t>("test", 1);
-        // RCLCPP_INFO_STREAM(this->get_logger(), "init value test: " << this->get_parameter("test").as_int());
 
         // Joint parameters
         this->declare_parameter<std::vector<std::string>>("joints");
         int64_t can_id = 1;
         joint_names_ = this->get_parameter("joints").as_string_array();
-        for (auto j : joint_names_)
+        for (auto joint_name : joint_names_)
         {
-            this->declare_parameter<int64_t>(j+"/can_id", can_id++);
-            this->declare_parameter<int64_t>(j+"/can_bus", 1);
+            this->declare_parameter<int64_t>(joint_name + "/can_id", can_id++);
+            this->declare_parameter<int64_t>(joint_name + "/can_bus", 1);
         }
+        joint_traj_.resize(joint_names_.size());
 
         // Moteus buffers
         moteus_command_buf_.clear();
-        for (auto j : joint_names_) {
-            int id = this->get_parameter(j+"/can_id").as_int();
-            int bus = this->get_parameter(j+"/can_bus").as_int();
+        for (auto joint_name : joint_names_) {
+            int id = this->get_parameter(joint_name + "/can_id").as_int();
+            int bus = this->get_parameter(joint_name + "/can_bus").as_int();
             moteus_command_buf_.push_back({});
             moteus_command_buf_.back().id = id;
             moteus_command_buf_.back().bus = bus;
-            joint_uid_to_name_[servo_uid(bus, id)] = j;
-            std::cout << "Joint: " << j << " bus: " << bus << " id: " << id << std::endl;
+            joint_uid_to_name_[servo_uid(bus, id)] = joint_name;
+            RCLCPP_INFO_STREAM(this->get_logger(), "Adding joint: " << joint_name << ", CAN bus: " << bus << ", id " << id);
         }
         moteus_reply_buf_.resize(moteus_command_buf_.size() * 2); // larger in case there's addition messages
 
@@ -56,23 +55,19 @@ public:
         joint_sub_ = this->create_subscription<trajectory_msgs::msg::JointTrajectory>(
             "~/joint_traj", 10, std::bind(&MoteusServo::traj_cb, this, std::placeholders::_1));
 
-        RCLCPP_INFO(this->get_logger(), "Moteus Servo ready");
-
-
         // const int r = ::mlockall(MCL_CURRENT | MCL_FUTURE);
         // if (r < 0) {
         //     throw std::runtime_error("Error locking memory");
         // }
-        timer_ = this->create_wall_timer(10ms, std::bind(&MoteusServo::timer_cb, this));
+        this->declare_parameter<double>("update_rate");
+        double update_rate =  this->get_parameter("update_rate").as_double();
+        timer_ = this->create_wall_timer(1000ms/update_rate, std::bind(&MoteusServo::timer_cb, this));
     }
 
 private:
-    
+
     void timer_cb()
     {
-        // RCLCPP_INFO(this->get_logger(), "timer cb");
-
-        // TODO fill command_buf with setpoints
         moteus::PositionResolution cmd_res;
         cmd_res.position = moteus::Resolution::kInt16;
         cmd_res.velocity = moteus::Resolution::kInt16;
@@ -90,18 +85,23 @@ private:
             moteus_command_buf_[joint_idx].resolution = cmd_res;
             moteus_command_buf_[joint_idx].mode = moteus::Mode::kStopped;
             moteus_command_buf_[joint_idx].position = moteus::PositionCommand();
-            moteus_command_buf_[joint_idx].position.position = 0;
+            moteus_command_buf_[joint_idx].position.position = std::numeric_limits<double>::quiet_NaN();
             moteus_command_buf_[joint_idx].position.velocity = 0;
             moteus_command_buf_[joint_idx].position.feedforward_torque = 0;
             moteus_command_buf_[joint_idx].query = query;
 
-            if (joint_traj_msg_) // TODO timeout
-            {
-                auto pos = std::find(joint_traj_msg_->joint_names.begin(), joint_traj_msg_->joint_names.end(), joint_names_[joint_idx]);
-                if (pos != joint_traj_msg_->joint_names.end())
-                {
-                    moteus_command_buf_[joint_idx].mode = moteus::Mode::kPosition;
-                    moteus_command_buf_[joint_idx].position.position = joint_traj_msg_->points[0].positions[std::distance(joint_traj_msg_->joint_names.begin(), pos)];
+            if (joint_traj_[joint_idx].points.size() > 0) {
+                // TODO check for timeout and index in trajectory
+                size_t traj_idx = 0;
+                moteus_command_buf_[joint_idx].mode = moteus::Mode::kPosition;
+                if (joint_traj_[joint_idx].points[traj_idx].positions.size() == 1) {
+                    moteus_command_buf_[joint_idx].position.position = joint_traj_[joint_idx].points[traj_idx].positions[0];
+                }
+                if (joint_traj_[joint_idx].points[traj_idx].velocities.size() == 1) {
+                    moteus_command_buf_[joint_idx].position.velocity = joint_traj_[joint_idx].points[traj_idx].velocities[0];
+                }
+                if (joint_traj_[joint_idx].points[traj_idx].effort.size() == 1) {
+                    moteus_command_buf_[joint_idx].position.feedforward_torque = joint_traj_[joint_idx].points[traj_idx].effort[0];
                 }
             }
         }
@@ -119,16 +119,21 @@ private:
         assert(can_result.valid());
         const auto current_values = can_result.get(); // waits for result
         const auto rx_count = current_values.query_result_size;
-        std::cout << "rx count " << rx_count << std::endl;
+        // std::cout << "rx count " << rx_count << std::endl;
         std::map<std::string, moteus::QueryResult> values;
         for (size_t i = 0; i < rx_count; i++)
         {
             int bus = moteus_reply_buf_[i].bus;
             int id = moteus_reply_buf_[i].id;
             const std::string& joint_name = joint_uid_to_name_[servo_uid(bus, id)];
-            float pos = moteus_reply_buf_[i].result.position;
-            int fault = moteus_reply_buf_[i].result.fault;
-            std::cout << joint_name << " : " << fault << std::endl;
+            if (moteus_reply_buf_[i].result.mode == moteus::Mode::kFault) {
+                RCLCPP_ERROR_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 500 /* [ms] */,
+                    "Fault joint: " << joint_name << ", fault code: " << moteus_reply_buf_[i].result.fault);
+            }
+            if (moteus_reply_buf_[i].result.mode == moteus::Mode::kPositionTimeout) {
+                RCLCPP_ERROR_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 500 /* [ms] */,
+                    "Position timeout joint: " << joint_name);
+            }
             values[joint_name] = moteus_reply_buf_[i].result;
         }
         // publish joint states
@@ -140,13 +145,42 @@ private:
             msg.position.push_back(values[joint].position);
             msg.velocity.push_back(values[joint].velocity);
             msg.effort.push_back(values[joint].torque);
+            // TODO publish voltage & temperature
         }
         joint_pub_->publish(msg);
     }
 
     void traj_cb(const trajectory_msgs::msg::JointTrajectory::SharedPtr msg)
     {
-        joint_traj_msg_ = msg;
+        for (size_t msg_joint_idx = 0; msg_joint_idx < msg->joint_names.size(); msg_joint_idx++) {
+            auto pos = std::find(joint_names_.begin(), joint_names_.end(), msg->joint_names[msg_joint_idx]);
+            if (pos != joint_names_.end()) {
+                size_t joint_idx = std::distance(joint_names_.begin(), pos);
+                joint_traj_[joint_idx].header = msg->header;
+                joint_traj_[joint_idx].points.resize(msg->points.size());
+                for (size_t i = 0; i < msg->points.size(); i++) {
+                    joint_traj_[joint_idx].points[i].time_from_start = msg->points[i].time_from_start;
+                    if (msg_joint_idx < msg->points[i].positions.size()) {
+                        joint_traj_[joint_idx].points[i].positions.resize(1);
+                        joint_traj_[joint_idx].points[i].positions[0] = msg->points[i].positions[msg_joint_idx];
+                    } else {
+                        joint_traj_[joint_idx].points[i].positions.resize(0);
+                    }
+                    if (msg_joint_idx < msg->points[i].velocities.size()) {
+                        joint_traj_[joint_idx].points[i].velocities.resize(1);
+                        joint_traj_[joint_idx].points[i].velocities[0] = msg->points[i].velocities[msg_joint_idx];
+                    } else {
+                        joint_traj_[joint_idx].points[i].velocities.resize(0);
+                    }
+                    if (msg_joint_idx < msg->points[i].effort.size()) {
+                        joint_traj_[joint_idx].points[i].effort.resize(1);
+                        joint_traj_[joint_idx].points[i].effort[0] = msg->points[i].effort[msg_joint_idx];
+                    } else {
+                        joint_traj_[joint_idx].points[i].effort.resize(0);
+                    }
+                }
+            }
+        }
     }
 
     static int servo_uid(int bus, int id)
@@ -158,7 +192,7 @@ private:
     std::map<int, std::string> joint_uid_to_name_;
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_pub_;
     rclcpp::Subscription<trajectory_msgs::msg::JointTrajectory>::SharedPtr joint_sub_;
-    trajectory_msgs::msg::JointTrajectory::SharedPtr joint_traj_msg_;
+    std::vector<trajectory_msgs::msg::JointTrajectory> joint_traj_;
     rclcpp::TimerBase::SharedPtr timer_;
 
     std::vector<moteus::Pi3HatMoteusInterface::ServoCommand> moteus_command_buf_;

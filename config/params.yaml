@@ -1,10 +1,12 @@
 moteus:
   ros__parameters:
-    test: 42
-    joints: ['test']
+    update_rate: 300.0
+    joints: ['test1', 'test2']
     # joints: ['LHAA', 'LHFE', 'LKFE']
-    test/can_id: 1
-    test/can_bus: 1
+    test1/can_id: 1
+    test1/can_bus: 1
+    test2/can_id: 2
+    test2/can_bus: 2
     LHAA/can_id: 20
     LHFE/can_id: 21
     LKFE/can_id: 22
