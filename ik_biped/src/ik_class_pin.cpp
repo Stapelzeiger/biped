@@ -191,8 +191,8 @@ Eigen::VectorXd IKRobot::get_desired_q(Eigen::VectorXd q, Eigen::Vector3d pos_fo
 
 // int main()
 // {
-//     const std::string urdf_filename = std::string("../assets/urdf_custom_biped/custom_robot.urdf");
-//     IKRobot robot_ik(urdf_filename);
+//     const std::string urdf_xml_string = std::string("../assets/urdf_custom_biped/custom_robot.urdf");
+//     IKRobot robot_ik(urdf_xml_string);
 
 //     int nq;
 //     int nv;
