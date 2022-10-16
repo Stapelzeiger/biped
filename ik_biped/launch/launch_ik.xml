@@ -1,0 +1,4 @@
+<launch>
+    <node pkg="ik_biped" exec="ik" name="ik_interface" output="screen">
+    </node>
+</launch>
