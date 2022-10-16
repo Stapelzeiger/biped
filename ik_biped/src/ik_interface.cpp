@@ -20,7 +20,7 @@ public:
         // subscribe to current q
         // subscribe to foot desired
 
-        robot_joints_pub_ = this->create_publisher<sensor_msgs::msg::JointState>("joint_states", 10);
+        robot_joints_pub_ = this->create_publisher<sensor_msgs::msg::JointState>("/joint_states", 10);
         timer_ = this->create_wall_timer(
             500ms, std::bind(&IKNode::timer_pub_robot_joints, this));
     }
