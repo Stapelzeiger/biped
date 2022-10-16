@@ -26,6 +26,9 @@ class IKRobot
 public:
     IKRobot();
     void build_model(const std::string urdf_filename);
+    int get_size_q();
+    int get_size_q_dot();
+    Eigen::VectorXd get_desired_q(Eigen::VectorXd q, Eigen::Vector3d pos_foot_des, double yaw_angle, std::string joint_name);
 
 private:
     pinocchio::Model model;
