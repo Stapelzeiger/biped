@@ -1,23 +1,12 @@
 #include "ik_class_pin.hpp"
 
-// IKRobot::IKRobot(const std::string urdf_filename)
-// {
-//     pinocchio::urdf::buildModel(urdf_filename, pinocchio::JointModelFreeFlyer(), model);
-//     std::cout << "model nq:" << model.nq << std::endl;
-//     std::cout << "model nv:" << model.nv << std::endl;
-
-//     int idx_frame;
-//     idx_frame = model.getFrameId("FL_ANKLE");
-//     std::cout << "model frame:" << idx_frame << std::endl;
-// }
-
 IKRobot::IKRobot()
 {
 }
 
-void IKRobot::build_model(const std::string urdf_filename)
+void IKRobot::build_model(const std::string urdf_xml_string)
 {
-    pinocchio::urdf::buildModel(urdf_filename, pinocchio::JointModelFreeFlyer(), model);
+    pinocchio::urdf::buildModelFromXML(urdf_xml_string, pinocchio::JointModelFreeFlyer(), model);
     std::cout << "model nq:" << model.nq << std::endl;
     std::cout << "model nv:" << model.nv << std::endl;
 
