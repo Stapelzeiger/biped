@@ -13,6 +13,7 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
 
 find_package(PkgConfig REQUIRED)
 find_package(pinocchio REQUIRED)
@@ -27,11 +28,11 @@ message(STATUS "PINOCCHIO_LIBRARIES ${PINOCCHIO_LIBRARIES}")
 message(STATUS "PINOCCHIO_INCLUDE_DIRS ${PINOCCHIO_INCLUDE_DIRS}")
 message(STATUS "PINOCCHIO_FOUND ${PINOCCHIO_FOUND}")
 message(STATUS "pinocchio_FOUND ${pinocchio_FOUND}")
-# set_source_files_properties(ik_class_pin.cpp CMAKE_CXX_FLAGS "-O3")
 
+# set_source_files_properties(ik_class_pin.cpp CMAKE_CXX_FLAGS "-O3")
 add_executable(ik src/ik_interface.cpp src/ik_class_pin.cpp)
 target_include_directories(ik PRIVATE ${PINOCCHIO_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIR})
-ament_target_dependencies(ik rclcpp std_msgs)
+ament_target_dependencies(ik rclcpp std_msgs sensor_msgs)
 target_link_libraries(ik ${PINOCCHIO_LIBRARIES})
 
 install(TARGETS
