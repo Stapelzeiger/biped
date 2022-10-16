@@ -21,9 +21,11 @@ const double damp = 1e-5;
 class IKRobot
 {
 public:
-    pinocchio::Model model;
     IKRobot();
     void build_model(const std::string urdf_filename);
+
+private:
+    pinocchio::Model model;
 };
 
 #endif
