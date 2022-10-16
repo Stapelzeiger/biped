@@ -5,7 +5,7 @@
 
 #include "ik_class_pin.hpp"
 
-using std::placeholders::_1;
+using namespace std::placeholders;
 
 class MinimalSubscriber : public rclcpp::Node
 {
