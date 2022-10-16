@@ -39,8 +39,7 @@ private:
         Eigen::VectorXd q_des;
         q_des = robot_.get_desired_q(q_current, pos_foot_des, yaw_angle_des, joint_name);
         std::cout << q_des << std::endl;
-
-        auto message = sensor_msgs::msg::JointState;
+        const sensor_msgs::msg::JointState message;
 
         robot_joints_pub_->publish(message);
     }
