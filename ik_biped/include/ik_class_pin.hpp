@@ -4,6 +4,8 @@
 
 #include <chrono>
 #include <math.h>
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wtype-limits"
 #include "pinocchio/spatial/explog.hpp"
 #include "pinocchio/algorithm/kinematics.hpp"
 #include "pinocchio/algorithm/jacobian.hpp"
@@ -11,6 +13,7 @@
 #include "pinocchio/parsers/urdf.hpp"
 #include "pinocchio/algorithm/crba.hpp"
 #include "pinocchio/algorithm/rnea.hpp"
+#pragma GCC diagnostic pop
 
 using namespace std::chrono;
 const double eps = 1e-3;
