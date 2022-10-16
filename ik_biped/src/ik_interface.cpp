@@ -50,7 +50,7 @@ private:
         robot_.build_model(msg->data.c_str());
     }
     rclcpp::TimerBase::SharedPtr timer_;
-    rclcpp::Publisher<std_msgs::msg::String>::SharedPtr robot_joints_pub_;
+    rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr robot_joints_pub_;
     size_t count_;
 
     rclcpp::Subscription<std_msgs::msg::String>::SharedPtr robot_desc_sub_;
