@@ -1,0 +1,40 @@
+cmake_minimum_required(VERSION 3.8)
+set(CMAKE_VERBOSE_MAKEFILE on)
+
+project(ik_biped
+  DESCRIPTION "inverse kinematics in Pinocchio"
+)
+
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
+
+# find dependencies
+find_package(ament_cmake REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(std_msgs REQUIRED)
+
+find_package(PkgConfig REQUIRED)
+find_package(pinocchio REQUIRED)
+find_package(Eigen3 REQUIRED)
+include_directories(include EIGEN3_INCLUDE_DIR)
+
+message(STATUS "EIGEN3_INCLUDE_DIR ${EIGEN3_INCLUDE_DIR}")
+message(STATUS "PINOCCHIO_LINK_LIBRARIES ${PINOCCHIO_LINK_LIBRARIES}")
+message(STATUS "pinocchio_LINK_LIBRARIES ${pinocchio_LINK_LIBRARIES}")
+message(STATUS "pinocchio_LIBRARIES ${pinocchio_LIBRARIES}")
+message(STATUS "PINOCCHIO_LIBRARIES ${PINOCCHIO_LIBRARIES}")
+message(STATUS "PINOCCHIO_INCLUDE_DIRS ${PINOCCHIO_INCLUDE_DIRS}")
+message(STATUS "PINOCCHIO_FOUND ${PINOCCHIO_FOUND}")
+message(STATUS "pinocchio_FOUND ${pinocchio_FOUND}")
+set_source_files_properties(ik_class_pin.cpp CMAKE_CXX_FLAGS "-O3")
+
+add_executable(ik src/ik_interface.cpp src/ik_class_pin.cpp)
+target_include_directories(ik PRIVATE ${PINOCCHIO_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIR})
+ament_target_dependencies(ik rclcpp std_msgs)
+
+install(TARGETS
+  ik
+  DESTINATION lib/${PROJECT_NAME})
+
+ament_package()
