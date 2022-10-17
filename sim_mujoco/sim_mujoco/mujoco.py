@@ -23,7 +23,7 @@ class MujocoNode(Node):
 
         clock_msg = Clock()
         clock_msg.clock.sec = int(self.time)
-        clock_msg.clock.nanosec= int((self.time - clock_msg.clock.sec) * 1e9)
+        clock_msg.clock.nanosec = int((self.time - clock_msg.clock.sec) * 1e9)
         self.clock_pub.publish(clock_msg)
 
 def main(args=None):
