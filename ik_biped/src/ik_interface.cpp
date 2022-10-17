@@ -28,8 +28,8 @@ public:
 private:
     void timer_pub_robot_joints()
     {
-
-        Eigen::VectorXd q_current(17, 1);
+        int size_q = robot_.get_size_q();
+        Eigen::VectorXd q_current(size_q, 1);
         q_current << 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0;
         Eigen::Vector3d pos_foot_des(3, 1);
         std::cout << q_current << std::endl;
