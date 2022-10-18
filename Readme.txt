@@ -21,3 +21,10 @@ cmake .. -DBUILD_PYTHON_INTERFACE=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL
 make -j4
 sudo make install
 ```
+
+## MuJoCo Viewer
+
+```
+pip3 install mujoco
+pip3 install mujoco-python-viewer
+```
