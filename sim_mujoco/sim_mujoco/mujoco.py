@@ -3,7 +3,7 @@ from rclpy.node import Node
 
 from sensor_msgs.msg import JointState
 from nav_msgs.msg import Odometry
-from trajectory_msgs.msg import MultiDOFJointTrajectoryPoint
+from trajectory_msgs.msg import MultiDOFJointTrajectoryPoint, MultiDOFJointTrajectory, JointTrajectory
 from geometry_msgs.msg import Transform
 
 from rosgraph_msgs.msg import Clock
@@ -26,7 +26,10 @@ class MujocoNode(Node):
         self.dt = self.model.opt.timestep
         self.joint_state_pub = self.create_publisher(JointState, 'joint_states', 10)
         self.odometry_base_pub = self.create_publisher(Odometry, 'odom', 10)
-        self.foot_position_BF_pub = self.create_publisher(MultiDOFJointTrajectoryPoint, 'foot_position_BF', 10)
+        self.foot_position_BF_pub = self.create_publisher(MultiDOFJointTrajectory, 'foot_position_BF', 10)
+
+        self.joint_traj_sub = self.create_subscription(JointTrajectory, 'joint_traj', self.joint_traj_cb, 10)
+        self.joint_traj_sub  # prevent unused variable warning
 
         self.clock_pub = self.create_publisher(Clock, '/clock', 10)
         self.timer = self.create_timer(self.dt, self.step)
@@ -76,18 +79,26 @@ class MujocoNode(Node):
 
 
         des_p_stance_foot_BLF = np.array([0.0, 0.0, -0.58])
+        name_stance_foot = "FL_ANKLE"
         transforms = Transform()
         transforms.translation.x = des_p_stance_foot_BLF[0]
         transforms.translation.y = des_p_stance_foot_BLF[1]
         transforms.translation.z = des_p_stance_foot_BLF[2]
-        transforms.rotation.x = 0.0
-        transforms.rotation.y = 0.0
-        transforms.rotation.z = 0.0
-        transforms.rotation.w = 1.0
+        transforms.rotation.x = 0.0; transforms.rotation.y = 0.0
+        transforms.rotation.z = 0.0; transforms.rotation.w = 1.0
 
-        p = MultiDOFJointTrajectoryPoint()
-        p.transforms = [transforms]
-        self.foot_position_BF_pub.publish(p)
+        foot_pos_point = MultiDOFJointTrajectoryPoint()
+        foot_pos_point.transforms = [transforms]
+
+        msg_foot = MultiDOFJointTrajectory()
+        msg_foot.joint_names = [name_stance_foot]
+        msg_foot.points = [foot_pos_point]
+        self.foot_position_BF_pub.publish(msg_foot)
+
+
+    def joint_traj_cb(self, msg):
+        print(msg.joint_names)
+
 
     def get_joint_names(self):
         self.name_joints = []
