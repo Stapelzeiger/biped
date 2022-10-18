@@ -4,17 +4,17 @@
     <option integrator="RK4"/>
     <default/>
     <asset>
-        <mesh name="base_link" file="base_link.STL"/>
-        <mesh name="FR_HIP" file="FR_HIP.STL"/>
-        <mesh name="FR_SHOULDER" file="FR_SHOULDER.STL"/>
-        <mesh name="FR_UPPER_LEG" file="FR_UPPER_LEG.STL"/>
-        <mesh name="FR_LOWER_LEG" file="FR_LOWER_LEG.STL"/>
-        <mesh name="FR_FOOT" file="FR_FOOT.STL"/>
-        <mesh name="FL_HIP" file="FL_HIP.STL"/>
-        <mesh name="FL_SHOULDER" file="FL_SHOULDER.STL"/>
-        <mesh name="FL_UPPER_LEG" file="FL_UPPER_LEG.STL"/>
-        <mesh name="FL_LOWER_LEG" file="FL_LOWER_LEG.STL"/>
-        <mesh name="FL_FOOT" file="FL_FOOT.STL"/>
+        <mesh name="base_link" file="../meshes/base_link.STL"/>
+        <mesh name="FR_HIP" file="../meshes/FR_HIP.STL"/>
+        <mesh name="FR_SHOULDER" file="../meshes/FR_SHOULDER.STL"/>
+        <mesh name="FR_UPPER_LEG" file="../meshes/FR_UPPER_LEG.STL"/>
+        <mesh name="FR_LOWER_LEG" file="../meshes/FR_LOWER_LEG.STL"/>
+        <mesh name="FR_FOOT" file="../meshes/FR_FOOT.STL"/>
+        <mesh name="FL_HIP" file="../meshes/FL_HIP.STL"/>
+        <mesh name="FL_SHOULDER" file="../meshes/FL_SHOULDER.STL"/>
+        <mesh name="FL_UPPER_LEG" file="../meshes/FL_UPPER_LEG.STL"/>
+        <mesh name="FL_LOWER_LEG" file="../meshes/FL_LOWER_LEG.STL"/>
+        <mesh name="FL_FOOT" file="../meshes/FL_FOOT.STL"/>
 
          <texture type="skybox" builtin="gradient" width="128" height="128" rgb1=".4 .6 .8" rgb2="0 0 0"/>
         
