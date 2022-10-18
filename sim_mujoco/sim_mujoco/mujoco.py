@@ -2,6 +2,8 @@ import rclpy
 from rclpy.node import Node
 
 from sensor_msgs.msg import JointState
+from nav_msgs.msg import Odometry
+
 from rosgraph_msgs.msg import Clock
 
 import mujoco as mj
@@ -22,6 +24,8 @@ class MujocoNode(Node):
         self.time = 0
         self.dt = self.model.opt.timestep
         self.joint_state_pub = self.create_publisher(JointState, 'joint_states', 10)
+        self.odometry_base_pub= self.create_publisher(Odometry, 'odom', 10)
+
         self.clock_pub = self.create_publisher(Clock, '/clock', 10)
         self.timer = self.create_timer(self.dt, self.step)
 
@@ -48,9 +52,22 @@ class MujocoNode(Node):
         msg.header.stamp.sec = int(self.time)
         msg.header.stamp.nanosec = int((self.time - clock_msg.clock.sec) * 1e9)
         msg.name = self.name_joints
-        msg.position = list(self.data.qpos.copy()[7: ])
-        msg.velocity = list(self.data.qvel.copy()[7: ])
+        msg.position = list(self.data.qpos.copy()[self.model.jnt_qposadr[1]: ]) # skip root
+        msg.velocity = list(self.data.qvel.copy()[self.model.jnt_dofadr[1]: ]) # skip root
         self.joint_state_pub.publish(msg)
+
+        msg_odom = Odometry()
+        msg_odom.header.stamp.sec = int(self.time)
+        msg_odom.header.stamp.nanosec = int((self.time - clock_msg.clock.sec) * 1e9)
+        msg_odom.pose.pose.position.x = self.data.qpos.copy()[0]
+        msg_odom.pose.pose.position.y = self.data.qpos.copy()[1]
+        msg_odom.pose.pose.position.z = self.data.qpos.copy()[2]
+
+        msg_odom.pose.pose.orientation.w = self.data.qpos.copy()[2]
+        msg_odom.pose.pose.orientation.x = self.data.qpos.copy()[3]
+        msg_odom.pose.pose.orientation.y = self.data.qpos.copy()[4]
+        msg_odom.pose.pose.orientation.z = self.data.qpos.copy()[5]
+        self.odometry_base_pub.publish(msg_odom)
 
     def get_joint_names(self):
         self.name_joints = []
