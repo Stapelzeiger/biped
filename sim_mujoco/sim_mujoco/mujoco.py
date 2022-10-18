@@ -3,12 +3,14 @@ from rclpy.node import Node
 
 from sensor_msgs.msg import JointState
 from nav_msgs.msg import Odometry
+from trajectory_msgs.msg import MultiDOFJointTrajectoryPoint
+from geometry_msgs.msg import Transform
 
 from rosgraph_msgs.msg import Clock
 
 import mujoco as mj
 import mujoco_viewer
-
+import numpy as np
 
 VISUALIZE = True
 
@@ -24,7 +26,8 @@ class MujocoNode(Node):
         self.time = 0
         self.dt = self.model.opt.timestep
         self.joint_state_pub = self.create_publisher(JointState, 'joint_states', 10)
-        self.odometry_base_pub= self.create_publisher(Odometry, 'odom', 10)
+        self.odometry_base_pub = self.create_publisher(Odometry, 'odom', 10)
+        self.foot_position_BF_pub = self.create_publisher(MultiDOFJointTrajectoryPoint, 'foot_position_BF', 10)
 
         self.clock_pub = self.create_publisher(Clock, '/clock', 10)
         self.timer = self.create_timer(self.dt, self.step)
@@ -62,12 +65,26 @@ class MujocoNode(Node):
         msg_odom.pose.pose.position.x = self.data.qpos.copy()[0]
         msg_odom.pose.pose.position.y = self.data.qpos.copy()[1]
         msg_odom.pose.pose.position.z = self.data.qpos.copy()[2]
-
         msg_odom.pose.pose.orientation.w = self.data.qpos.copy()[2]
         msg_odom.pose.pose.orientation.x = self.data.qpos.copy()[3]
         msg_odom.pose.pose.orientation.y = self.data.qpos.copy()[4]
         msg_odom.pose.pose.orientation.z = self.data.qpos.copy()[5]
         self.odometry_base_pub.publish(msg_odom)
+
+
+        des_p_stance_foot_BLF = np.array([0.0, 0.0, -0.58])
+        transforms = Transform()
+        transforms.translation.x = des_p_stance_foot_BLF[0]
+        transforms.translation.y = des_p_stance_foot_BLF[1]
+        transforms.translation.z = des_p_stance_foot_BLF[2]
+        transforms.rotation.x = 0.0
+        transforms.rotation.y = 0.0
+        transforms.rotation.z = 0.0
+        transforms.rotation.w = 1.0
+
+        p = MultiDOFJointTrajectoryPoint()
+        p.transforms = [transforms]
+        self.foot_position_BF_pub.publish(p)
 
     def get_joint_names(self):
         self.name_joints = []
