@@ -26,7 +26,7 @@ class MujocoNode(Node):
         self.dt = self.model.opt.timestep
         self.joint_state_pub = self.create_publisher(JointState, 'joint_states', 10)
         self.odometry_base_pub = self.create_publisher(Odometry, 'odom', 10)
-        self.foot_position_BF_pub = self.create_publisher(MultiDOFJointTrajectory, 'foot_position_BF', 10)
+        self.foot_position_BL_pub = self.create_publisher(MultiDOFJointTrajectory, 'foot_position_BL', 10)
 
         self.joint_traj_sub = self.create_subscription(JointTrajectory, 'joint_traj', self.joint_traj_cb, 10)
         self.joint_traj_sub  # prevent unused variable warning
@@ -93,7 +93,7 @@ class MujocoNode(Node):
         msg_foot = MultiDOFJointTrajectory()
         msg_foot.joint_names = [name_stance_foot]
         msg_foot.points = [foot_pos_point]
-        self.foot_position_BF_pub.publish(msg_foot)
+        self.foot_position_BL_pub.publish(msg_foot)
 
 
     def joint_traj_cb(self, msg):
