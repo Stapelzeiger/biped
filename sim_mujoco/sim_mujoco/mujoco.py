@@ -4,27 +4,60 @@ from rclpy.node import Node
 from sensor_msgs.msg import JointState
 from rosgraph_msgs.msg import Clock
 
-import mujoco
+import mujoco as mj
+import mujoco_viewer
+
+
+VISUALIZE = True
 
 class MujocoNode(Node):
     def __init__(self):
         super().__init__('mujoco_sim')
+        
+        self.declare_parameter("mujoco_xml_path")
+        mujoco_xml_path = self.get_parameter("mujoco_xml_path").get_parameter_value().string_value
+        self.model = mj.MjModel.from_xml_path(mujoco_xml_path)
+        self.data = mj.MjData(self.model)
+
         self.time = 0
-        self.dt = 0.1
+        self.dt = self.model.opt.timestep
         self.joint_state_pub = self.create_publisher(JointState, 'joint_states', 10)
         self.clock_pub = self.create_publisher(Clock, '/clock', 10)
         self.timer = self.create_timer(self.dt, self.step)
 
+        if VISUALIZE == True:
+            self.viewer = mujoco_viewer.MujocoViewer(self.model, self.data)
+            self.viewer.cam.azimuth = 90
+            self.viewer.cam.elevation = -25
+            self.viewer.render()
+
+        self.name_joints = self.get_joint_names()
+        print(self.name_joints)        
+
     def step(self):
         self.time += self.dt
-
-        msg = JointState()
-        self.joint_state_pub.publish(msg)
+        self.viewer.render()
+        mj.mj_step(self.model, self.data)
 
         clock_msg = Clock()
         clock_msg.clock.sec = int(self.time)
         clock_msg.clock.nanosec = int((self.time - clock_msg.clock.sec) * 1e9)
         self.clock_pub.publish(clock_msg)
+
+        msg = JointState()
+        msg.header.stamp.sec = int(self.time)
+        msg.header.stamp.nanosec = int((self.time - clock_msg.clock.sec) * 1e9)
+        msg.name = self.name_joints
+        msg.position = list(self.data.qpos.copy()[7: ])
+        msg.velocity = list(self.data.qvel.copy()[7: ])
+        self.joint_state_pub.publish(msg)
+
+    def get_joint_names(self):
+        self.name_joints = []
+        for i in range(1, self.model.njnt):  # skip root
+            self.name_joints.append(mj.mj_id2name(
+                self.model, mj.mjtObj.mjOBJ_JOINT, i))
+        return self.name_joints
 
 def main(args=None):
     rclpy.init(args=args)
