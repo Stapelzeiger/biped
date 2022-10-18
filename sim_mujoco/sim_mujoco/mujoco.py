@@ -12,7 +12,6 @@ import mujoco as mj
 import mujoco_viewer
 import numpy as np
 
-VISUALIZE = True
 
 class MujocoNode(Node):
     def __init__(self):
@@ -32,7 +31,10 @@ class MujocoNode(Node):
         self.clock_pub = self.create_publisher(Clock, '/clock', 10)
         self.timer = self.create_timer(self.dt, self.step)
 
-        if VISUALIZE == True:
+        self.declare_parameter("visualize_mujoco")
+        self.visualize_mujoco = self.get_parameter("visualize_mujoco").get_parameter_value().bool_value
+        print('------>', self.visualize_mujoco)
+        if self.visualize_mujoco == True:
             self.viewer = mujoco_viewer.MujocoViewer(self.model, self.data)
             self.viewer.cam.azimuth = 90
             self.viewer.cam.elevation = -25
@@ -43,7 +45,8 @@ class MujocoNode(Node):
 
     def step(self):
         self.time += self.dt
-        self.viewer.render()
+        if self.visualize_mujoco == True:
+            self.viewer.render()
         mj.mj_step(self.model, self.data)
 
         clock_msg = Clock()
