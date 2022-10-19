@@ -44,7 +44,7 @@ class MujocoNode(Node):
             self.viewer.render()
 
         self.name_joints = self.get_joint_names()
-        print(self.name_joints)        
+
 
     def step(self):
         self.time += self.dt
@@ -78,8 +78,8 @@ class MujocoNode(Node):
         self.odometry_base_pub.publish(msg_odom)
 
 
-        des_p_stance_foot_BLF = np.array([0.0, 0.0, -0.58])
-        name_stance_foot = "FL_ANKLE"
+        des_p_stance_foot_BLF = np.array([0.0, -0.1, -0.3])
+        name_stance_foot = "FR_ANKLE"
         transforms = Transform()
         transforms.translation.x = des_p_stance_foot_BLF[0]
         transforms.translation.y = des_p_stance_foot_BLF[1]
@@ -104,8 +104,6 @@ class MujocoNode(Node):
 
         for i in range(self.model.jnt_dofadr[1], self.model.jnt_dofadr[-1]):
             self.data.qvel[i] = 0.0
-
-
 
     def get_joint_names(self):
         self.name_joints = []
