@@ -28,7 +28,7 @@ class MujocoNode(Node):
         self.odometry_base_pub = self.create_publisher(Odometry, 'odom', 10)
         self.foot_position_BL_pub = self.create_publisher(MultiDOFJointTrajectory, 'foot_position_BL', 10)
 
-        self.joint_traj_sub = self.create_subscription(JointTrajectory, 'joint_traj', self.joint_traj_cb, 10)
+        self.joint_traj_sub = self.create_subscription(JointTrajectory, 'joint_trajectory', self.joint_traj_cb, 10)
         self.joint_traj_sub  # prevent unused variable warning
 
         self.clock_pub = self.create_publisher(Clock, '/clock', 10)
@@ -97,7 +97,14 @@ class MujocoNode(Node):
 
 
     def joint_traj_cb(self, msg):
-        print(msg.joint_names)
+        print("joint traj cb")
+
+        for i in range(self.model.jnt_qposadr[1], self.model.jnt_qposadr[-1]):
+            self.data.qpos[i] = msg.points[i - self.model.jnt_qposadr[1]].positions[0]
+
+        for i in range(self.model.jnt_dofadr[1], self.model.jnt_dofadr[-1]):
+            self.data.qvel[i] = 0.0
+
 
 
     def get_joint_names(self):
