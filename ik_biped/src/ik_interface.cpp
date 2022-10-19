@@ -115,7 +115,7 @@ private:
         if (q_current.size() != 0)
         {
             int size_q = robot_.get_size_q();
-            for (int i = 0; i < size_q - 7; i++)
+            for (int i = 0; i < size_q - offset_pos_quat; i++)
             {
                 joint_names[i] = msg->name[i];
                 q_current(7 + i) = msg->position[i];
@@ -133,7 +133,7 @@ private:
         robot_.build_model(msg->data.c_str());
         int size_q = robot_.get_size_q();
         q_current.resize(size_q);
-        joint_names.resize(size_q - 7);
+        joint_names.resize(size_q - offset_pos_quat);
         std::cout << "size_q" << robot_.get_size_q() << std::endl;
     }
 
