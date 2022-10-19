@@ -39,8 +39,8 @@ public:
         foot_desired_sub_ = this->create_subscription<trajectory_msgs::msg::MultiDOFJointTrajectory>(
             "/foot_position_BL", 10, std::bind(&IKNode::foot_desired_cb, this, _1));
 
-        odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
-            "/odom", 10, std::bind(&IKNode::odom_cb, this, _1));
+        // odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
+        //     "/odom", 10, std::bind(&IKNode::odom_cb, this, _1));
 
         robot_joints_pub_ = this->create_publisher<trajectory_msgs::msg::JointTrajectory>("/joint_trajectory", 10);
         // timer_ = this->create_wall_timer(
@@ -70,24 +70,24 @@ private:
         }
     }
 
-    void odom_cb(nav_msgs::msg::Odometry::SharedPtr msg)
-    {
+    // void odom_cb(nav_msgs::msg::Odometry::SharedPtr msg)
+    // {
 
-        if (q_current.size() != 0)
-        {
-            q_current(0) = msg->pose.pose.position.x;
-            q_current(1) = msg->pose.pose.position.y;
-            q_current(2) = msg->pose.pose.position.z;
-            q_current(3) = msg->pose.pose.orientation.x;
-            q_current(4) = msg->pose.pose.orientation.y;
-            q_current(5) = msg->pose.pose.orientation.z;
-            q_current(6) = msg->pose.pose.orientation.w;
-        }
-        // else
-        // {
-        //     throw std::invalid_argument("Is Robot Description Running?");
-        // }
-    }
+    //     if (q_current.size() != 0)
+    //     {
+    //         // q_current(0) = msg->pose.pose.position.x;
+    //         // q_current(1) = msg->pose.pose.position.y;
+    //         // q_current(2) = msg->pose.pose.position.z;
+    //         // q_current(3) = msg->pose.pose.orientation.x;
+    //         // q_current(4) = msg->pose.pose.orientation.y;
+    //         // q_current(5) = msg->pose.pose.orientation.z;
+    //         // q_current(6) = msg->pose.pose.orientation.w;
+    //     }
+    //     // else
+    //     // {
+    //     //     throw std::invalid_argument("Is Robot Description Running?");
+    //     // }
+    // }
 
     void foot_desired_cb(trajectory_msgs::msg::MultiDOFJointTrajectory::SharedPtr msg)
     {
@@ -137,12 +137,13 @@ private:
     Eigen::VectorXd q_current;
     std::vector<std::string> joint_names;
     Eigen::Vector3d pos_foot_des_BL;
+
     std::string name_pos_des_BL = "FL_ANKLE";
 
     rclcpp::Subscription<std_msgs::msg::String>::SharedPtr robot_desc_sub_;
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_state_sub_;
     rclcpp::Subscription<trajectory_msgs::msg::MultiDOFJointTrajectory>::SharedPtr foot_desired_sub_;
-    rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
+    // rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
 
     IKRobot robot_;
 };
