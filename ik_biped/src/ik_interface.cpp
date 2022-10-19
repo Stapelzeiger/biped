@@ -55,7 +55,15 @@ private:
 
         if (q_current.size() != 0)
         {
+            q_current(0) = 0;
+            q_current(1) = 0;
+            q_current(2) = 0;
+            q_current(3) = 0;
+            q_current(4) = 0;
+            q_current(5) = 0;
+            q_current(6) = 1;
             q_des = robot_.get_desired_q(q_current, pos_foot_des_BL, yaw_angle_des, name_pos_des_BL);
+            std::cout << q_des << std::endl;
             trajectory_msgs::msg::JointTrajectory message;
             message.points.resize(joint_names.size());
             for (unsigned int i = 0; i < joint_names.size(); i++)
