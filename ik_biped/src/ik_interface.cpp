@@ -13,7 +13,7 @@
 
 using namespace std::placeholders;
 
-const int offset_pos_quad = 7;
+const int offset_pos_quat = 7;
 
 class IKNode : public rclcpp::Node
 {
@@ -61,7 +61,7 @@ private:
             for (unsigned int i = 0; i < joint_names.size(); i++)
             {
                 message.joint_names.push_back(joint_names[i]);
-                message.points[i].positions.push_back(q_des[offset_pos_quad + i]);
+                message.points[i].positions.push_back(q_des[offset_pos_quat + i]);
                 message.points[i].velocities.push_back(0.0);
                 message.points[i].accelerations.push_back(0.0);
                 message.points[i].effort.push_back(0.0);
