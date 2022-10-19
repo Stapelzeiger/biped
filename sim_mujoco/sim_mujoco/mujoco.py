@@ -71,10 +71,10 @@ class MujocoNode(Node):
         msg_odom.pose.pose.position.x = self.data.qpos.copy()[0]
         msg_odom.pose.pose.position.y = self.data.qpos.copy()[1]
         msg_odom.pose.pose.position.z = self.data.qpos.copy()[2]
-        msg_odom.pose.pose.orientation.w = self.data.qpos.copy()[2]
-        msg_odom.pose.pose.orientation.x = self.data.qpos.copy()[3]
-        msg_odom.pose.pose.orientation.y = self.data.qpos.copy()[4]
-        msg_odom.pose.pose.orientation.z = self.data.qpos.copy()[5]
+        msg_odom.pose.pose.orientation.w = self.data.qpos.copy()[3]
+        msg_odom.pose.pose.orientation.x = self.data.qpos.copy()[4]
+        msg_odom.pose.pose.orientation.y = self.data.qpos.copy()[5]
+        msg_odom.pose.pose.orientation.z = self.data.qpos.copy()[6]
         self.odometry_base_pub.publish(msg_odom)
 
 
