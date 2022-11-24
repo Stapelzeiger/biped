@@ -1,0 +1,20 @@
+launch:
+- include:
+    file: "$(find-pkg-share imu_vn_100)/launch/imu_vn_100-launch.py"
+    
+- include:
+    file: "$(find-pkg-share realsense2_camera)/launch/rs_launch.py"
+    arg:
+      - name: "camera_name"
+        value: "camera_front"
+      - name: "serial_no"
+        value: "'207222071179'"
+
+- node:
+    pkg: "topic_tools"
+    exec: "throttle"
+    args: "messages /camera_front/infra1/image_rect_raw 4"
+- node:
+    pkg: "topic_tools"
+    exec: "throttle"
+    args: "messages /camera_front/infra2/image_rect_raw 4"
