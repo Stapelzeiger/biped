@@ -1,5 +1,5 @@
-rostopic: /imu/data
-update_rate: 100.0 #Hz
+rostopic: /vectornav/imu_uncompensated
+update_rate: 200.0 #Hz
 
 # Accelerometers
 accelerometer_noise_density: 0.02   # Noise density (continuous-time)
