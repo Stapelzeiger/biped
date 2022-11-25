@@ -1,0 +1,10 @@
+rostopic: /imu/data
+update_rate: 100.0 #Hz
+
+# Accelerometers
+accelerometer_noise_density: 0.02   # Noise density (continuous-time)
+accelerometer_random_walk:   0.0004 # Bias random walk
+
+# Gyroscopes
+gyroscope_noise_density:     0.010   # Noise density (continuous-time)
+gyroscope_random_walk:       8.0e-06 # Bias random walk
