@@ -17,21 +17,20 @@ launch:
       - name: "camera_name"
         value: "camera_left"
       - name: "serial_no"
-        value: "'207122078052'"
+        value: "'207222070732'"
 - include:
     file: "$(find-pkg-share realsense2_camera)/launch/rs_launch.py"
     arg:
       - name: "camera_name"
         value: "camera_right"
       - name: "serial_no"
-        value: "'207222070732'"
+        value: "'207122078052'"
       # - config_file: "$(find-pkg-share biped_bringup)/config/realsense.yaml"
 
-
-# - include:
-#     file: "$(find-pkg-share ov_msckf)/launch/subscribe.launch.py"
-#     arg:
-#       - name: "config_path"
-#         value: "$(find-pkg-share biped_bringup)/config/open_vins/estimator_config.yaml"
-#       - name: "verbosity"
-#         value: "DEBUG"
+- include:
+    file: "$(find-pkg-share ov_msckf)/launch/subscribe.launch.py"
+    arg:
+      - name: "config_path"
+        value: "$(find-pkg-share biped_bringup)/config/open_vins/estimator_config.yaml"
+      - name: "verbosity"
+        value: "DEBUG"
