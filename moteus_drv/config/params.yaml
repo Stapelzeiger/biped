@@ -2,7 +2,7 @@ moteus:
   ros__parameters:
     update_rate: 300.0
     # joints: ['test1']
-    joints: ['FR_HAA', 'FR_HFE', 'FR_KFE']
+    joints: ['FR_YAW', 'FR_HAA', 'FR_HFE', 'FR_KFE']
     # joints: ['FR_YAW', 'FR_HAA', 'FR_HFE', 'FR_KFE', 'FL_YAW', 'FL_HAA', 'FL_HFE', 'FL_KFE']
     test1/can_id: 1
     test1/can_bus: 1
