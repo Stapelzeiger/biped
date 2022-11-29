@@ -9,7 +9,7 @@ moteus:
     test2/can_id: 2
     test2/can_bus: 2
     FR_YAW/can_id: 10
-    FR_YAW/can_bus: 1
+    FR_YAW/can_bus: 2
     FR_HAA/can_id: 11
     FR_HAA/can_bus: 1
     FR_HFE/can_id: 12
