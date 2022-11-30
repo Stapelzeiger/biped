@@ -16,7 +16,7 @@ class JoyNode(Node):
 
     def joy_cb(self, msg):
         ctrl = JointTrajectory()
-        ctrl.joint_names = ['test']
+        ctrl.joint_names = ['FR_YAW']
         ctrl.points = [JointTrajectoryPoint()]
         ctrl.points[0].positions.append(msg.axes[5]*0.1)
         ctrl.points[0].velocities.append(0)
