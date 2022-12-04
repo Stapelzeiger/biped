@@ -40,6 +40,13 @@ target_link_libraries(ik ${PINOCCHIO_LIBRARIES})
 
 install(TARGETS
   ik
-  DESTINATION lib/${PROJECT_NAME})
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(DIRECTORY
+  launch
+  DESTINATION share/${PROJECT_NAME}/
+)
+
 
 ament_package()
