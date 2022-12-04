@@ -32,6 +32,7 @@ motor position
         reference source 1
     rotor_to_output ratio 0.2
 
+remove limits (put to nan)
 
 to save zero oputput:
 d cfg-set-output 0
