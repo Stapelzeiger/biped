@@ -4,7 +4,7 @@
   <name>sim_mujoco</name>
   <version>0.0.0</version>
   <description>TODO: Package description</description>
-  <maintainer email="stapelzeiger@gmail.com">Patrick Spieler</maintainer>
+  <maintainer email="lupusorina@yahoo.com">Sorina Lupu</maintainer>
   <license>TODO: License declaration</license>
 
   <depend>std_msgs</depend>
