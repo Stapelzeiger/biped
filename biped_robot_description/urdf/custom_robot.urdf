@@ -83,7 +83,7 @@
   </link>
   <joint
     name="FR_YAW"
-    type="fixed">
+    type="revolute">
     <origin
       xyz="0 -0.0700000000000001 -0.0157999999999999"
       rpy="0 0 0" />
@@ -353,7 +353,7 @@
   </link>
   <joint
     name="FL_YAW"
-    type="fixed">
+    type="revolute">
     <origin
       xyz="0 0.07 -0.0158"
       rpy="0 0 0" />
@@ -416,7 +416,7 @@
     <child
       link="FL_SHOULDER" />
     <axis
-      xyz="-1 0 0" />
+      xyz="1 0 0" />
     <limit effort="1000" lower="-10" upper="10" velocity="1000"/>
   </joint>
   <link
@@ -470,7 +470,7 @@
     <child
       link="FL_UPPER_LEG" />
     <axis
-      xyz="0 -1 0" />
+      xyz="0 1 0" />
     <limit effort="1000" lower="-10" upper="10" velocity="1000"/>
   </joint>
   <link
@@ -524,7 +524,7 @@
     <child
       link="FL_LOWER_LEG" />
     <axis
-      xyz="0 -1 0" />
+      xyz="0 1 0" />
     <limit effort="1000" lower="-10" upper="10" velocity="1000"/>
   </joint>
   <link
