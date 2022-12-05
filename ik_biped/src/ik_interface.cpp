@@ -31,7 +31,7 @@ public:
         auto ret = wait_set.wait(std::chrono::seconds(100));
         while (ret.kind() != rclcpp::WaitResultKind::Ready)
         {
-            std::cout << "we wait to get robot description" << std::endl;
+            std::cout << "Still waiting to get robot description ... " << std::endl;
         }
 
         joint_state_sub_ = this->create_subscription<sensor_msgs::msg::JointState>(
@@ -44,8 +44,6 @@ public:
         //     "/odom", 10, std::bind(&IKNode::odom_cb, this, _1));
 
         robot_joints_pub_ = this->create_publisher<trajectory_msgs::msg::JointTrajectory>("/joint_trajectory", 10);
-        // timer_ = this->create_wall_timer(
-        //     500ms, std::bind(&IKNode::timer_pub_robot_joints, this));
     }
 
 private:
@@ -106,7 +104,8 @@ private:
         pos_foot_des_BL(2) = msg->points[0].transforms[0].translation.z;
         if (q_current.size() != 0)
         {
-            std::cout << pos_foot_des_BL << std::endl;
+            // std::cout << translation_foot_des_BL << std::endl;
+            // std::cout << "Yaw angle:" << yaw_angle_foot_BL_des << std::endl;
             pub_robot_joints();
         }
     }
