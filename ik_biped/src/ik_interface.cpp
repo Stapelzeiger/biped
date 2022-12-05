@@ -10,6 +10,7 @@
 #include "nav_msgs/msg/odometry.hpp"
 #include "geometry_msgs/msg/transform.hpp"
 #include "ik_class_pin.hpp"
+#include <math.h>
 
 using namespace std::placeholders;
 
