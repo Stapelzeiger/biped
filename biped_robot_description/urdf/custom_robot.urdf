@@ -146,7 +146,7 @@
     <child
       link="FR_SHOULDER" />
     <axis
-      xyz="-1 0 0" />
+      xyz="1 0 0" />
     <limit effort="1000" lower="-10" upper="10" velocity="1000"/>
   </joint>
   <link
