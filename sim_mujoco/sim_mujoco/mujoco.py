@@ -26,7 +26,6 @@ class MujocoNode(Node):
         self.dt = self.model.opt.timestep
         self.joint_state_pub = self.create_publisher(JointState, 'joint_states', 10)
         self.odometry_base_pub = self.create_publisher(Odometry, 'odom', 10)
-        self.foot_position_BL_pub = self.create_publisher(MultiDOFJointTrajectory, 'foot_position_BL', 10)
 
         self.joint_traj_sub = self.create_subscription(JointTrajectory, 'joint_trajectory', self.joint_traj_cb, 10)
         self.joint_traj_sub  # prevent unused variable warning
@@ -36,7 +35,7 @@ class MujocoNode(Node):
 
         self.declare_parameter("visualize_mujoco")
         self.visualize_mujoco = self.get_parameter("visualize_mujoco").get_parameter_value().bool_value
-        print('------>', self.visualize_mujoco)
+
         if self.visualize_mujoco == True:
             self.viewer = mujoco_viewer.MujocoViewer(self.model, self.data)
             self.viewer.cam.azimuth = 90
@@ -44,7 +43,7 @@ class MujocoNode(Node):
             self.viewer.render()
 
         self.name_joints = self.get_joint_names()
-
+        print('nq=', self.model.nq)
 
     def step(self):
         self.time += self.dt
@@ -77,29 +76,12 @@ class MujocoNode(Node):
         msg_odom.pose.pose.orientation.z = self.data.qpos.copy()[6]
         self.odometry_base_pub.publish(msg_odom)
 
-
-        des_p_stance_foot_BLF = np.array([0.0, -0.1, -0.3])
-        name_stance_foot = "FR_ANKLE"
-        transforms = Transform()
-        transforms.translation.x = des_p_stance_foot_BLF[0]
-        transforms.translation.y = des_p_stance_foot_BLF[1]
-        transforms.translation.z = des_p_stance_foot_BLF[2]
-        transforms.rotation.x = 0.0; transforms.rotation.y = 0.0
-        transforms.rotation.z = 0.0; transforms.rotation.w = 1.0
-
-        foot_pos_point = MultiDOFJointTrajectoryPoint()
-        foot_pos_point.transforms = [transforms]
-
-        msg_foot = MultiDOFJointTrajectory()
-        msg_foot.joint_names = [name_stance_foot]
-        msg_foot.points = [foot_pos_point]
-        self.foot_position_BL_pub.publish(msg_foot)
-
-
+        
     def joint_traj_cb(self, msg):
         print("joint traj cb")
-
+        print(len(msg.points))
         for i in range(self.model.jnt_qposadr[1], self.model.jnt_qposadr[-1]):
+            # print(i, '---> put: ', msg.points[i - self.model.jnt_qposadr[1]].positions[0])
             self.data.qpos[i] = msg.points[i - self.model.jnt_qposadr[1]].positions[0]
 
         for i in range(self.model.jnt_dofadr[1], self.model.jnt_dofadr[-1]):
