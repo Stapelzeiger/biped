@@ -1,0 +1,35 @@
+launch:
+- node:
+    pkg: linux_gpio
+    exec: trigger
+    name: camera_trigger
+    param:
+      - name: "frequency"
+        value: 10.0
+      - name: "gpio_chip"
+        value: "/dev/gpiochip0"
+      - name: "gpio_line"
+        value: 12
+    output: screen
+
+- node:
+    pkg: linux_gpio
+    exec: time_ref
+    name: camera_trigger_in
+    param:
+      - name: "gpio_chip"
+        value: "/dev/gpiochip0"
+      - name: "gpio_line"
+        value: 13
+      - name: "gpio_edge"
+        value: "rising"
+    output: screen
+
+- node:
+    pkg: time_sync_tools
+    exec: vectornav_syncin_event
+    name: vectornav_syncin_event
+    remap:
+      - from: "~/vectronav_syncin_ref"
+        to: "/vectornav/time_syncin"
+    output: screen
