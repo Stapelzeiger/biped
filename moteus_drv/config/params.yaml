@@ -22,5 +22,5 @@ moteus:
     # FL_HAA/can_bus: 3
     # FL_HFE/can_id: 22
     # FL_HFE/can_bus: 3
-    # FL_KFE/can_id: 23
-    # FL_KFE/can_bus: 3
+    FL_KFE/can_id: 23
+    FL_KFE/can_bus: 3
