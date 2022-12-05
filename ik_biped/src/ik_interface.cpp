@@ -49,7 +49,6 @@ public:
 private:
     void pub_robot_joints()
     {
-        double yaw_angle_des = 0.0;
         Eigen::VectorXd q_des;
 
         if (q_current.size() != 0)
@@ -61,8 +60,8 @@ private:
             q_current(4) = 0;
             q_current(5) = 0;
             q_current(6) = 1;
-            q_des = robot_.get_desired_q(q_current, pos_foot_des_BL, yaw_angle_des, name_pos_des_BL);
-            std::cout << q_des << std::endl;
+
+            q_des = robot_.get_desired_q(q_current, translation_foot_des_BL, yaw_angle_foot_BL_des, name_pos_des_BL);
             trajectory_msgs::msg::JointTrajectory message;
             message.points.resize(joint_names.size());
             for (unsigned int i = 0; i < joint_names.size(); i++)
@@ -98,10 +97,22 @@ private:
 
     void foot_desired_cb(trajectory_msgs::msg::MultiDOFJointTrajectory::SharedPtr msg)
     {
+        std::cout << "foot desired CB!" << std::endl;
         name_pos_des_BL = msg->joint_names[0];
-        pos_foot_des_BL(0) = msg->points[0].transforms[0].translation.x;
-        pos_foot_des_BL(1) = msg->points[0].transforms[0].translation.y;
-        pos_foot_des_BL(2) = msg->points[0].transforms[0].translation.z;
+        Eigen::Quaterniond rotation_foot_des_BL;
+
+        translation_foot_des_BL(0) = msg->points[0].transforms[0].translation.x;
+        translation_foot_des_BL(1) = msg->points[0].transforms[0].translation.y;
+        translation_foot_des_BL(2) = msg->points[0].transforms[0].translation.z;
+        rotation_foot_des_BL.x() = msg->points[0].transforms[0].rotation.x;
+        rotation_foot_des_BL.y() = msg->points[0].transforms[0].rotation.y;
+        rotation_foot_des_BL.z() = msg->points[0].transforms[0].rotation.z;
+        rotation_foot_des_BL.w() = msg->points[0].transforms[0].rotation.w;
+
+        Eigen::Vector3d axis_in_BLF = rotation_foot_des_BL*Eigen::Vector3d(1, 0, 0);
+
+        yaw_angle_foot_BL_des = atan2(axis_in_BLF(1), axis_in_BLF(0));
+
         if (q_current.size() != 0)
         {
             // std::cout << translation_foot_des_BL << std::endl;
@@ -144,9 +155,10 @@ private:
 
     Eigen::VectorXd q_current;
     std::vector<std::string> joint_names;
-    Eigen::Vector3d pos_foot_des_BL;
+    Eigen::Vector3d translation_foot_des_BL;
+    double yaw_angle_foot_BL_des;
 
-    std::string name_pos_des_BL = "FL_ANKLE";
+    std::string name_pos_des_BL;
 
     rclcpp::Subscription<std_msgs::msg::String>::SharedPtr robot_desc_sub_;
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_state_sub_;
