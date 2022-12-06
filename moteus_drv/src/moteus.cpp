@@ -96,7 +96,7 @@ private:
             moteus_command_buf_[joint_idx].position.position = std::numeric_limits<double>::quiet_NaN();
             moteus_command_buf_[joint_idx].position.velocity = 0;
             moteus_command_buf_[joint_idx].position.feedforward_torque = 0;
-            moteus_command_buf_[joint_idx].position.max_torque = 0;
+            moteus_command_buf_[joint_idx].position.maximum_torque = 0;
             
             moteus_command_buf_[joint_idx].query = query;
 
