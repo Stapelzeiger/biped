@@ -46,7 +46,6 @@ public:
             moteus_command_buf_.push_back({});
             moteus_command_buf_.back().id = id;
             moteus_command_buf_.back().bus = bus;
-            moteus_command_buf_.back().max_torque_Nm = 0.1;
             joint_uid_to_joint_index_[servo_uid(bus, id)] = joint_idx;
             RCLCPP_INFO_STREAM(this->get_logger(), "Adding joint: " << joint_name << ", CAN bus: " << bus << ", id " << id);
         }
@@ -97,6 +96,8 @@ private:
             moteus_command_buf_[joint_idx].position.position = std::numeric_limits<double>::quiet_NaN();
             moteus_command_buf_[joint_idx].position.velocity = 0;
             moteus_command_buf_[joint_idx].position.feedforward_torque = 0;
+            moteus_command_buf_[joint_idx].position.max_torque = 0;
+            
             moteus_command_buf_[joint_idx].query = query;
 
             if (joint_traj_[joint_idx].points.size() > 0) {
