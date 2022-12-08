@@ -12,7 +12,6 @@ import mujoco as mj
 import mujoco_viewer
 import numpy as np
 
-
 class MujocoNode(Node):
     def __init__(self):
         super().__init__('mujoco_sim')
@@ -42,8 +41,18 @@ class MujocoNode(Node):
             self.viewer.cam.elevation = -25
             self.viewer.render()
 
+        self.nb_joints = self.model.njnt - 1 # exclude root
         self.name_joints = self.get_joint_names()
-        print('nq=', self.model.nq)
+
+        self.name_actuators = []
+        for i in range(0, self.model.nu):  # skip root
+            self.name_actuators.append(mj.mj_id2name(
+                self.model, mj.mjtObj.mjOBJ_ACTUATOR, i))
+
+        self.q_actuator_addr = {}
+        for name in self.name_actuators:
+            self.q_actuator_addr[name] = mj.mj_name2id(
+                self.model, mj.mjtObj.mjOBJ_ACTUATOR, name)
 
     def step(self):
         self.time += self.dt
@@ -62,7 +71,10 @@ class MujocoNode(Node):
         msg.name = self.name_joints
         msg.position = list(self.data.qpos.copy()[self.model.jnt_qposadr[1]: ]) # skip root
         msg.velocity = list(self.data.qvel.copy()[self.model.jnt_dofadr[1]: ]) # skip root
+
         self.joint_state_pub.publish(msg)
+
+        print('len self.data.qpos.copy()', len(self.data.qpos.copy()))
 
         msg_odom = Odometry()
         msg_odom.header.stamp.sec = int(self.time)
@@ -76,16 +88,79 @@ class MujocoNode(Node):
         msg_odom.pose.pose.orientation.z = self.data.qpos.copy()[6]
         self.odometry_base_pub.publish(msg_odom)
 
-        
-    def joint_traj_cb(self, msg):
-        print("joint traj cb")
-        print(len(msg.points))
-        for i in range(self.model.jnt_qposadr[1], self.model.jnt_qposadr[-1]):
-            # print(i, '---> put: ', msg.points[i - self.model.jnt_qposadr[1]].positions[0])
-            self.data.qpos[i] = msg.points[i - self.model.jnt_qposadr[1]].positions[0]
+    def set_control_input(self, actuators_torque, actuators_vel):
+        self.data.ctrl[self.q_actuator_addr["FL_YAW"]] = actuators_torque[0]
+        self.data.ctrl[self.q_actuator_addr["FL_YAW_VEL"]] = actuators_vel[0]
 
-        for i in range(self.model.jnt_dofadr[1], self.model.jnt_dofadr[-1]):
-            self.data.qvel[i] = 0.0
+        self.data.ctrl[self.q_actuator_addr["FL_HAA"]] = actuators_torque[1]
+        self.data.ctrl[self.q_actuator_addr["FL_HAA_VEL"]] = actuators_vel[1]
+        self.data.ctrl[self.q_actuator_addr["FL_HFE"]] = actuators_torque[2]
+        self.data.ctrl[self.q_actuator_addr["FL_HFE_VEL"]] = actuators_vel[2]
+        self.data.ctrl[self.q_actuator_addr["FL_KFE"]] = actuators_torque[3]
+        self.data.ctrl[self.q_actuator_addr["FL_KFE_VEL"]] = actuators_vel[3]
+
+        self.data.ctrl[self.q_actuator_addr["FR_YAW"]] = actuators_torque[5]
+        self.data.ctrl[self.q_actuator_addr["FR_YAW_VEL"]] = actuators_vel[5]
+        self.data.ctrl[self.q_actuator_addr["FR_HAA"]] = actuators_torque[6]
+        self.data.ctrl[self.q_actuator_addr["FR_HAA_VEL"]] = actuators_vel[6]
+        self.data.ctrl[self.q_actuator_addr["FR_HFE"]] = actuators_torque[7]
+        self.data.ctrl[self.q_actuator_addr["FR_HFE_VEL"]] = actuators_vel[7]
+        self.data.ctrl[self.q_actuator_addr["FR_KFE"]] = actuators_torque[8]
+        self.data.ctrl[self.q_actuator_addr["FR_KFE_VEL"]] = actuators_vel[8]
+
+
+    def control_joints(self, q_current_joints, q_dot_current_joints, q_des_joints, q_des_dot_joints):
+        '''
+        q_des = [ q_L_HAA, q_L_HFE, q_L_KFE, q_L_ANKLE, q_R_HAA, q_R_HFE, q_R_KFE, q_R_ANKLE]
+        q_des_dot = [q_L_HAA_dot, q_L_HFE_dot, q_L_KFE_dot, q_L_ANKLE_dot, q_R_HAA_dot, q_R_HFE_dot, q_R_KFE_dot, q_R_ANKLE]
+
+        '''
+        
+        Kp = 2*15.0*np.eye(self.nb_joints)
+        # Kp = 2*np.eye(self.nb_joints)
+
+        Kp[1, 1] *= 2 
+        Kp[6, 6] *= 2 
+
+        actuation_matrix = np.eye(self.nb_joints)
+
+        actuators_torque = -Kp@actuation_matrix@(q_current_joints - q_des_joints)
+        actuators_vel = actuation_matrix@q_des_dot_joints
+
+        print('actuators_torque', actuators_torque)
+        return actuators_torque, actuators_vel
+
+    def stop_controller(self, actuator_name):
+        idx_act = mj.mj_name2id(
+            self.model, mj.mjtObj.mjOBJ_ACTUATOR, actuator_name)
+        self.data.ctrl[idx_act] = 0.0
+
+    def joint_traj_cb(self, msg):
+        # pass
+        q_des_joints = np.zeros((self.nb_joints, 1))
+        q_des_dot_joints = np.zeros((self.nb_joints, 1))
+
+        for joint_idx in range(len(msg.joint_names)):
+            q_des_joints[joint_idx, 0] = msg.points[joint_idx].positions[0]
+            q_des_dot_joints[joint_idx, 0] = msg.points[joint_idx].velocities[0]
+
+        q_current_joints = self.data.qpos.copy()[self.model.jnt_qposadr[1]: ].reshape((self.nb_joints, 1)) # skip root
+        q_dot_current_joints = self.data.qvel.copy()[self.model.jnt_dofadr[1]: ].reshape((self.nb_joints, 1)) # skip root
+
+        actuators_torque, actuators_vel = self.control_joints(q_current_joints, 
+            q_dot_current_joints, q_des_joints, q_des_dot_joints)
+
+        self.set_control_input(actuators_torque, actuators_vel)
+
+        # print("joint traj cb")
+        # print(len(msg.points))
+        # for i in range(self.model.jnt_qposadr[1], self.model.jnt_qposadr[-1]):
+        #     # print(i, '---> put: ', msg.points[i - self.model.jnt_qposadr[1]].positions[0])
+        #     self.data.qpos[i] = msg.points[i - self.model.jnt_qposadr[1]].positions[0]
+
+        # for i in range(self.model.jnt_dofadr[1], self.model.jnt_dofadr[-1]):
+        #     self.data.qvel[i] = 0.0
+
 
     def get_joint_names(self):
         self.name_joints = []
