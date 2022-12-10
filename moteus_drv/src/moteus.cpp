@@ -34,8 +34,12 @@ public:
         {
             this->declare_parameter<int64_t>(joint_name + "/can_id", can_id++);
             this->declare_parameter<int64_t>(joint_name + "/can_bus", 1);
+            this->declare_parameter<double>(joint_name + "/offset", 0);
+            this->declare_parameter<bool>(joint_name + "/reverse", false);
         }
         joint_traj_.resize(nb_joints_);
+        joint_offsets_.resize(nb_joints_);
+        joint_signs_.resize(nb_joints_);
 
         // Moteus buffers
         moteus_command_buf_.clear();
@@ -43,6 +47,13 @@ public:
             auto joint_name = joint_names_[joint_idx];
             int id = this->get_parameter(joint_name + "/can_id").as_int();
             int bus = this->get_parameter(joint_name + "/can_bus").as_int();
+            joint_offsets_[joint_idx] = this->get_parameter(joint_name + "/offset").as_double();
+            if (this->get_parameter(joint_name + "/reverse").as_bool()) {
+                joint_signs_[joint_idx] = -1;
+            } else {
+                joint_signs_[joint_idx] = 1;
+            }
+            
             moteus_command_buf_.push_back({});
             moteus_command_buf_.back().id = id;
             moteus_command_buf_.back().bus = bus;
@@ -82,7 +93,7 @@ private:
         cmd_res.feedforward_torque = moteus::Resolution::kInt16;
         cmd_res.kp_scale = moteus::Resolution::kIgnore;
         cmd_res.kd_scale = moteus::Resolution::kIgnore;
-        cmd_res.maximum_torque = moteus::Resolution::kIgnore;
+        cmd_res.maximum_torque = moteus::Resolution::kInt16;
         cmd_res.stop_position = moteus::Resolution::kIgnore;
         cmd_res.watchdog_timeout = moteus::Resolution::kIgnore;
         moteus::QueryCommand query; // default query
@@ -96,23 +107,26 @@ private:
             moteus_command_buf_[joint_idx].position.position = std::numeric_limits<double>::quiet_NaN();
             moteus_command_buf_[joint_idx].position.velocity = 0;
             moteus_command_buf_[joint_idx].position.feedforward_torque = 0;
-            moteus_command_buf_[joint_idx].position.maximum_torque = 0;
+            moteus_command_buf_[joint_idx].position.maximum_torque = 0.6;
             
             moteus_command_buf_[joint_idx].query = query;
 
             if (joint_traj_[joint_idx].points.size() > 0) {
-                const double scale = 1/(2*M_PI);
+                const double revolutions = 1/(2*M_PI);
                 // TODO check for timeout and index in trajectory
                 size_t traj_idx = 0;
                 moteus_command_buf_[joint_idx].mode = moteus::Mode::kPosition;
                 if (joint_traj_[joint_idx].points[traj_idx].positions.size() == 1) {
-                    moteus_command_buf_[joint_idx].position.position = scale * joint_traj_[joint_idx].points[traj_idx].positions[0];
+                    double p = joint_traj_[joint_idx].points[traj_idx].positions[0];
+                    moteus_command_buf_[joint_idx].position.position = revolutions * (p * joint_signs_[joint_idx] + joint_offsets_[joint_idx]);
                 }
                 if (joint_traj_[joint_idx].points[traj_idx].velocities.size() == 1) {
-                    moteus_command_buf_[joint_idx].position.velocity = scale * joint_traj_[joint_idx].points[traj_idx].velocities[0];
+                    double v = joint_traj_[joint_idx].points[traj_idx].velocities[0];
+                    moteus_command_buf_[joint_idx].position.velocity = revolutions * v * joint_signs_[joint_idx];
                 }
                 if (joint_traj_[joint_idx].points[traj_idx].effort.size() == 1) {
-                    moteus_command_buf_[joint_idx].position.feedforward_torque = joint_traj_[joint_idx].points[traj_idx].effort[0];
+                    double t = joint_traj_[joint_idx].points[traj_idx].effort[0];
+                    moteus_command_buf_[joint_idx].position.feedforward_torque = t * joint_signs_[joint_idx];
                 }
             }
         }
@@ -155,9 +169,11 @@ private:
             auto joint_name = joint_names_[joint_idx];
             if (std::isfinite(values[joint_idx].position)) {
                 msg.name.push_back(joint_name);
-                msg.position.push_back(values[joint_idx].position * 2 * M_PI);
-                msg.velocity.push_back(values[joint_idx].velocity * 2 * M_PI);
-                msg.effort.push_back(values[joint_idx].torque);
+                double sign = joint_signs_[joint_idx];
+                double p = values[joint_idx].position * 2 * M_PI;
+                msg.position.push_back((p - joint_offsets_[joint_idx]) * sign);
+                msg.velocity.push_back(values[joint_idx].velocity * 2 * M_PI * sign);
+                msg.effort.push_back(values[joint_idx].torque * sign);
                 sensor_msgs::msg::Temperature temp_msg;
                 temp_msg.temperature = values[joint_idx].temperature;
                 temp_pub_[joint_idx]->publish(temp_msg);
@@ -209,6 +225,8 @@ private:
 
     std::vector<std::string> joint_names_;
     size_t nb_joints_;
+    std::vector<double> joint_offsets_;
+    std::vector<double> joint_signs_;
     std::map<size_t, size_t> joint_uid_to_joint_index_;
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_pub_;
     std::vector<rclcpp::Publisher<sensor_msgs::msg::Temperature>::SharedPtr> temp_pub_;
