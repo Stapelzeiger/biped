@@ -2,25 +2,43 @@ moteus:
   ros__parameters:
     update_rate: 300.0
     # joints: ['test1']
-    joints: ['FR_YAW', 'FR_HAA', 'FR_HFE', 'FR_KFE', 'FL_YAW']
-    # joints: ['FR_YAW', 'FR_HAA', 'FR_HFE', 'FR_KFE', 'FL_YAW', 'FL_HAA', 'FL_HFE', 'FL_KFE']
+    # joints: ['FR_YAW', 'FL_YAW']
+    joints: ['FR_YAW', 'FR_HAA', 'FR_HFE', 'FR_KFE', 'FR_ANKLE', 'FL_YAW', 'FL_HAA', 'FL_HFE', 'FL_KFE', 'FL_ANKLE']
     test1/can_id: 1
     test1/can_bus: 1
     test2/can_id: 2
     test2/can_bus: 2
+    
     FR_YAW/can_id: 10
-    FR_YAW/can_bus: 2
+    FR_YAW/can_bus: 3
+    FR_YAW/offset: -0.136
+    FR_YAW/reverse: False
+
     FR_HAA/can_id: 11
-    FR_HAA/can_bus: 1
+    FR_HAA/can_bus: 5
+    FR_HAA/offset: -0.0502
+    FR_HAA/reverse: True
+
     FR_HFE/can_id: 12
-    FR_HFE/can_bus: 1
-    FR_KFE/can_id: 13
-    FR_KFE/can_bus: 1
+    FR_HFE/can_bus: 5
+    FR_HFE/offset: -0.389
+    FR_HFE/reverse: False
+
+    FR_KFE/can_id: 14
+    FR_KFE/can_bus: 5
+    FR_KFE/offset: 2.62
+    FR_HFE/reverse: False
+
+    FR_ANKLE/can_id: 3 # dummy number
+    FR_ANKLE/can_bus: 1 # dummy number
+    
     FL_YAW/can_id: 20
-    FL_YAW/can_bus: 2
-    # FL_HAA/can_id: 21
-    # FL_HAA/can_bus: 3
-    # FL_HFE/can_id: 22
-    # FL_HFE/can_bus: 3
+    FL_YAW/can_bus: 3
+    FL_HAA/can_id: 21
+    FL_HAA/can_bus: 3
+    FL_HFE/can_id: 22
+    FL_HFE/can_bus: 3
     FL_KFE/can_id: 23
     FL_KFE/can_bus: 3
+    FL_ANKLE/can_id: 4 # dummy number
+    FL_ANKLE/can_bus: 1 # dummy number
