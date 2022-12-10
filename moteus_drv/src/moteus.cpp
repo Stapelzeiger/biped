@@ -32,6 +32,8 @@ public:
         nb_joints_ = joint_names_.size();
         this->declare_parameter<double>("joint_state_timeout", 0.03);
         joint_state_timeout_ = this->get_parameter("joint_state_timeout").as_double();
+        this->declare_parameter<double>("joint_command_timeout", 0.1);
+        joint_command_timeout_ = this->get_parameter("joint_command_timeout").as_double();
         for (auto joint_name : joint_names_)
         {
             this->declare_parameter<int64_t>(joint_name + "/can_id", can_id++);
@@ -90,6 +92,7 @@ private:
 
     void timer_cb()
     {
+        auto now = this->now();
         moteus::PositionResolution cmd_res;
         cmd_res.position = moteus::Resolution::kInt16;
         cmd_res.velocity = moteus::Resolution::kInt16;
@@ -115,9 +118,12 @@ private:
             moteus_command_buf_[joint_idx].query = query;
 
             if (joint_traj_[joint_idx].points.size() > 0) {
+                // check for timeout and index in trajectory
+                if ((now - joint_traj_[joint_idx].header.stamp).seconds() > joint_command_timeout_) {
+                    joint_traj_[joint_idx].points.clear();
+                }
                 const double revolutions = 1/(2*M_PI);
-                // TODO check for timeout and index in trajectory
-                size_t traj_idx = 0;
+                size_t traj_idx = 0; // TODO: handle multiple traj points
                 moteus_command_buf_[joint_idx].mode = moteus::Mode::kPosition;
                 if (joint_traj_[joint_idx].points[traj_idx].positions.size() == 1) {
                     double p = joint_traj_[joint_idx].points[traj_idx].positions[0];
@@ -149,7 +155,6 @@ private:
         const auto rx_count = current_values.query_result_size;
         // std::cout << "rx count " << rx_count << std::endl;
 
-        auto now = this->now();
         for (size_t i = 0; i < rx_count; i++)
         {
             int bus = moteus_reply_buf_[i].bus;
@@ -251,6 +256,7 @@ private:
     std::vector<double> joint_signs_;
     std::map<size_t, size_t> joint_uid_to_joint_index_;
     double joint_state_timeout_;
+    double joint_command_timeout_;
 
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_pub_;
     std::vector<rclcpp::Publisher<sensor_msgs::msg::Temperature>::SharedPtr> temp_pub_;
