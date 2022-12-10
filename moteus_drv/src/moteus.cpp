@@ -30,6 +30,8 @@ public:
         int64_t can_id = 1;
         joint_names_ = this->get_parameter("joints").as_string_array();
         nb_joints_ = joint_names_.size();
+        this->declare_parameter<double>("joint_state_timeout", 0.03);
+        joint_state_timeout_ = this->get_parameter("joint_state_timeout").as_double();
         for (auto joint_name : joint_names_)
         {
             this->declare_parameter<int64_t>(joint_name + "/can_id", can_id++);
@@ -38,6 +40,7 @@ public:
             this->declare_parameter<bool>(joint_name + "/reverse", false);
         }
         joint_traj_.resize(nb_joints_);
+        moteus_query_res_.resize(nb_joints_);
         joint_offsets_.resize(nb_joints_);
         joint_signs_.resize(nb_joints_);
 
@@ -145,7 +148,8 @@ private:
         const auto current_values = can_result.get(); // waits for result
         const auto rx_count = current_values.query_result_size;
         // std::cout << "rx count " << rx_count << std::endl;
-        std::vector<moteus::QueryResult> values(nb_joints_);
+
+        auto now = this->now();
         for (size_t i = 0; i < rx_count; i++)
         {
             int bus = moteus_reply_buf_[i].bus;
@@ -159,30 +163,48 @@ private:
                 RCLCPP_ERROR_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 500 /* [ms] */,
                     "Position timeout joint: " << joint_names_[joint_idx]);
             }
-            values[joint_idx] = moteus_reply_buf_[i].result;
+            std::get<0>(moteus_query_res_[joint_idx]) = moteus_reply_buf_[i].result;
+            std::get<1>(moteus_query_res_[joint_idx]) = now;
         }
         // publish joint states
         sensor_msgs::msg::JointState msg;
-        msg.header.stamp = this->now();
+        msg.header.stamp = now;
+        std::vector<std::string> joints_not_responding;
         for (size_t joint_idx = 0; joint_idx < nb_joints_; joint_idx++)
         {
             auto joint_name = joint_names_[joint_idx];
-            if (std::isfinite(values[joint_idx].position)) {
+            auto res = std::get<0>(moteus_query_res_[joint_idx]);
+            auto timestamp = std::get<1>(moteus_query_res_[joint_idx]);
+            if (std::isfinite(res.position) && (now - timestamp).seconds() < joint_state_timeout_) {
                 msg.name.push_back(joint_name);
+                double p = res.position * 2 * M_PI;
                 double sign = joint_signs_[joint_idx];
-                double p = values[joint_idx].position * 2 * M_PI;
                 msg.position.push_back((p - joint_offsets_[joint_idx]) * sign);
-                msg.velocity.push_back(values[joint_idx].velocity * 2 * M_PI * sign);
-                msg.effort.push_back(values[joint_idx].torque * sign);
+                msg.velocity.push_back(res.velocity * 2 * M_PI * sign);
+                msg.effort.push_back(res.torque * sign);
                 sensor_msgs::msg::Temperature temp_msg;
-                temp_msg.temperature = values[joint_idx].temperature;
+                temp_msg.temperature = res.temperature;
                 temp_pub_[joint_idx]->publish(temp_msg);
                 std_msgs::msg::Float32 volt_msg;
-                volt_msg.data = values[joint_idx].voltage;
+                volt_msg.data = res.voltage;
                 volt_pub_[joint_idx]->publish(volt_msg);
+            } else {
+                joints_not_responding.push_back(joint_name);
             }
         }
         joint_pub_->publish(msg);
+        if (!joints_not_responding.empty()) {
+            // concatenate joints_not_responding
+            std::string joint_list_str;
+            for (size_t i = 0; i < joints_not_responding.size(); i++) {
+                joint_list_str += joints_not_responding[i];
+                if (i < joints_not_responding.size() - 1) {
+                    joint_list_str += ", ";
+                }
+            }
+            RCLCPP_WARN_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 500 /* [ms] */,
+                "Joints not responding: " << joint_list_str);
+        }
     }
 
     void traj_cb(const trajectory_msgs::msg::JointTrajectory::SharedPtr msg)
@@ -228,6 +250,8 @@ private:
     std::vector<double> joint_offsets_;
     std::vector<double> joint_signs_;
     std::map<size_t, size_t> joint_uid_to_joint_index_;
+    double joint_state_timeout_;
+
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_pub_;
     std::vector<rclcpp::Publisher<sensor_msgs::msg::Temperature>::SharedPtr> temp_pub_;
     std::vector<rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr> volt_pub_;
@@ -238,6 +262,7 @@ private:
     std::vector<moteus::Pi3HatMoteusInterface::ServoCommand> moteus_command_buf_;
     std::vector<moteus::Pi3HatMoteusInterface::ServoReply> moteus_reply_buf_;
     std::shared_ptr<moteus::Pi3HatMoteusInterface> moteus_interface_;
+    std::vector<std::tuple<moteus::QueryResult, rclcpp::Time>> moteus_query_res_;
 };
 
 
