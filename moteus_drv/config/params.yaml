@@ -1,6 +1,7 @@
-moteus:
+/moteus:
   ros__parameters:
     update_rate: 300.0
+    global_max_torque: 1.0
     # joints: ['test1']
     # joints: ['FR_YAW', 'FL_YAW']
     joints: ['FR_YAW', 'FR_HAA', 'FR_HFE', 'FR_KFE', 'FR_ANKLE', 'FL_YAW', 'FL_HAA', 'FL_HFE', 'FL_KFE', 'FL_ANKLE']

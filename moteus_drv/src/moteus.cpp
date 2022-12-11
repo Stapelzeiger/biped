@@ -30,17 +30,9 @@ public:
         int64_t can_id = 1;
         joint_names_ = this->get_parameter("joints").as_string_array();
         nb_joints_ = joint_names_.size();
-        this->declare_parameter<double>("joint_state_timeout", 0.03);
-        joint_state_timeout_ = this->get_parameter("joint_state_timeout").as_double();
-        this->declare_parameter<double>("joint_command_timeout", 0.1);
-        joint_command_timeout_ = this->get_parameter("joint_command_timeout").as_double();
-        for (auto joint_name : joint_names_)
-        {
-            this->declare_parameter<int64_t>(joint_name + "/can_id", can_id++);
-            this->declare_parameter<int64_t>(joint_name + "/can_bus", 1);
-            this->declare_parameter<double>(joint_name + "/offset", 0);
-            this->declare_parameter<bool>(joint_name + "/reverse", false);
-        }
+        joint_state_timeout_ = this->declare_parameter<double>("joint_state_timeout", 0.03);
+        joint_command_timeout_ = this->declare_parameter<double>("joint_command_timeout", 0.1);
+        this->declare_parameter<double>("global_max_torque", 1e9);
         joint_traj_.resize(nb_joints_);
         moteus_query_res_.resize(nb_joints_);
         joint_offsets_.resize(nb_joints_);
@@ -50,15 +42,19 @@ public:
         moteus_command_buf_.clear();
         for (size_t joint_idx = 0; joint_idx < nb_joints_; joint_idx++) {
             auto joint_name = joint_names_[joint_idx];
-            int id = this->get_parameter(joint_name + "/can_id").as_int();
-            int bus = this->get_parameter(joint_name + "/can_bus").as_int();
-            joint_offsets_[joint_idx] = this->get_parameter(joint_name + "/offset").as_double();
-            if (this->get_parameter(joint_name + "/reverse").as_bool()) {
+            joint_offsets_[joint_idx] = this->declare_parameter<double>(joint_name + "/offset", 0);
+            bool rev = this->declare_parameter<bool>(joint_name + "/reverse", false);
+            if (rev) {
                 joint_signs_[joint_idx] = -1;
             } else {
                 joint_signs_[joint_idx] = 1;
             }
+            this->declare_parameter<double>(joint_name + "/kp_scale", 1);
+            this->declare_parameter<double>(joint_name + "/kd_scale", 1);
+            this->declare_parameter<double>(joint_name + "/max_torque", 1e9);
             
+            int id = this->declare_parameter<int64_t>(joint_name + "/can_id", can_id++);
+            int bus = this->declare_parameter<int64_t>(joint_name + "/can_bus", 1);
             moteus_command_buf_.push_back({});
             moteus_command_buf_.back().id = id;
             moteus_command_buf_.back().bus = bus;
@@ -97,13 +93,14 @@ private:
         cmd_res.position = moteus::Resolution::kInt16;
         cmd_res.velocity = moteus::Resolution::kInt16;
         cmd_res.feedforward_torque = moteus::Resolution::kInt16;
-        cmd_res.kp_scale = moteus::Resolution::kIgnore;
-        cmd_res.kd_scale = moteus::Resolution::kIgnore;
+        cmd_res.kp_scale = moteus::Resolution::kInt8;
+        cmd_res.kd_scale = moteus::Resolution::kInt8;
         cmd_res.maximum_torque = moteus::Resolution::kInt16;
         cmd_res.stop_position = moteus::Resolution::kIgnore;
         cmd_res.watchdog_timeout = moteus::Resolution::kIgnore;
         moteus::QueryCommand query; // default query
         assert(query.any_set());
+        double global_max_torque = this->get_parameter("global_max_torque").as_double();
         for (size_t joint_idx = 0; joint_idx < nb_joints_; joint_idx++)
         {
             // bus & id set in constructor
@@ -113,7 +110,12 @@ private:
             moteus_command_buf_[joint_idx].position.position = std::numeric_limits<double>::quiet_NaN();
             moteus_command_buf_[joint_idx].position.velocity = 0;
             moteus_command_buf_[joint_idx].position.feedforward_torque = 0;
-            moteus_command_buf_[joint_idx].position.maximum_torque = 0.6;
+
+            double max_torque = this->get_parameter(joint_names_[joint_idx] + "/max_torque").as_double();
+            max_torque = std::min(max_torque, global_max_torque);
+            moteus_command_buf_[joint_idx].position.maximum_torque = max_torque;
+            moteus_command_buf_[joint_idx].position.kp_scale = this->get_parameter(joint_names_[joint_idx] + "/kp_scale").as_double();
+            moteus_command_buf_[joint_idx].position.kd_scale = this->get_parameter(joint_names_[joint_idx] + "/kd_scale").as_double();
             
             moteus_command_buf_[joint_idx].query = query;
 
