@@ -30,7 +30,7 @@ motor position
         sign as needed
     output
         reference source 1
-    rotor_to_output ratio 0.2
+    rotor_to_output ratio 0.2 (0.2 hip yaw, 0.166666 hip forward and side, 0.1111111 knee)
 
 remove limits (put to nan)
 
