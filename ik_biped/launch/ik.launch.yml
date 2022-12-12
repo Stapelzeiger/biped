@@ -1,0 +1,10 @@
+launch:
+- node:
+    pkg: ik_biped
+    exec: ik
+    name: ik_interface
+    param:
+      - from: $(find-pkg-share ik_biped)/config/params.yaml
+    output: screen
+    # print GDB backtrace:
+    # launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args

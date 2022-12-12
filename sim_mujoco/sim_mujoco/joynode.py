@@ -1,5 +1,6 @@
 import rclpy
 from rclpy.node import Node
+import threading
 
 from sensor_msgs.msg import Joy
 import numpy as np
@@ -10,45 +11,58 @@ from geometry_msgs.msg import Transform
 class JoyNode(Node):
     def __init__(self):
         super().__init__('JoyFootDesiredPos')
-        self.foot_position_BL_pub = self.create_publisher(MultiDOFJointTrajectory, "/foot_position_BL", 1)
+        self.lock = threading.Lock()
+        self.foot_position_BL_pub = self.create_publisher(MultiDOFJointTrajectory, "/foot_positions", 1)
         self.subscription = self.create_subscription(
             Joy,
             '/joy',
             self.joy_cb,
             1)
+        self.timer = self.create_timer(0.005, self.timer_cb)
+        self.joy = None
 
     def joy_cb(self, msg):
+        with self.lock:
+            self.joy = msg
+    
+    def timer_cb(self):
+        with self.lock:
+            joy = self.joy
+        if joy is None:
+            return
+
+        input_joystick = [0.1*joy.axes[1], 0.1*joy.axes[0], 0.1*joy.axes[4]]
+        yaw_angle_foot = 0.5*joy.axes[3]
+
+        leg_choice = joy.buttons[2] # X on the gamepad
+
+        msg_foot = MultiDOFJointTrajectory()
+        msg_foot.header.stamp = self.get_clock().now().to_msg()
+        msg_foot.header.frame_id = "base_link"
+        foot_pos_point = MultiDOFJointTrajectoryPoint()
 
         transforms = Transform()
-        input_joystick = [0.1*msg.axes[1], 0.1*msg.axes[0], 0.1*msg.axes[4]]
-        yaw_angle_foot = 0.5*msg.axes[3]
-
-        leg_choice = msg.buttons[2] # X on the gamepad
-
-
         transforms.translation.x = input_joystick[0]
         transforms.translation.z = -0.5 + input_joystick[2]
         transforms.rotation.x = 0.0
         transforms.rotation.y = 0.0
         transforms.rotation.z = np.sin(yaw_angle_foot/2)
         transforms.rotation.w = np.cos(yaw_angle_foot/2)
+        transforms.translation.y = -0.1 + input_joystick[1]
+        msg_foot.joint_names.append("FR_ANKLE")
+        foot_pos_point.transforms.append(transforms)
 
-        if leg_choice == 0:
-            transforms.translation.y = -0.1 + input_joystick[1]
-            name_stance_foot = "FR_ANKLE"
-            print("FR ANKLE")
+        transforms = Transform()
+        transforms.translation.x = input_joystick[0]
+        transforms.translation.z = -0.5 + input_joystick[2]
+        transforms.rotation.x = 0.0
+        transforms.rotation.y = 0.0
+        transforms.rotation.z = np.sin(yaw_angle_foot/2)
+        transforms.rotation.w = np.cos(yaw_angle_foot/2)
+        transforms.translation.y = 0.1 + input_joystick[1]
+        msg_foot.joint_names.append("FL_ANKLE")
+        foot_pos_point.transforms.append(transforms)
 
-        if leg_choice == 1:
-            transforms.translation.y = 0.1 + input_joystick[1]
-            name_stance_foot = "FL_ANKLE"
-            print("FL ANKLE")
-
-
-        foot_pos_point = MultiDOFJointTrajectoryPoint()
-        foot_pos_point.transforms = [transforms]
-
-        msg_foot = MultiDOFJointTrajectory()
-        msg_foot.joint_names = [name_stance_foot]
         msg_foot.points = [foot_pos_point]
         self.foot_position_BL_pub.publish(msg_foot)
 

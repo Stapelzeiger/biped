@@ -1,231 +1,179 @@
 #include "ik_class_pin.hpp"
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wtype-limits"
+#include "pinocchio/spatial/explog.hpp"
+#include "pinocchio/algorithm/frames.hpp"
+#include "pinocchio/algorithm/kinematics.hpp"
+#include "pinocchio/algorithm/jacobian.hpp"
+#include "pinocchio/parsers/urdf.hpp"
+#include "pinocchio/algorithm/crba.hpp"
+#include "pinocchio/algorithm/rnea.hpp"
+#pragma GCC diagnostic pop
+
 IKRobot::IKRobot()
 {
 }
 
 void IKRobot::build_model(const std::string urdf_xml_string)
 {
-    pinocchio::urdf::buildModelFromXML(urdf_xml_string, pinocchio::JointModelFreeFlyer(), model);
-    std::cout << "model nq:" << model.nq << std::endl;
-    std::cout << "model nv:" << model.nv << std::endl;
+    // TODO clear previous model
+    pinocchio::urdf::buildModelFromXML(urdf_xml_string, pinocchio::JointModelFreeFlyer(), model_);
+    q_ = pinocchio::neutral(model_);
+    q_ += Eigen::VectorXd::Random(model_.nq) * 0.01;
 
-    // int idx_frame;
-    // idx_frame = model.getFrameId("FL_ANKLE");
-    // std::cout << "model frame:" << idx_frame << std::endl;
-}
+    std::cout << "model nq:" << model_.nq << std::endl;
+    std::cout << "model nv:" << model_.nv << std::endl;
+    std::cout << "model njoints:" << model_.njoints << std::endl;
 
-int IKRobot::get_size_q()
-{
-    return model.nq;
-}
-
-int IKRobot::get_size_q_dot()
-{
-    return model.nv;
-}
-
-Eigen::VectorXd IKRobot::get_desired_q(Eigen::VectorXd q, Eigen::Vector3d pos_foot_des, double yaw_angle, std::string joint_name)
-{
-
-    pinocchio::Data data(model);
-
-    int joint_id;
-    joint_id = model.getJointId(joint_name);
-
-    int put_to_zero_joints[5];
-
-    if (joint_name == "FL_ANKLE")
-    {
-        put_to_zero_joints[0] = 11;
-        put_to_zero_joints[1] = 12;
-        put_to_zero_joints[2] = 13;
-        put_to_zero_joints[3] = 14;
-        put_to_zero_joints[4] = 15;
+    std::cout << "model frames:" << std::endl;
+    for (auto f : model_.frames) {
+        std::cout << "  frame name:" << f.name << std::endl;
+        std::cout << "  parent joint:" << model_.names[f.parent] << std::endl;
+        std::cout << "  frame placement:" << f.placement << std::endl;
+        std::cout << "  frame type" << f.type << std::endl;
+        std::cout << "" << std::endl;
     }
-    if (joint_name == "FR_ANKLE")
-    {
-        put_to_zero_joints[0] = 6;
-        put_to_zero_joints[1] = 7;
-        put_to_zero_joints[2] = 8;
-        put_to_zero_joints[3] = 9;
-        put_to_zero_joints[4] = 10;
+    for (auto j : model_.joints) {
+        std::cout << "joint idx_q:" << j.idx_q() << std::endl;
+        std::cout << "joint idx_v:" << j.idx_v() << std::endl;
+        std::cout << "joint nq:" << j.nq() << std::endl;
+        std::cout << "joint nv:" << j.nv() << std::endl;
+        std::cout << "joint shortname:" << j.shortname() << std::endl;
+        // std::cout << "joint type:" << j.type() << std::endl;
+        std::cout << "" << std::endl;
+    }
+}
+
+bool IKRobot::has_model() const
+{
+    return model_.njoints > 1;
+}
+
+
+std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyState>& body_states)
+{
+    auto base_link = std::find_if(body_states.begin(), body_states.end(), [](const BodyState& bs) {
+        return bs.name == "base_link";
+    });
+    if (base_link == body_states.end()) {
+        std::cout << "base_link not found" << std::endl;
+        return std::vector<JointState>();
     }
 
-    const pinocchio::SE3 oMdes(Eigen::Matrix3d::Identity(), pos_foot_des);
-
-    pinocchio::Data::Matrix6x J(6, model.nv);
-    Eigen::Matrix<double, 5, Eigen::Dynamic> J_truncated(5, model.nv);
-
-    J.setZero();
-    J_truncated.setZero();
-
-    Eigen::Matrix<double, 5, 1> err;
-    Eigen::Matrix<double, 3, 1> err_truncated;
-
-    Eigen::VectorXd v(model.nv);
-    Eigen::Vector3d vector_x_in_foot_frame;
-
-    double yaw_error;
-    double pitch_error;
-
-    int i;
-    for (i = 0;; i++)
-    {
-        pinocchio::forwardKinematics(model, data, q);
-        const pinocchio::SE3 dMi = oMdes.actInv(data.oMi[joint_id]);
-
-        vector_x_in_foot_frame = data.oMi[joint_id].rotation().transpose() * Eigen::Vector3d(cos(yaw_angle), sin(yaw_angle), 0);
-
-        pitch_error = vector_x_in_foot_frame[1];
-        yaw_error = vector_x_in_foot_frame[2];
-
-        // err = pinocchio::log6(dMi).toVector();
-        // err_truncated[0] = err[0]; err_truncated[1] = err[1]; err_truncated[2] = err[2];
-        err_truncated = -dMi.inverse().translation();
-        err.row(0) = err_truncated.row(0);
-        err.row(1) = err_truncated.row(1);
-        err.row(2) = err_truncated.row(2);
-        err[3] = -pitch_error;
-        err[4] = -yaw_error;
-
-        if (err.norm() < eps)
-        {
-            break;
+    std::vector<pinocchio::Model::FrameIndex> body_frame_ids;
+    for (const auto &body: body_states) {
+        auto frame_id = model_.getFrameId(body.name);
+        if (frame_id == model_.frames.size()) {
+            std::cout << "body not found:" << body.name << std::endl;
+            return std::vector<JointState>();
         }
-
-        if (i >= IT_MAX)
-        {
-            break;
+        body_frame_ids.push_back(frame_id);
+    }
+    // check that the frames are connected to all leaf joints
+    for (const auto &joint_subtree : model_.subtrees) {
+        if (joint_subtree.size() == 1) { // is leaf joint
+            if (std::find_if(body_frame_ids.begin(), body_frame_ids.end(),
+                [&](const pinocchio::Model::FrameIndex& frame_id) {
+                    return model_.frames[frame_id].parent == joint_subtree[0];
+                }) == body_frame_ids.end()) {
+                std::cout << "leaf joint not found:" << model_.names[joint_subtree[0]] << std::endl;
+                return std::vector<JointState>();
+            }
         }
-
-        pinocchio::computeJointJacobian(model, data, q, joint_id, J);
-        J_truncated.block(0, 0, 3, model.nv) = J.block(0, 0, 3, model.nv);
-        J_truncated.row(3) = 1 * J.row(5);
-        J_truncated.row(4) = -1 * J.row(4);
-
-        J_truncated.block(0, 0, 5, 5) = Eigen::MatrixXd::Zero(5, 5);
-
-        J_truncated.col(put_to_zero_joints[0]).setZero();
-        J_truncated.col(put_to_zero_joints[1]).setZero();
-        J_truncated.col(put_to_zero_joints[2]).setZero();
-        J_truncated.col(put_to_zero_joints[3]).setZero();
-        J_truncated.col(put_to_zero_joints[4]).setZero();
-
-        Eigen::Matrix<double, 5, Eigen::Dynamic> JJt;
-        JJt.noalias() = J_truncated * J_truncated.transpose();
-        JJt.diagonal().array() += damp;
-        v.noalias() = -J_truncated.transpose() * JJt.ldlt().solve(err);
-
-        q = pinocchio::integrate(model, q, v * DT);
     }
 
-    return q;
+    // initialize q for base_link
+    int base_link_joint_id = model_.frames[model_.getFrameId("base_link")].parent;
+    const auto &base_link_joint = model_.joints[base_link_joint_id];
+    assert(base_link_joint.nq() == 7);
+    q_[base_link_joint.idx_q()] = base_link->position[0];
+    q_[base_link_joint.idx_q() + 1] = base_link->position[1];
+    q_[base_link_joint.idx_q() + 2] = base_link->position[2];
+    q_[base_link_joint.idx_q() + 3] = base_link->orientation.x();
+    q_[base_link_joint.idx_q() + 4] = base_link->orientation.y();
+    q_[base_link_joint.idx_q() + 5] = base_link->orientation.z();
+    q_[base_link_joint.idx_q() + 6] = base_link->orientation.w();
+
+    // solve IK
+    Eigen::VectorXd q = q_;
+    // std::cout << "initial q:" << q.transpose() << std::endl;
+    pinocchio::Data data(model_);
+    for (int i = 0; i < IT_MAX; i++) {
+        pinocchio::computeJointJacobians(model_, data, q); // also computes forward kinematics
+        pinocchio::updateFramePlacements(model_, data);
+        Eigen::VectorXd v = Eigen::VectorXd::Zero(model_.nv);
+        for (const auto &body: body_states) {
+            // std::cout << "body:" << body.name << std::endl;
+            auto frame_id = model_.getFrameId(body.name);
+            const auto &cur_to_world = data.oMf[frame_id];
+            pinocchio::SE3 des_to_world = pinocchio::SE3(body.orientation, body.position);
+            Eigen::MatrixXd J(6, model_.nv);
+            J.setZero();
+            pinocchio::getFrameJacobian(model_, data, frame_id, pinocchio::LOCAL, J);
+            // std::cout << "  J:" << J << std::endl;
+            if (body.type == BodyState::ContraintType::FULL_6DOF) {
+                pinocchio::SE3 cur_to_des = des_to_world.actInv(cur_to_world);
+                auto err = pinocchio::log6(cur_to_des).toVector();
+                // J v = -err
+                // v = - JT (J JT + damp I)^-1 err
+                Eigen::Matrix<double, 6, 6> I6 = Eigen::Matrix<double, 6, 6>::Identity();
+                v -= J.transpose() * (J * J.transpose() + damp * I6).ldlt().solve(err);
+                // std::cout << " 6dof err:" << err.transpose() << std::endl;
+            } else if (body.type == BodyState::ContraintType::POS_ONLY) {
+                pinocchio::SE3 des_to_cur = cur_to_world.actInv(des_to_world);
+                auto p_err = - des_to_cur.translation();
+                auto J_block = J.block(0, 0, 3, model_.nv);
+                Eigen::Matrix<double, 3, 3> I3 = Eigen::Matrix<double, 3, 3>::Identity();
+                v -= J_block.transpose() * (J_block * J_block.transpose() + damp * I3).ldlt().solve(p_err);
+                // std::cout << " pos err:" << p_err.transpose() << std::endl;
+            } else if (body.type == BodyState::ContraintType::POS_AXIS) {
+                pinocchio::SE3 des_to_cur = cur_to_world.actInv(des_to_world);
+                Eigen::Vector3d a_des_in_cur = des_to_cur.rotation() * body.align_axis;
+                Eigen::Matrix<double, 3, 2> a_normal_basis;
+                a_normal_basis << 0, 0, // TODO compute from a
+                           1, 0,
+                            0, 1;
+                auto a_proj = a_normal_basis.transpose() * a_des_in_cur;
+                auto a_err = -a_proj;
+                auto p_err = -des_to_cur.translation();
+                auto J_w = J.block(3, 0, 3, model_.nv);
+                auto partial_a_partial_q = J_w.colwise().cross(body.align_axis);
+                auto partial_a_proj_partial_q = a_normal_basis.transpose() * partial_a_partial_q;
+                Eigen::MatrixXd J_block(5, model_.nv);
+                J_block << J.block(0, 0, 3, model_.nv),
+                           partial_a_proj_partial_q;
+                Eigen::Matrix<double, 5, 1> err;
+                err << p_err, a_err;
+                Eigen::Matrix<double, 5, 5> I5 = Eigen::Matrix<double, 5, 5>::Identity();
+                v -= J_block.transpose() * (J_block * J_block.transpose() + damp * I5).ldlt().solve(err);
+                // std::cout << " pos axis err:" << err.transpose() << std::endl;
+            }
+        }
+        // std::cout << "v:" << v.transpose() << std::endl;
+        // std::cout << "q:" << q.transpose() << std::endl;
+        // std::cout << v.norm() << std::endl;
+        q = pinocchio::integrate(model_, q, v * DT);
+    }
+
+    std::vector<JointState> joint_states;
+    for (int joint_idx = 0; joint_idx < model_.njoints; joint_idx++) {
+        const auto &joint = model_.joints[joint_idx];
+        if (joint.nq() == 1 && joint.idx_q() != -1) {
+            JointState joint_state;
+            joint_state.name = model_.names[joint_idx];
+            double q_min = std::numeric_limits<double>::lowest();
+            double q_max = std::numeric_limits<double>::max();
+            if (model_.lowerPositionLimit.size() > joint.idx_q()
+                && model_.upperPositionLimit.size() > joint.idx_q()) {
+                q_min = model_.lowerPositionLimit[joint.idx_q()];
+                q_max = model_.upperPositionLimit[joint.idx_q()];
+            }
+            q[joint.idx_q()] = fmax(q_min, fmin(q[joint.idx_q()], q_max));
+            joint_state.position = q[joint.idx_q()];
+            joint_states.push_back(joint_state);
+        }
+    }
+    q_ = q;
+    return joint_states;
 }
-
-//     Eigen::MatrixXd get_J(Eigen::VectorXd q, std::string joint_name)
-//     {
-
-//         pinocchio::Data data(model);
-
-//         int joint_id;
-//         joint_id = model.getJointId(joint_name);
-
-//         pinocchio::Data::Matrix6x J(6, model.nv);
-
-//         J.setZero();
-//         pinocchio::computeJointJacobian(model, data, q, joint_id, J);
-//         return J;
-//     }
-
-//     Eigen::MatrixXd get_Jdot_x_q_dot(Eigen::VectorXd q, Eigen::VectorXd q_dot, std::string joint_name)
-//     {
-//         // https://github.com/stack-of-tasks/pinocchio/issues/1395
-//         pinocchio::Data data(model);
-//         // pinocchio::forwardKinematics(model,data,q,q_dot,0*q_dot);
-//         // int joint_id;
-//         // joint_id = model.getJointId(joint_name);
-//         // Eigen::MatrixBase acceleration;
-//         // acceleration = data.a[joint_id];
-//         // return acceleration;
-//         pinocchio::Data::Matrix6x dJ(6, model.nv);
-//         // dJ.fill(0.);
-//         dJ.setZero();
-//         int idx_joint;
-//         idx_joint = model.getJointId(joint_name);
-
-//         pinocchio::computeJointJacobiansTimeVariation(model, data, q, q_dot);
-//         pinocchio::getJointJacobianTimeVariation(model, data, idx_joint, pinocchio::LOCAL, dJ);
-
-//         return dJ;
-//     }
-
-//     Eigen::MatrixXd get_Coriolis_term(Eigen::VectorXd q, Eigen::VectorXd q_dot)
-//     {
-//         pinocchio::Data data(model);
-//         pinocchio::computeCoriolisMatrix(model, data, q, q_dot);
-//         return data.C;
-//     }
-
-//     Eigen::MatrixXd get_gravity_term(Eigen::VectorXd q)
-//     {
-
-//         pinocchio::Data data(model);
-
-//         pinocchio::computeGeneralizedGravity(model, data, q);
-
-//         return data.g;
-//     }
-
-//     Eigen::MatrixXd get_inertia_matrix(Eigen::VectorXd q)
-//     {
-
-//         pinocchio::Data data(model);
-//         Eigen::MatrixXd mass_matrix;
-
-//         mass_matrix = pinocchio::crba(model, data, q);
-
-//         return mass_matrix;
-//     }
-// };
-
-// int main()
-// {
-//     const std::string urdf_xml_string = std::string("../assets/urdf_custom_biped/custom_robot.urdf");
-//     IKRobot robot_ik(urdf_xml_string);
-
-//     int nq;
-//     int nv;
-//     nq = robot_ik.get_size_q();
-//     nv = robot_ik.get_size_q_dot();
-//     std::cout << nq << std::endl;
-//     std::cout << nv << std::endl;
-
-//     Eigen::VectorXd current_q(nq), current_q_dot(nv);
-//     Eigen::Vector3d pos_foot_des;
-//     pos_foot_des << 0, 0.12, -0.24;
-//     current_q << 0, 0, 0.0, 0, 0, 0, 1, 0, 0, 0.2, 0, 0, 0, 0.2, 0;
-//     current_q_dot << 0, 0, 0.0, 0, 0, 0, 0, 0, 0, 0.01, 0, 0, 0, 0.01;
-
-//     std::string foot_name = "FL_ANKLE";
-//     robot_ik.get_desired_q(current_q, pos_foot_des, foot_name);
-//     robot_ik.get_J(current_q, foot_name);
-//     robot_ik.get_nonlinear_effects(current_q, current_q_dot);
-//     robot_ik.get_inertia_matrix(current_q);
-// }
-
-// PYBIND11_MODULE(pybind_ik, handle)
-// {
-
-//     py::class_<IKRobot>(
-//         handle, "PyIKRobot")
-//         .def(py::init<const std::string>())
-//         .def("get_size_q", &IKRobot::get_size_q, py::return_value_policy::reference_internal)
-//         .def("get_desired_q", &IKRobot::get_desired_q, py::return_value_policy::reference_internal)
-//         .def("get_size_q_dot", &IKRobot::get_size_q_dot, py::return_value_policy::reference_internal)
-//         .def("get_J", &IKRobot::get_J, py::return_value_policy::reference_internal)
-//         .def("get_Jdot_x_q_dot", &IKRobot::get_Jdot_x_q_dot, py::return_value_policy::reference_internal)
-//         .def("get_Coriolis_term", &IKRobot::get_Coriolis_term, py::return_value_policy::reference_internal)
-//         .def("get_inertia_matrix", &IKRobot::get_inertia_matrix, py::return_value_policy::reference_internal)
-//         .def("get_gravity_term", &IKRobot::get_gravity_term, py::return_value_policy::reference_internal);
-// }

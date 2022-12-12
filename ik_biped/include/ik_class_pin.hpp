@@ -4,16 +4,13 @@
 
 #include <chrono>
 #include <math.h>
+#include <iostream>
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wtype-limits"
-#include "pinocchio/spatial/explog.hpp"
-#include "pinocchio/algorithm/kinematics.hpp"
-#include "pinocchio/algorithm/jacobian.hpp"
 #include "pinocchio/algorithm/joint-configuration.hpp"
-#include "pinocchio/parsers/urdf.hpp"
-#include "pinocchio/algorithm/crba.hpp"
-#include "pinocchio/algorithm/rnea.hpp"
 #pragma GCC diagnostic pop
+
 
 using namespace std::chrono;
 const double eps = 1e-3;
@@ -24,14 +21,47 @@ const double damp = 1e-5;
 class IKRobot
 {
 public:
+    struct JointState
+    {
+        std::string name;
+        double position;
+        double velocity = std::numeric_limits<double>::quiet_NaN();
+        double acceleration = std::numeric_limits<double>::quiet_NaN();
+        double effort = std::numeric_limits<double>::quiet_NaN();
+    };
+
+    struct BodyState
+    {
+        std::string name;
+        Eigen::Vector3d position;
+        Eigen::Quaterniond orientation;
+        Eigen::Vector3d linear_velocity;
+        Eigen::Vector3d angular_velocity;
+        Eigen::Vector3d linear_acceleration;
+        Eigen::Vector3d angular_acceleration;
+        typedef enum {FULL_6DOF, POS_ONLY, POS_AXIS} ContraintType;
+        ContraintType type;
+        Eigen::Vector3d align_axis;  // in the body frame, only used if type == POS_AXIS
+
+        BodyState(const std::string& name, const Eigen::Vector3d& position, const Eigen::Quaterniond& orientation)
+            : name(name), position(position), orientation(orientation) {
+            linear_velocity.setConstant(std::numeric_limits<double>::quiet_NaN());
+            angular_velocity.setConstant(std::numeric_limits<double>::quiet_NaN());
+            linear_acceleration.setConstant(std::numeric_limits<double>::quiet_NaN());
+            angular_acceleration.setConstant(std::numeric_limits<double>::quiet_NaN());
+            type = ContraintType::FULL_6DOF;
+            align_axis = Eigen::Vector3d::UnitX();
+        }
+    };
+
     IKRobot();
     void build_model(const std::string urdf_filename);
-    int get_size_q();
-    int get_size_q_dot();
-    Eigen::VectorXd get_desired_q(Eigen::VectorXd q, Eigen::Vector3d pos_foot_des, double yaw_angle, std::string joint_name);
-
+    bool has_model() const;
+    std::vector<JointState> solve(const std::vector<BodyState>& body_states);
 private:
-    pinocchio::Model model;
+
+    pinocchio::Model model_;
+    Eigen::VectorXd q_;
 };
 
 #endif
