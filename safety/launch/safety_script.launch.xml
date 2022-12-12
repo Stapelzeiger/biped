@@ -1,8 +1,0 @@
-launch:
-- node:
-    pkg: safety
-    exec: safety_script
-    name: safety_script
-    param: 
-      - from: $(find-pkg-share safety)/config/params.yaml
-    output: screen
