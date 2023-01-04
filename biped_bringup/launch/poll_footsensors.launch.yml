@@ -1,0 +1,31 @@
+launch:
+  - node:
+      pkg: linux_gpio
+      exec: poll
+      name: poll_FR_FOOT
+      param:
+        - name: 'gpio_chip'
+          value: 'gpiochip1'
+        - name: 'gpio_line'
+          value: 22 # PDD.02
+        - name: 'gpio_edge'
+          value: 'rising'
+      output: screen
+      # print GDB backtrace:
+      # launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args
+
+  - node:
+      pkg: linux_gpio
+      exec: poll
+      name: poll_FL_FOOT
+      param:
+        - name: 'gpio_chip'
+          value: 'gpiochip1'
+        - name: 'gpio_line'
+          value: 21 # PDD.01
+        - name: 'gpio_edge'
+          value: 'rising'
+      output: screen
+      # print GDB backtrace:
+      # launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args
+  
