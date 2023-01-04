@@ -1,6 +1,0 @@
-launch:
-- node:
-    pkg: foot_sensor
-    exec: foot_sensor
-    name: foot_sensor
-    output: screen
