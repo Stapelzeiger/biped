@@ -81,56 +81,22 @@ class MujocoNode(Node):
         msg_odom = Odometry()
         msg_odom.header.stamp.sec = int(self.time)
         msg_odom.header.stamp.nanosec = int((self.time - clock_msg.clock.sec) * 1e9)
-        msg_odom.pose.pose.position.x = self.data.qpos.copy()[0]
-        msg_odom.pose.pose.position.y = self.data.qpos.copy()[1]
-        msg_odom.pose.pose.position.z = self.data.qpos.copy()[2]
-        msg_odom.pose.pose.orientation.w = self.data.qpos.copy()[3]
-        msg_odom.pose.pose.orientation.x = self.data.qpos.copy()[4]
-        msg_odom.pose.pose.orientation.y = self.data.qpos.copy()[5]
-        msg_odom.pose.pose.orientation.z = self.data.qpos.copy()[6]
+        msg_odom.pose.pose.position.x = self.data.qpos[0]
+        msg_odom.pose.pose.position.y = self.data.qpos[1]
+        msg_odom.pose.pose.position.z = self.data.qpos[2]
+        msg_odom.pose.pose.orientation.w = self.data.qpos[3]
+        msg_odom.pose.pose.orientation.x = self.data.qpos[4]
+        msg_odom.pose.pose.orientation.y = self.data.qpos[5]
+        msg_odom.pose.pose.orientation.z = self.data.qpos[6]
+
+        msg_odom.twist.twist.linear.x = self.data.qvel[0]
+        msg_odom.twist.twist.linear.y = self.data.qvel[1]
+        msg_odom.twist.twist.linear.z = self.data.qvel[2]
+        msg_odom.twist.twist.angular.x = self.data.qvel[3]
+        msg_odom.twist.twist.angular.y = self.data.qvel[4]
+        msg_odom.twist.twist.angular.z = self.data.qvel[5]
+
         self.odometry_base_pub.publish(msg_odom)
-
-    def set_control_input(self, actuators_torque, actuators_vel):
-        self.data.ctrl[self.q_actuator_addr["FL_YAW"]] = actuators_torque[0]
-        self.data.ctrl[self.q_actuator_addr["FL_YAW_VEL"]] = actuators_vel[0]
-
-        self.data.ctrl[self.q_actuator_addr["FL_HAA"]] = actuators_torque[1]
-        self.data.ctrl[self.q_actuator_addr["FL_HAA_VEL"]] = actuators_vel[1]
-        self.data.ctrl[self.q_actuator_addr["FL_HFE"]] = actuators_torque[2]
-        self.data.ctrl[self.q_actuator_addr["FL_HFE_VEL"]] = actuators_vel[2]
-        self.data.ctrl[self.q_actuator_addr["FL_KFE"]] = actuators_torque[3]
-        self.data.ctrl[self.q_actuator_addr["FL_KFE_VEL"]] = actuators_vel[3]
-
-        self.data.ctrl[self.q_actuator_addr["FR_YAW"]] = actuators_torque[5]
-        self.data.ctrl[self.q_actuator_addr["FR_YAW_VEL"]] = actuators_vel[5]
-        self.data.ctrl[self.q_actuator_addr["FR_HAA"]] = actuators_torque[6]
-        self.data.ctrl[self.q_actuator_addr["FR_HAA_VEL"]] = actuators_vel[6]
-        self.data.ctrl[self.q_actuator_addr["FR_HFE"]] = actuators_torque[7]
-        self.data.ctrl[self.q_actuator_addr["FR_HFE_VEL"]] = actuators_vel[7]
-        self.data.ctrl[self.q_actuator_addr["FR_KFE"]] = actuators_torque[8]
-        self.data.ctrl[self.q_actuator_addr["FR_KFE_VEL"]] = actuators_vel[8]
-
-
-    def get_control_joint_inputs(self, q_current_joints, q_dot_current_joints, q_des_joints, q_des_dot_joints):
-        '''
-        q_des = [ q_L_HAA, q_L_HFE, q_L_KFE, q_L_ANKLE, q_R_HAA, q_R_HFE, q_R_KFE, q_R_ANKLE]
-        q_des_dot = [q_L_HAA_dot, q_L_HFE_dot, q_L_KFE_dot, q_L_ANKLE_dot, q_R_HAA_dot, q_R_HFE_dot, q_R_KFE_dot, q_R_ANKLE]
-
-        '''
-        
-        Kp = 2*15.0*np.eye(self.nb_joints)
-        # Kp = 2*np.eye(self.nb_joints)
-
-        Kp[1, 1] *= 2 
-        Kp[6, 6] *= 2 
-
-        actuation_matrix = np.eye(self.nb_joints)
-
-        actuators_torque = -Kp@actuation_matrix@(q_current_joints - q_des_joints)
-        actuators_vel = actuation_matrix@q_des_dot_joints
-
-        print('actuators_torque', actuators_torque)
-        return actuators_torque, actuators_vel
 
     def stop_controller(self, actuator_name):
         idx_act = mj.mj_name2id(
@@ -152,15 +118,16 @@ class MujocoNode(Node):
         Kp[1] *= 2 
         Kp[6] *= 2 
 
-        actuators_torque = []
-        actuators_vel = []
         i = 0
         for key, value in self.q_joints.items():
-            actuators_torque.append(-Kp[i]*(value['actual_pos'] - value['desired_pos']))
-            actuators_vel.append(value['desired_vel'])
+            if key != 'FL_ANKLE' and key != 'FR_ANKLE':
+                actuators_torque = -Kp[i]*(value['actual_pos'] - value['desired_pos'])
+                actuators_vel = value['desired_vel']
+                self.data.ctrl[self.q_actuator_addr[str(key)]] = actuators_torque
+                self.data.ctrl[self.q_actuator_addr[str(key) + "_VEL"]] = actuators_vel
             i = i + 1
 
-        self.set_control_input(actuators_torque, actuators_vel)
+
 
     def get_joint_names(self):
         self.name_joints = []
