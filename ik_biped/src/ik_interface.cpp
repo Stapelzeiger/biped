@@ -25,14 +25,8 @@ public:
         robot_desc_sub_ = this->create_subscription<std_msgs::msg::String>(
             "/robot_description", rclcpp::QoS(rclcpp::KeepLast(1)).transient_local(), std::bind(&IKNode::robot_desc_cb, this, _1));
 
-        joint_state_sub_ = this->create_subscription<sensor_msgs::msg::JointState>(
-            "/joint_states", 10, std::bind(&IKNode::joint_state_cb, this, _1));
-
         foot_desired_sub_ = this->create_subscription<trajectory_msgs::msg::MultiDOFJointTrajectory>(
             "foot_positions", 10, std::bind(&IKNode::foot_desired_cb, this, _1));
-
-        // odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
-        //     "/odom", 10, std::bind(&IKNode::odom_cb, this, _1));
 
         robot_joints_pub_ = this->create_publisher<trajectory_msgs::msg::JointTrajectory>("joint_trajectory", 10);
     }
@@ -116,30 +110,6 @@ private:
             out_msg.points.push_back(out_pt);
         }
         this->robot_joints_pub_->publish(out_msg);
-    }
-
-    void joint_state_cb(sensor_msgs::msg::JointState::SharedPtr msg)
-    {
-        (void)msg;
-        // std::cout << q_current.size() << std::endl;
-        // if (q_current.size() != 0)
-        // {
-        //     int size_q = robot_.get_size_q();
-        //     if (size_q != msg->position.size() + offset_pos_quat)
-        //     {
-        //         throw std::invalid_argument("Size of joint state does not match robot description");
-        //     }
-
-        //     for (int i = 0; i < size_q - offset_pos_quat; i++)
-        //     {
-        //         joint_names[i] = msg->name[i];
-        //         q_current(7 + i) = msg->position[i];
-        //     }
-        // }
-        // else
-        // {
-        //     throw std::invalid_argument("Is Robot Description Running?");
-        // }
     }
 
     void robot_desc_cb(const std_msgs::msg::String::SharedPtr msg)
