@@ -60,8 +60,8 @@ private:
 
         auto message = linux_gpio::msg::StampedBool();
         message.header.stamp = this->now();
-        message.value = line.get_value();
-        RCLCPP_INFO(this->get_logger(), "Publishing: '%d'", message.value);
+        message.data = line.get_value();
+        RCLCPP_INFO(this->get_logger(), "Publishing: '%d'", message.data);
         publisher_->publish(message);
 
     }
