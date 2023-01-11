@@ -5,6 +5,10 @@ launch:
     name: ik_interface
     param:
       - from: $(find-pkg-share ik_biped)/config/params.yaml
+      - name: use_sim_time
+        value: '$(var use_sim_time)'
+
+
     output: screen
     # print GDB backtrace:
     # launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args
