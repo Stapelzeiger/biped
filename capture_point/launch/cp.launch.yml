@@ -1,0 +1,12 @@
+launch:
+- node:
+    pkg: capture_point
+    exec: capture_point
+    name: capture_point
+    param:
+      - from: $(find-pkg-share capture_point)/config/params.yaml
+      - name: use_sim_time
+        value: '$(var use_sim_time)'
+    output: screen
+    # print GDB backtrace:
+    # launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args

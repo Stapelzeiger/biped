@@ -1,0 +1,5 @@
+/capture_point:
+  ros__parameters:
+    robot_height: 0.54
+    t_step: 0.2
+    dt_ctrl: 0.01
