@@ -28,10 +28,12 @@ class MujocoNode(Node):
 
         self.time = 0
         self.dt = self.model.opt.timestep
-        self.odometry_base_pub = self.create_publisher(Odometry, 'odom', 10)
+        self.odometry_base_pub = self.create_publisher(Odometry, 'odometry', 10)
 
         self.joint_traj_sub = self.create_subscription(JointTrajectory, 'joint_trajectory', self.joint_traj_cb, 10)
         self.joint_traj_sub  # prevent unused variable warning
+
+        self.joint_states_pub = self.create_publisher(JointState, 'joint_states', 10)
 
         self.clock_pub = self.create_publisher(Clock, '/clock', 10)
         self.timer = self.create_timer(self.dt, self.step)
