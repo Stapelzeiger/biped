@@ -58,11 +58,10 @@ class MujocoNode(Node):
         for name in self.name_actuators:
             self.q_actuator_addr[name] = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_ACTUATOR, name)
 
-        self.right_foot_contact_pub = self.create_publisher(StampedBool, 'right_foot_contact', 10)
-        self.left_foot_contact_pub = self.create_publisher(StampedBool, 'left_foot_contact', 10)
-        self.contact_states = {'FR_ANKLE': False,
-                               'FL_ANKLE': False,
-                               'both': False}
+        self.contact_pub = self.create_publisher(StampedBool, '/contact', 10)
+
+        self.contact_states = {'FR_FOOT': False,
+                               'FL_FOOT': False}
 
         self.declare_parameter("visualize_mujoco")
         self.visualize_mujoco = self.get_parameter("visualize_mujoco").get_parameter_value().bool_value
@@ -72,6 +71,17 @@ class MujocoNode(Node):
             self.viewer.cam.azimuth = 90
             self.viewer.cam.elevation = -25
             self.viewer.render()
+
+
+        # initialization
+        self.data.qpos = [
+            0, 0, 0.54,
+            1, 0, 0, 0,
+            0.0, 0.24, -0.91, 1.6, 0.0,
+            0.0, 0.24, -0.623, 1.12, 0.0
+        ]
+
+        mj.mj_step(self.model, self.data)
 
     def step(self):
         self.time += self.dt
@@ -105,17 +115,25 @@ class MujocoNode(Node):
 
 
         self.read_contact_states()
-        msg_foot_sensor_right = StampedBool()
-        msg_foot_sensor_right.header.stamp.sec = int(self.time)
-        msg_foot_sensor_right.header.stamp.nanosec = int((self.time - clock_msg.clock.sec) * 1e9)
-        msg_foot_sensor_right.data = self.contact_states['FR_ANKLE']
-        self.right_foot_contact_pub.publish(msg_foot_sensor_right)
+        msg_contact = StampedBool()
+        msg_contact.header.stamp.sec = int(self.time)
+        msg_contact.header.stamp.nanosec = int((self.time - clock_msg.clock.sec) * 1e9)
+        msg_contact.data = list(self.contact_states.values())
+        msg_contact.names = list(self.contact_states.keys())
+        self.contact_pub.publish(msg_contact)
 
-        msg_foot_sensor_left = StampedBool()
-        msg_foot_sensor_left.header.stamp.sec = int(self.time)
-        msg_foot_sensor_left.header.stamp.nanosec = int((self.time - clock_msg.clock.sec) * 1e9)
-        msg_foot_sensor_left.data = self.contact_states['FL_ANKLE']
-        self.left_foot_contact_pub.publish(msg_foot_sensor_left)
+        msg_joint_states = JointState()
+        msg_joint_states.header.stamp.sec = int(self.time)
+        msg_joint_states.header.stamp.nanosec = int((self.time - clock_msg.clock.sec) * 1e9)
+        for key, value in self.q_joints.items():
+            id_joint_mj = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_JOINT, key)
+            value['actual_pos'] = self.data.qpos[self.model.jnt_qposadr[id_joint_mj]]
+            value['actual_vel'] = self.data.qvel[self.model.jnt_dofadr[id_joint_mj]]
+
+            msg_joint_states.name.append(key)
+            msg_joint_states.position.append(value['actual_pos'])
+            msg_joint_states.velocity.append(value['actual_vel'])
+        self.joint_states_pub.publish(msg_joint_states)
 
 
     def stop_controller(self, actuator_name):
@@ -147,14 +165,9 @@ class MujocoNode(Node):
                 self.data.ctrl[self.q_actuator_addr[str(key) + "_VEL"]] = actuators_vel
             i = i + 1
 
-
-    def reset_contact_state(self):
-        self.contact_states['FR_ANKLE'] = False
-        self.contact_states['FL_ANKLE'] = False
-        self.contact_states['both'] = False
-
     def read_contact_states(self):
-        self.reset_contact_state()
+        self.contact_states['FR_FOOT'] = False
+        self.contact_states['FL_FOOT'] = False
 
         geom1_list = []
         geom2_list = []
@@ -172,16 +185,12 @@ class MujocoNode(Node):
             if 'FL_FOOT' in geom2_list:
                 first_entry_idx = geom2_list.index('FL_FOOT')
                 if geom1_list[first_entry_idx] == 'floor':
-                    self.contact_states['FL_ANKLE'] = True
+                    self.contact_states['FL_FOOT'] = True
 
             if 'FR_FOOT' in geom2_list:
                 first_entry_idx = geom2_list.index('FR_FOOT')
                 if geom1_list[first_entry_idx] == 'floor':
-                    self.contact_states['FR_ANKLE'] = True
-
-            if 'FR_FOOT' in geom2_list and 'FL_FOOT' in geom2_list:
-                self.contact_states['both'] = True
-
+                    self.contact_states['FR_FOOT'] = True
 
     def get_joint_names(self):
         self.name_joints = []
