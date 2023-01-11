@@ -23,7 +23,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'mujoco = sim_mujoco.mujoco:main'
+            'mujoco = sim_mujoco.mujoco:main',
+            'joy = sim_mujoco.joynode:main'
         ],
     },
 )
