@@ -18,6 +18,7 @@ find_package(geometry_msgs REQUIRED)
 find_package(linux_gpio REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
+find_package(rosgraph_msgs REQUIRED)
 
 find_package(PkgConfig REQUIRED)
 find_package(Eigen3 REQUIRED)
@@ -26,7 +27,7 @@ message(STATUS "EIGEN3_INCLUDE_DIR ${EIGEN3_INCLUDE_DIR}")
 
 
 
-add_executable(capture_point src/capture_point.cpp)
+add_executable(capture_point src/capture_point.cpp src/foot_trajectory.cpp)
 target_include_directories(capture_point PRIVATE ${EIGEN3_INCLUDE_DIR})
 ament_target_dependencies(capture_point 
                           rclcpp 
