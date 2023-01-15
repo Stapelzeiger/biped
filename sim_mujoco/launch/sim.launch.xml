@@ -2,5 +2,8 @@
   <node pkg="sim_mujoco" exec="mujoco" name="mujoco_sim" output="screen">
     <param name="mujoco_xml_path" value="$(find-pkg-share biped_robot_description)/urdf/custom_robot.mujoco.xml"/>
     <param name="visualize_mujoco" value="True"/>
+    <param name="sim_time_sec" value='$(var sim_time_sec)'/>
+    <param name="visualization_rate" value='$(var visualization_rate)'/>
+
   </node>
 </launch>
