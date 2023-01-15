@@ -1,0 +1,16 @@
+<!-- example.launch.xml -->
+
+<launch>
+
+  <arg name="use_sim_time" default="true"/>
+  <!-- make ctrl time and sim time be an integer of each other (i.e. ctrl time 10 ms and sim time 2 ms) -->
+  <arg name="sim_time_sec" default="0.002"/>
+  <arg name="ctrl_time_sec" default="0.01"/>
+  <arg name="visualization_rate" default="10.0"/>
+
+  <include file="$(find-pkg-share biped_robot_description)/launch/launch.xml"/>
+  <include file="$(find-pkg-share ik_biped)/launch/ik.launch.yml"/>
+  <include file="$(find-pkg-share sim_mujoco)/sim.launch.xml"/>
+
+</launch>
+
