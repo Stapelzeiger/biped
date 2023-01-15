@@ -91,10 +91,10 @@ private:
                 }
                 bodies.push_back(body_state);
             }
-            std::cout << "solving with bodies : " << std::endl;
-            for (const auto &body : bodies) {
-                std::cout << "   " << body.name << std::endl;
-            }
+            // std::cout << "solving with bodies : " << std::endl;
+            // for (const auto &body : bodies) {
+            //     std::cout << "   " << body.name << std::endl;
+            // }
             std::vector<IKRobot::JointState> joint_states = this->robot_.solve(bodies);
             out_msg.joint_names.resize(joint_states.size());
             for (size_t i = 0; i < joint_states.size(); i++) {
