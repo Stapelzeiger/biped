@@ -7,6 +7,10 @@ launch:
       - from: $(find-pkg-share capture_point)/config/params.yaml
       - name: use_sim_time
         value: '$(var use_sim_time)'
+      - name: ctrl_time_sec
+        value: '$(var ctrl_time_sec)'
+      - name: sim_time_sec
+        value: '$(var sim_time_sec)'
     output: screen
     # print GDB backtrace:
     # launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args
