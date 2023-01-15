@@ -13,6 +13,8 @@
   <depend>rosgraph_msgs</depend>
   <depend>nav_msgs</depend>
   <depend>geometry_msgs</depend>
+  <depend>tf2_ros</depend>
+
   <exec_depend>linux_gpio</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
