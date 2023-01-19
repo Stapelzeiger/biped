@@ -11,7 +11,6 @@ find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
-find_package(linux_gpio REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/StampedBool.msg"
@@ -61,11 +60,12 @@ ament_target_dependencies(
   "rclcpp"
   "std_msgs"
   "sensor_msgs"
-  "linux_gpio"
-)
+  )
+rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} "rosidl_typesupport_cpp")
 target_link_libraries(
   poll
   gpiodcxx
+  "${cpp_typesupport_target}"
 )
 
 
