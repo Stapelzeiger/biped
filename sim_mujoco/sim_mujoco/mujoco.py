@@ -4,7 +4,7 @@ from rclpy.node import Node
 from sensor_msgs.msg import JointState
 from nav_msgs.msg import Odometry
 from trajectory_msgs.msg import MultiDOFJointTrajectoryPoint, MultiDOFJointTrajectory, JointTrajectory
-from geometry_msgs.msg import TransformStamped, Vector3
+from geometry_msgs.msg import TransformStamped, Vector3, PoseStamped, PoseWithCovarianceStamped
 
 from rosgraph_msgs.msg import Clock
 from linux_gpio.msg import StampedBool
@@ -32,15 +32,18 @@ def setup_pid(control_rate, kp, ki, kd):
 class MujocoNode(Node):
     def __init__(self):
         super().__init__('mujoco_sim')
-        
         self.declare_parameter("mujoco_xml_path")
-        mujoco_xml_path = self.get_parameter("mujoco_xml_path").get_parameter_value().string_value
-
         self.declare_parameter("sim_time_sec")
-        self.sim_time_sec = self.get_parameter("sim_time_sec").get_parameter_value().double_value
-
         self.declare_parameter("visualization_rate")
+        self.declare_parameter("visualize_mujoco")
+        self.visualize_mujoco = self.get_parameter("visualize_mujoco").get_parameter_value().bool_value
+        mujoco_xml_path = self.get_parameter("mujoco_xml_path").get_parameter_value().string_value
+        self.sim_time_sec = self.get_parameter("sim_time_sec").get_parameter_value().double_value
         self.visualization_rate = self.get_parameter("visualization_rate").get_parameter_value().double_value
+        self.initialization_done = False
+        self.goal_pos = [0.0, 0.0]
+        self.contact_states = {'FR_FOOT': False,
+                               'FL_FOOT': False}
 
         self.model = mj.MjModel.from_xml_path(mujoco_xml_path)
         mj.mj_printModel(self.model, 'robot_information.txt')
@@ -49,27 +52,25 @@ class MujocoNode(Node):
         self.time = 0
         self.model.opt.timestep = self.sim_time_sec
         self.dt = self.model.opt.timestep
-        self.odometry_base_pub = self.create_publisher(Odometry, 'odometry', 10)
-        
-        self.joint_traj_sub = self.create_subscription(JointTrajectory, 'joint_trajectory', self.joint_traj_cb, 10)
-        self.joint_traj_sub  # prevent unused variable warning
-
-        self.initialization_flag_sub = self.create_subscription(Bool, '/initialization_flag', self.initialization_flag_cb, 10)
-        self.initialization_flag_sub
-        self.initialization_flag = False
-
-        self.next_footstep_OdomF_sub = self.create_subscription(Vector3, 'next_footstep_OdomF', self.next_footstep_OdomF_cb, 10)
-        self.next_footstep_OdomF_sub
-
-        self.desired_swing_foot_OdomF_sub = self.create_subscription(Vector3, 'desired_swing_foot_pos_OdomF', self.desired_swing_foot_OdomF_cb, 10)
-        self.desired_swing_foot_OdomF_sub
-
-        self.joint_states_pub = self.create_publisher(JointState, 'joint_states', 10)
-
         self.clock_pub = self.create_publisher(Clock, '/clock', 10)
+
+        self.odometry_base_pub = self.create_publisher(Odometry, 'odometry', 10)
+        self.contact_pub = self.create_publisher(StampedBool, '/contact', 10)
+        self.joint_states_pub = self.create_publisher(JointState, 'joint_states', 10)
+        self.tf_broadcaster = TransformBroadcaster(self)
+
+        self.joint_traj_sub = self.create_subscription(JointTrajectory, 'joint_trajectory', self.joint_traj_cb, 10)
+        self.initial_pose_sub = self.create_subscription(PoseWithCovarianceStamped, 'initialpose', self.init_cb, 10)
+
         self.timer = self.create_timer(self.dt, self.step)
 
-        self.nb_joints = self.model.njnt - 1 # exclude root
+        if self.visualize_mujoco == True:
+            self.viewer = mujoco_viewer.MujocoViewer(self.model, self.data)
+            self.viewer.cam.azimuth = 90
+            self.viewer.cam.elevation = -25
+            self.viewer.render()
+            self.viewer._paused = True
+
         self.name_joints = self.get_joint_names()
 
         self.q_joints = {}
@@ -89,49 +90,56 @@ class MujocoNode(Node):
         for name in self.name_actuators:
             self.q_actuator_addr[name] = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_ACTUATOR, name)
 
-        self.contact_pub = self.create_publisher(StampedBool, '/contact', 10)
-
-        self.contact_states = {'FR_FOOT': False,
-                               'FL_FOOT': False}
-
-        self.declare_parameter("visualize_mujoco")
-        self.visualize_mujoco = self.get_parameter("visualize_mujoco").get_parameter_value().bool_value
-
-        if self.visualize_mujoco == True:
-            self.viewer = mujoco_viewer.MujocoViewer(self.model, self.data)
-            self.viewer.cam.azimuth = 90
-            self.viewer.cam.elevation = -25
-            self.viewer.render()
-
         self.q_pos_addr_joints = {}
         for name in self.name_joints:
             self.q_pos_addr_joints[name] = self.model.jnt_qposadr[mj.mj_name2id(
                 self.model, mj.mjtObj.mjOBJ_JOINT, name)]
         
-        self.pid_pitch_foot = setup_pid(
-            control_rate=1.0/self.dt, kp=0.002, ki=0.0, kd=0)
+        self.pid_pitch_foot = setup_pid(control_rate=1.0/self.dt, kp=0.002, ki=0.0, kd=0)
 
         self.counter = 0
-        self.desired_swing_foot_OdomF = [0.0, 0.0, 0.0]
-        self.desired_swing_foot_OdomF_list = []
 
-    def initialization_flag_cb(self, msg):
-        self.initialization_flag = msg.data
-        print(self.initialization_flag)
+        self.init([0.0, 0.0, 0.0])
+    
+
+
+    def init_cb(self, msg):
+        p = msg.pose.pose.position
+        q = msg.pose.pose.orientation
+        self.init([p.x, p.y, p.z], q=[q.w, q.x, q.y, q.z])
+
+    def init(self, p, q=[1.0, 0.0, 0.0, 0.0]):
+        self.model.eq_data[0][0] = -p[0]
+        self.model.eq_data[0][1] = -p[1]
+        self.model.eq_data[0][2] = -1 # one meter above gnd
+
+        self.data.qpos = [0.0] * self.model.nq
+        self.data.qpos[3] = q[0]
+        self.data.qpos[4] = q[1]
+        self.data.qpos[5] = q[2]
+        self.data.qpos[6] = q[3]
+        self.data.qvel = [0.0]* self.model.nv
+
+        self.data.qpos[0] = p[0]
+        self.data.qpos[1] = p[1]
+        self.data.qpos[2] = -self.model.eq_data[0][2]
+
+        self.model.eq_active = 1
+        self.initialization_done = False
 
     def step(self):
-        self.time += self.dt
-        self.counter += 1
+        if not self.initialization_done:
+            self.model.eq_data[0][2] += 0.1 * self.dt
 
-        if self.initialization_flag == True:
-            self.model.eq_active = 0
+        if self.contact_states['FR_FOOT'] or self.contact_states['FL_FOOT']:
+            self.initialization_done = True
+            self.model.eq_active = 0 # let go of the robot
         
         if self.visualize_mujoco is True:
             vis_update_downsampling = int(round(1.0/self.visualization_rate/self.sim_time_sec/10))
             if self.counter % vis_update_downsampling == 0:
                 self.viewer.render()
 
-        self.viewer.render()
         mj.mj_step(self.model, self.data)
 
         clock_msg = Clock()
@@ -151,14 +159,26 @@ class MujocoNode(Node):
         msg_odom.pose.pose.orientation.x = self.data.qpos[4]
         msg_odom.pose.pose.orientation.y = self.data.qpos[5]
         msg_odom.pose.pose.orientation.z = self.data.qpos[6]
+        q = msg_odom.pose.pose.orientation
 
-        msg_odom.twist.twist.linear.x = self.data.qvel[0]
-        msg_odom.twist.twist.linear.y = self.data.qvel[1]
-        msg_odom.twist.twist.linear.z = self.data.qvel[2]
-        msg_odom.twist.twist.angular.x = self.data.qvel[3]
+        R_b_to_I = R.from_quat([q.x, q.y, q.z, q.w]).as_matrix()
+        v_b = R_b_to_I.T @ self.data.qvel[0:3] # linear vel is in inertial frame
+        msg_odom.twist.twist.linear.x = v_b[0]
+        msg_odom.twist.twist.linear.y = v_b[1]
+        msg_odom.twist.twist.linear.z = v_b[2]
+        msg_odom.twist.twist.angular.x = self.data.qvel[3] # angular vel is in body frame
         msg_odom.twist.twist.angular.y = self.data.qvel[4]
         msg_odom.twist.twist.angular.z = self.data.qvel[5]
         self.odometry_base_pub.publish(msg_odom)
+
+        t = TransformStamped()
+        t.header = msg_odom.header
+        t.child_frame_id = msg_odom.child_frame_id
+        t.transform.translation.x = msg_odom.pose.pose.position.x
+        t.transform.translation.y = msg_odom.pose.pose.position.y
+        t.transform.translation.z = msg_odom.pose.pose.position.z
+        t.transform.rotation = msg_odom.pose.pose.orientation
+        self.tf_broadcaster.sendTransform(t)
 
         self.read_contact_states()
         msg_contact = StampedBool()
@@ -181,16 +201,13 @@ class MujocoNode(Node):
             msg_joint_states.velocity.append(value['actual_vel'])
         self.joint_states_pub.publish(msg_joint_states)
 
-
         if self.contact_states['FR_FOOT'] == True:
             self.keep_ankle_foot_horiz_with_gnd_controller('FL_ANKLE')
         if self.contact_states['FL_FOOT'] == True:
             self.keep_ankle_foot_horiz_with_gnd_controller('FR_ANKLE')
 
-        # self.desired_swing_foot_OdomF_list.append([self.desired_swing_foot_OdomF[0], self.desired_swing_foot_OdomF[1], self.desired_swing_foot_OdomF[2]])
-        # for l in self.desired_swing_foot_OdomF_list:
-        #     self.viewer.add_marker(pos=[l[0], l[1], l[2]], size=[0.01, 0.01, 0.01], rgba=[1, 0, 0, 1], type=mj.mjtGeom.mjGEOM_SPHERE, label="f")
-
+        self.time += self.dt
+        self.counter += 1
 
 
     def stop_controller(self, actuator_name):
@@ -209,7 +226,7 @@ class MujocoNode(Node):
             if msg.points[0].velocities:
                 value['desired_vel'] = msg.points[0].velocities[id_joint_msg]
 
-        Kp = 2*15.0*np.ones(self.nb_joints)
+        Kp = 2*15.0*np.ones(self.model.njnt - 1) # exclude root
         Kp[1] *= 6
         Kp[6] *= 6 
 
@@ -217,19 +234,12 @@ class MujocoNode(Node):
         for key, value in self.q_joints.items():
             if key != 'FL_ANKLE' and key != 'FR_ANKLE':
                 error = value['actual_pos'] - value['desired_pos']
-                print('error for joint', key, 'is', error)
                 actuators_torque = -Kp[i]*error
                 actuators_vel = value['desired_vel']
                 self.data.ctrl[self.q_actuator_addr[str(key)]] = actuators_torque
                 self.data.ctrl[self.q_actuator_addr[str(key) + "_VEL"]] = actuators_vel
             i = i + 1
 
-    def next_footstep_OdomF_cb(self, msg):
-        pos = [msg.x, msg.y, msg.z]
-        self.viewer.add_marker(pos=[pos[0], pos[1], 0], size=[0.05, 0.05, 0.05], rgba=[1, 0, 0, 1], type=mj.mjtGeom.mjGEOM_SPHERE, label="next_footstep")
-
-    def desired_swing_foot_OdomF_cb(self, msg):
-        self.desired_swing_foot_OdomF = [msg.x, msg.y, msg.z]
 
     def read_contact_states(self):
         self.contact_states['FR_FOOT'] = False
