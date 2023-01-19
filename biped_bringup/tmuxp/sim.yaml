@@ -1,0 +1,10 @@
+session_name: biped_sim
+windows:
+- layout: tiled
+  shell_command_before:
+  - source $ROS_WS/install/local_setup.bash
+  panes:
+  - ros2 launch biped_bringup launch_all_nodes.xml
+  - rviz2 -d src/biped/biped_bringup/rviz/biped.rviz --ros-args --param use_sim_time:=true
+  - ros2 launch biped_bringup launch_cp.xml
+  - clear
