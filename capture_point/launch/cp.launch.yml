@@ -9,8 +9,6 @@ launch:
         value: '$(var use_sim_time)'
       - name: ctrl_time_sec
         value: '$(var ctrl_time_sec)'
-      - name: sim_time_sec
-        value: '$(var sim_time_sec)'
     output: screen
     # print GDB backtrace:
     # launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args
