@@ -1,31 +1,7 @@
 launch:
 
 # - include:
-#     # file: "$(find-pkg-share vectornav)/launch/vectornav.launch.py"
-#     file: "$(find-pkg-share imu_vn_100)/launch/imu_vn_100-launch.py"
-
-- include:
-    file: "$(find-pkg-share realsense2_camera)/launch/rs_launch.py"
-    arg:
-      - name: "camera_name"
-        value: "camera_front"
-      - name: "serial_no"
-        value: "'207222071179'"
-- include:
-    file: "$(find-pkg-share realsense2_camera)/launch/rs_launch.py"
-    arg:
-      - name: "camera_name"
-        value: "camera_left"
-      - name: "serial_no"
-        value: "'207222070732'"
-- include:
-    file: "$(find-pkg-share realsense2_camera)/launch/rs_launch.py"
-    arg:
-      - name: "camera_name"
-        value: "camera_right"
-      - name: "serial_no"
-        value: "'207122078052'"
-      # - config_file: "$(find-pkg-share biped_bringup)/config/realsense.yaml"
+#     file: "$(find-pkg-share biped_bringup)/launch/camera_launch.yaml"
 
 - include:
     file: "$(find-pkg-share ov_msckf)/launch/subscribe.launch.py"
