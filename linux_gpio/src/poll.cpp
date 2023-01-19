@@ -57,12 +57,12 @@ private:
 
     void timer_callback()
     {
-
+        
         auto message = linux_gpio::msg::StampedBool();
-        message.header.stamp = this->now();
-        message.data = line.get_value();
-        RCLCPP_INFO(this->get_logger(), "Publishing: '%d'", message.data);
-        publisher_->publish(message);
+        // message.header.stamp = this->now();
+        // message.data = line.get_value();
+        // RCLCPP_INFO(this->get_logger(), "Publishing: '%d'", message.data);
+        // publisher_->publish(message);
 
     }
 
