@@ -3,9 +3,12 @@
     <Domain id="any">
         <General>
             <Interfaces>
+                <NetworkInterface name="wlan0" /> <!-- presence_required="false" -->
                 <NetworkInterface name="eth0" />
-                <NetworkInterface name="wlan0" />
             </Interfaces>
         </General>
+        <Discovery>
+        </Discovery>
+        <!-- <Tracing><Verbosity>config</Verbosity><OutputFile>stderr</OutputFile></Tracing> -->
     </Domain>
 </CycloneDDS>
