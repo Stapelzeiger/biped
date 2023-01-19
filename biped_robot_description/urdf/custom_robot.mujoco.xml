@@ -37,7 +37,7 @@
 
 
 
-        <body name="base_link" pos="0.0 0.0 0.56">
+        <body name="base_link" pos="0.0 0.0 1.0">
         <inertial pos="0 0 0" quat="1. 0. 0. 0." mass="3.6" diaginertia="0.00578574 0.01938108 0.02476124" />
         <geom name="base_link" type="mesh" contype="2" rgba="1 1 1 1" mesh="base_link"/>
         <joint armature="0" damping="0" limited="false" name="root" pos="0 0 0" stiffness="0" type="free"/>
