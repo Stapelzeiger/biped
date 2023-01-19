@@ -1,3 +1,3 @@
 std_msgs/Header header
-bool[] data
-string[] names
+bool data
+string names
