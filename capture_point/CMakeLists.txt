@@ -19,6 +19,7 @@ find_package(linux_gpio REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(rosgraph_msgs REQUIRED)
+find_package(visualization_msgs REQUIRED)
 
 find_package(PkgConfig REQUIRED)
 find_package(Eigen3 REQUIRED)
@@ -38,7 +39,8 @@ ament_target_dependencies(capture_point
                           geometry_msgs 
                           linux_gpio
                           tf2
-                          tf2_ros)
+                          tf2_ros
+                          visualization_msgs)
 
 install(TARGETS
   capture_point
