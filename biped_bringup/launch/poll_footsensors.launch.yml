@@ -10,6 +10,8 @@ launch:
           value: 22 # PDD.02
         - name: 'gpio_edge'
           value: 'rising'
+        - name: 'contact_name'
+          value: 'FR_FOOT'
       output: screen
       # print GDB backtrace:
       # launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args
