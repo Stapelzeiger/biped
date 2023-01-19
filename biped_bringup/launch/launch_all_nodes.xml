@@ -8,7 +8,7 @@
   <arg name="ctrl_time_sec" default="0.01"/>
   <arg name="visualization_rate" default="10.0"/>
 
-  <include file="$(find-pkg-share biped_robot_description)/launch/launch.xml"/>
+  <include file="$(find-pkg-share biped_robot_description)/launch/launch.yaml"/>
   <include file="$(find-pkg-share ik_biped)/launch/ik.launch.yml"/>
   <include file="$(find-pkg-share sim_mujoco)/sim.launch.xml"/>
 
