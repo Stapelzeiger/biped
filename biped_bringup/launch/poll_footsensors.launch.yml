@@ -9,7 +9,7 @@ launch:
         - name: 'gpio_line'
           value: 22 # PDD.02
         - name: 'gpio_edge'
-          value: 'rising'
+          value: 'both'
         - name: 'contact_name'
           value: 'FR_FOOT'
       output: screen
@@ -26,7 +26,7 @@ launch:
         - name: 'gpio_line'
           value: 21 # PDD.01
         - name: 'gpio_edge'
-          value: 'rising'
+          value: 'both'
       output: screen
       # print GDB backtrace:
       # launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args
