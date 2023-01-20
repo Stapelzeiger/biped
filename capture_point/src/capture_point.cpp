@@ -18,7 +18,7 @@
 #include "geometry_msgs/msg/transform_stamped.hpp"
 #include "geometry_msgs/msg/vector3.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
-#include "linux_gpio/msg/stamped_bool.hpp"
+#include "biped_bringup/msg/stamped_bool.hpp"
 #include "tf2_ros/transform_listener.h"
 #include "tf2_ros/buffer.h"
 #include "tf2_ros/transform_broadcaster.h"
@@ -51,8 +51,11 @@ public:
         odometry_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
             "/odometry", 10, std::bind(&CapturePoint::odometry_callback, this, _1));
 
-        contact_sub_ = this->create_subscription<linux_gpio::msg::StampedBool>(
-            "/contact", 10, std::bind(&CapturePoint::contact_callback, this, _1));
+        contact_right_sub_ = this->create_subscription<biped_bringup::msg::StampedBool>(
+            "/poll_FR_FOOT/gpio", 10, std::bind(&CapturePoint::contact_right_callback, this, _1));
+
+        contact_left_sub_ = this->create_subscription<biped_bringup::msg::StampedBool>(
+            "/poll_FL_FOOT/gpio", 10, std::bind(&CapturePoint::contact_left_callback, this, _1));
 
         std::chrono::duration<double> period = robot_params.dt_ctrl * 1s;
         timer_ = rclcpp::create_timer(this, this->get_clock(), period, std::bind(&CapturePoint::timer_callback, this));
@@ -125,6 +128,8 @@ private:
 
     void timer_callback()
     {
+        std::cout << foot_left_contact_ << " " << foot_right_contact_ << std::endl;
+        
         if (foot_left_contact_ == false and foot_right_contact_ == false)
         {
             timeout_for_initialization_ -= robot_params.dt_ctrl;
@@ -195,7 +200,6 @@ private:
         base_link_vel_BF << base_link_odom.linear_velocity(0), base_link_odom.linear_velocity(1), base_link_odom.linear_velocity(2);
         Eigen::Vector3d base_link_vel_BLF = T_BF_to_BLF.rotation() * base_link_vel_BF;
         Eigen::Vector3d base_link_vel_STF = T_STF_to_BLF.inverse().rotation() * base_link_vel_BLF;
-        std::cout << "base_link_vel_STF = " << base_link_vel_STF.transpose() << std::endl;
         Eigen::Vector3d dcm_STF;
         dcm_STF(0) = T_STF_to_BLF.inverse().translation()[0] + 1.0 / robot_params.omega * base_link_vel_STF(0);
         dcm_STF(1) = T_STF_to_BLF.inverse().translation()[1] + 1.0 / robot_params.omega * base_link_vel_STF(1);
@@ -256,27 +260,14 @@ private:
         }
     }
 
-    void contact_callback(linux_gpio::msg::StampedBool::SharedPtr msg)
+    void contact_right_callback(biped_bringup::msg::StampedBool::SharedPtr msg)
     {
-        bool left_foot_updated = false;
-        bool right_foot_updated = false;
-        for (long unsigned int i = 0; i < msg->names.size(); i++)
-        {
-            if (msg->names[i] == "FR_FOOT")
-            {
-                foot_right_contact_ = msg->data[i];
-                right_foot_updated = true;
-            }
-            else if (msg->names[i] == "FL_FOOT")
-            {
-                foot_left_contact_ = msg->data[i];
-                left_foot_updated = true;
-            }
-        }
-        if (!(left_foot_updated && right_foot_updated))
-        {
-            RCLCPP_ERROR(this->get_logger(), "Contact callback did not receive both foot contacts");
-        }
+        foot_right_contact_ = msg->data;
+    }
+
+    void contact_left_callback(biped_bringup::msg::StampedBool::SharedPtr msg)
+    {
+        foot_left_contact_ = msg->data;
     }
 
 
@@ -423,7 +414,9 @@ private:
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr pub_markers_array_;
 
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odometry_sub_;
-    rclcpp::Subscription<linux_gpio::msg::StampedBool>::SharedPtr contact_sub_;
+    rclcpp::Subscription<biped_bringup::msg::StampedBool>::SharedPtr contact_right_sub_;
+    rclcpp::Subscription<biped_bringup::msg::StampedBool>::SharedPtr contact_left_sub_;
+
     rclcpp::Subscription<rosgraph_msgs::msg::Clock>::SharedPtr clock_sub_;
 
     std::shared_ptr<tf2_ros::TransformListener> tf_listener_{nullptr};

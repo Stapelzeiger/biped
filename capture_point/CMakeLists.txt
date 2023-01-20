@@ -15,7 +15,7 @@ find_package(sensor_msgs REQUIRED)
 find_package(trajectory_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
-find_package(linux_gpio REQUIRED)
+find_package(biped_bringup REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(rosgraph_msgs REQUIRED)
@@ -37,7 +37,7 @@ ament_target_dependencies(capture_point
                           trajectory_msgs 
                           nav_msgs
                           geometry_msgs 
-                          linux_gpio
+                          biped_bringup
                           tf2
                           tf2_ros
                           visualization_msgs)
