@@ -5,7 +5,7 @@
 #include <thread>
 
 #include "rclcpp/rclcpp.hpp"
-#include "linux_gpio/msg/stamped_bool.hpp"
+#include "biped_bringup/msg/stamped_bool.hpp"
 
 #include <time.h>
 
@@ -28,7 +28,7 @@ public:
 
         init_gpio();
 
-        publisher_ = this->create_publisher<linux_gpio::msg::StampedBool>("~/gpio", 10);
+        publisher_ = this->create_publisher<biped_bringup::msg::StampedBool>("~/gpio", 10);
         timer_ = this->create_wall_timer(100ms, std::bind(&Poll::timer_callback, this));
 
     }
@@ -61,7 +61,7 @@ private:
     void timer_callback()
     {
         
-        auto message = linux_gpio::msg::StampedBool();
+        auto message = biped_bringup::msg::StampedBool();
         message.header.stamp = this->now();
         message.data = line_.get_value();
         RCLCPP_INFO(this->get_logger(), "Publishing: '%d'", message.data);
@@ -70,7 +70,7 @@ private:
     }
 
     rclcpp::TimerBase::SharedPtr timer_;
-    rclcpp::Publisher<linux_gpio::msg::StampedBool>::SharedPtr publisher_;
+    rclcpp::Publisher<biped_bringup::msg::StampedBool>::SharedPtr publisher_;
     gpiod::chip chip_;
     gpiod::line line_;
 };

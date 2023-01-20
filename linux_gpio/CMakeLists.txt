@@ -10,12 +10,9 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
-find_package(rosidl_default_generators REQUIRED)
+find_package(biped_bringup REQUIRED)
 
-rosidl_generate_interfaces(${PROJECT_NAME}
-  "msg/StampedBool.msg"
-  DEPENDENCIES std_msgs
-)
+
 
 add_executable(time_ref src/time_ref.cpp)
 target_include_directories(time_ref PUBLIC
@@ -60,12 +57,11 @@ ament_target_dependencies(
   "rclcpp"
   "std_msgs"
   "sensor_msgs"
+  "biped_bringup"
   )
-rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} "rosidl_typesupport_cpp")
 target_link_libraries(
   poll
   gpiodcxx
-  "${cpp_typesupport_target}"
 )
 
 
