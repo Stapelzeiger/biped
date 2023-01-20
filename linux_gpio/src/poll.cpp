@@ -13,6 +13,9 @@
 
 using namespace std::chrono_literals;
 
+
+// https://developer.download.nvidia.com/assets/embedded/secure/jetson/agx_orin/Jetson_AGX_Orin_DevKit_Carrier_Board_Specification_SP-10900-001_v1.0.pdf?buxW4aV1stbg3PkFvvKEzVumg_ZXiCs4usr5pCpE4CkERA0NBpBb6MIouMDh2Wufxdk6qxK1bPArMuYjqqgwA2HRP_ALPR9-jLIcnveQazMslfod-JkidAo0EsZ73yNQ423k7L1wzaqlfayDS6Ou_GqR2yr3Bsdzvr-pRknhW4JXk2-MCJBwfoSyXAn5wV9FJUBhBwVvCTga0MAQqlH4BA9gIKVqgZ7TRfLGZsxp&t=eyJscyI6ImdzZW8iLCJsc2QiOiJodHRwczovL3d3dy5nb29nbGUuY29tLyJ9
+
 class Poll : public rclcpp::Node
 {
 public:
@@ -40,15 +43,15 @@ public:
         std::cout << "gpio_line: " << gpio_line << std::endl;
         std::cout << "gpio_edge: " << gpio_edge << std::endl;
 
-        chip.open(chip_name);
+        chip_.open(chip_name);
 
-        gpiod::line line = chip.get_line(gpio_line);
+        line_ = chip_.get_line(gpio_line);
         if (gpio_edge == "rising") {
-            line.request({this->get_name(), gpiod::line_request::EVENT_RISING_EDGE, 0});
+            line_.request({this->get_name(), gpiod::line_request::EVENT_RISING_EDGE, 0});
         } else if (gpio_edge == "falling") {
-            line.request({this->get_name(), gpiod::line_request::EVENT_FALLING_EDGE, 0});
+            line_.request({this->get_name(), gpiod::line_request::EVENT_FALLING_EDGE, 0});
         } else if (gpio_edge == "both") {
-            line.request({this->get_name(), gpiod::line_request::EVENT_BOTH_EDGES, 0});
+            line_.request({this->get_name(), gpiod::line_request::EVENT_BOTH_EDGES, 0});
         } else {
                 RCLCPP_ERROR_STREAM(this->get_logger(), "invalid edge type: " << gpio_edge);
         }
@@ -59,17 +62,17 @@ private:
     {
         
         auto message = linux_gpio::msg::StampedBool();
-        // message.header.stamp = this->now();
-        // message.data = line.get_value();
-        // RCLCPP_INFO(this->get_logger(), "Publishing: '%d'", message.data);
-        // publisher_->publish(message);
+        message.header.stamp = this->now();
+        message.data = line_.get_value();
+        RCLCPP_INFO(this->get_logger(), "Publishing: '%d'", message.data);
+        publisher_->publish(message);
 
     }
 
     rclcpp::TimerBase::SharedPtr timer_;
     rclcpp::Publisher<linux_gpio::msg::StampedBool>::SharedPtr publisher_;
-    gpiod::chip chip;
-    gpiod::line line;
+    gpiod::chip chip_;
+    gpiod::line line_;
 };
 
 int main(int argc, char * argv[])
