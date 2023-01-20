@@ -7,7 +7,7 @@ from trajectory_msgs.msg import MultiDOFJointTrajectoryPoint, MultiDOFJointTraje
 from geometry_msgs.msg import TransformStamped, Vector3, PoseStamped, PoseWithCovarianceStamped
 
 from rosgraph_msgs.msg import Clock
-from linux_gpio.msg import StampedBool
+from biped_bringup.msg import StampedBool
 from std_msgs.msg import Bool
 from tf2_ros import TransformBroadcaster, TransformException
 from tf2_ros.buffer import Buffer
@@ -55,7 +55,9 @@ class MujocoNode(Node):
         self.clock_pub = self.create_publisher(Clock, '/clock', 10)
 
         self.odometry_base_pub = self.create_publisher(Odometry, 'odometry', 10)
-        self.contact_pub = self.create_publisher(StampedBool, '/contact', 10)
+        self.contact_right_pub = self.create_publisher(StampedBool, '/contact_foot_right', 10)
+        self.contact_left_pub = self.create_publisher(StampedBool, '/contact_foot_left', 10)
+
         self.joint_states_pub = self.create_publisher(JointState, 'joint_states', 10)
         self.tf_broadcaster = TransformBroadcaster(self)
 
@@ -181,12 +183,16 @@ class MujocoNode(Node):
         self.tf_broadcaster.sendTransform(t)
 
         self.read_contact_states()
-        msg_contact = StampedBool()
-        msg_contact.header.stamp.sec = int(self.time)
-        msg_contact.header.stamp.nanosec = int((self.time - clock_msg.clock.sec) * 1e9)
-        msg_contact.data = list(self.contact_states.values())
-        msg_contact.names = list(self.contact_states.keys())
-        self.contact_pub.publish(msg_contact)
+        msg_contact_right = StampedBool()
+        msg_contact_left = StampedBool()
+        msg_contact_right.header.stamp.sec = int(self.time)
+        msg_contact_right.header.stamp.nanosec = int((self.time - clock_msg.clock.sec) * 1e9)
+        msg_contact_right.data = self.contact_states['FR_FOOT']
+        msg_contact_left.header.stamp.sec = int(self.time)
+        msg_contact_left.header.stamp.nanosec = int((self.time - clock_msg.clock.sec) * 1e9)
+        msg_contact_left.data = self.contact_states['FL_FOOT']
+        self.contact_right_pub.publish(msg_contact_right)
+        self.contact_left_pub.publish(msg_contact_left)
 
         msg_joint_states = JointState()
         msg_joint_states.header.stamp.sec = int(self.time)
