@@ -131,7 +131,7 @@ class MujocoNode(Node):
 
     def step(self):
         if not self.initialization_done:
-            self.model.eq_data[0][2] += 0.1 * self.dt
+            self.model.eq_data[0][2] += 0.5 * self.dt
 
         if self.contact_states['FR_FOOT'] or self.contact_states['FL_FOOT']:
             self.initialization_done = True
