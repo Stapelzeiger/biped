@@ -255,7 +255,7 @@
       link="FR_LOWER_LEG" />
     <axis
       xyz="0 1 0" />
-    <limit effort="1000" lower="-2.2" upper="2.2" velocity="1000"/>
+    <limit effort="1000" lower="0.01" upper="2.2" velocity="1000"/>
   </joint>
   <link
     name="FR_FOOT">
@@ -525,7 +525,7 @@
       link="FL_LOWER_LEG" />
     <axis
       xyz="0 1 0" />
-    <limit effort="1000" lower="-2.2" upper="2.2" velocity="1000"/>
+    <limit effort="1000" lower="0.01" upper="2.2" velocity="1000"/>
   </joint>
   <link
     name="FL_FOOT">

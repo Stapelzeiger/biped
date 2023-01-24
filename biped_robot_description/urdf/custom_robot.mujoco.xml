@@ -113,7 +113,7 @@
             <velocity gear="1" joint="FL_HFE" name="FL_HFE_VEL" kv="0.5" />
 
         <motor gear="1"  joint="FL_KFE" name="FL_KFE"/>
-            <velocity gear="1" joint="FL_KFE" name="FL_KFE_VEL" kv="0.5" />
+            <velocity gear="1" joint="FL_KFE" name="FL_KFE_VEL" kv="0.6 " />
 
         <motor gear="1"  joint="FL_ANKLE" name="FL_ANKLE"/>
             <velocity gear="1" joint="FL_ANKLE" name="FL_ANKLE_VEL" kv="0.00005" />
@@ -128,7 +128,7 @@
             <velocity gear="1" joint="FR_HFE" name="FR_HFE_VEL" kv="0.5" />
 
         <motor gear="1"  joint="FR_KFE" name="FR_KFE"/>
-            <velocity gear="1" joint="FR_KFE" name="FR_KFE_VEL" kv="0.5" />
+            <velocity gear="1" joint="FR_KFE" name="FR_KFE_VEL" kv="0.6 " />
 
         <motor gear="1"  joint="FR_ANKLE" name="FR_ANKLE"/>
             <velocity gear="1" joint="FR_ANKLE" name="FR_ANKLE_VEL" kv="0.00005" />
