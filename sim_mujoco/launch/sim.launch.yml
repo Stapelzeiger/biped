@@ -7,16 +7,16 @@ launch:
       - name: mujoco_xml_path
         value: "$(find-pkg-share biped_robot_description)/urdf/custom_robot.mujoco.xml"
       - name: visualize_mujoco
-        value: True
+        value: False
       - name: sim_time_sec
         value: $(var sim_time_sec)
       - name: visualization_rate
         value: $(var visualization_rate)
     remap:
-      - from: "contact_foot_right"
-        to: "poll_FR_FOOT/gpio"
-      - from: "contact_foot_left"
-        to: "poll_FL_FOOT/gpio"
+      - from: "/mujoco_sim/contact_foot_right"
+        to: "/poll_FR_FOOT/gpio"
+      - from: "/mujoco_sim/contact_foot_left"
+        to: "/poll_FL_FOOT/gpio"
     output: screen
     # print GDB backtrace:
     # launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args
