@@ -8,7 +8,7 @@ from geometry_msgs.msg import TransformStamped, Vector3, PoseStamped, PoseWithCo
 
 from rosgraph_msgs.msg import Clock
 from biped_bringup.msg import StampedBool
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, Float64, Empty
 from tf2_ros import TransformBroadcaster, TransformException
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
@@ -21,6 +21,7 @@ import sys
 import json
 from sim_mujoco.submodules.pid import pid as pid_ctrl
 
+from threading import Lock
 
 def setup_pid(control_rate, kp, ki, kd):
     pid = pid_ctrl()
@@ -48,6 +49,7 @@ class MujocoNode(Node):
         self.model = mj.MjModel.from_xml_path(mujoco_xml_path)
         mj.mj_printModel(self.model, 'robot_information.txt')
         self.data = mj.MjData(self.model)
+        self.lock = Lock()
 
         self.time = 0
         self.model.opt.timestep = self.sim_time_sec
@@ -55,23 +57,28 @@ class MujocoNode(Node):
         self.clock_pub = self.create_publisher(Clock, '/clock', 10)
 
         self.odometry_base_pub = self.create_publisher(Odometry, 'odometry', 10)
-        self.contact_right_pub = self.create_publisher(StampedBool, '/contact_foot_right', 10)
-        self.contact_left_pub = self.create_publisher(StampedBool, '/contact_foot_left', 10)
+        self.contact_right_pub = self.create_publisher(StampedBool, '~/contact_foot_right', 10)
+        self.contact_left_pub = self.create_publisher(StampedBool, '~/contact_foot_left', 10)
 
         self.joint_states_pub = self.create_publisher(JointState, 'joint_states', 10)
         self.tf_broadcaster = TransformBroadcaster(self)
 
         self.joint_traj_sub = self.create_subscription(JointTrajectory, 'joint_trajectory', self.joint_traj_cb, 10)
+        self.joint_traj_msg = None
         self.initial_pose_sub = self.create_subscription(PoseWithCovarianceStamped, 'initialpose', self.init_cb, 10)
+        self.reset_sub = self.create_subscription(Empty, '~/reset', self.reset_cb, 10)
 
-        self.timer = self.create_timer(self.dt, self.step)
+        self.paused = True
+        self.step_sim_sub = self.create_subscription(Float64, "~/step", self.step_cb, 1)
+        self.pause_sim_sub = self.create_subscription(Bool, "~/pause", self.pause_cb, 1)
+
+        self.timer = self.create_timer(self.dt, self.timer_cb)
 
         if self.visualize_mujoco == True:
             self.viewer = mujoco_viewer.MujocoViewer(self.model, self.data)
             self.viewer.cam.azimuth = 90
             self.viewer.cam.elevation = -25
             self.viewer.render()
-            self.viewer._paused = True
 
         self.name_joints = self.get_joint_names()
 
@@ -97,29 +104,31 @@ class MujocoNode(Node):
             self.q_pos_addr_joints[name] = self.model.jnt_qposadr[mj.mj_name2id(
                 self.model, mj.mjtObj.mjOBJ_JOINT, name)]
         
-        self.pid_pitch_foot = setup_pid(control_rate=1.0/self.dt, kp=0.002, ki=0.0, kd=0)
-
         self.counter = 0
 
         self.init([0.0, 0.0, 0.0])
     
-
+    def reset_cb(self, msg):
+        with self.lock:
+            self.init([0.0, 0.0, 0.0], q=[1.0, 0.0, 0.0, 0.0])
 
     def init_cb(self, msg):
-        p = msg.pose.pose.position
-        q = msg.pose.pose.orientation
-        self.init([p.x, p.y, p.z], q=[q.w, q.x, q.y, q.z])
+        with self.lock:
+            p = msg.pose.pose.position
+            q = msg.pose.pose.orientation
+            self.init([p.x, p.y, p.z], q=[q.w, q.x, q.y, q.z])
 
     def init(self, p, q=[1.0, 0.0, 0.0, 0.0]):
         self.model.eq_data[0][0] = -p[0]
         self.model.eq_data[0][1] = -p[1]
-        self.model.eq_data[0][2] = -1 # one meter above gnd
+        self.model.eq_data[0][2] = -1.5 # one meter above gnd
 
         self.data.qpos = [0.0] * self.model.nq
         self.data.qpos[3] = q[0]
         self.data.qpos[4] = q[1]
         self.data.qpos[5] = q[2]
         self.data.qpos[6] = q[3]
+
         self.data.qvel = [0.0]* self.model.nv
 
         self.data.qpos[0] = p[0]
@@ -129,20 +138,44 @@ class MujocoNode(Node):
         self.model.eq_active = 1
         self.initialization_done = False
 
+    def timer_cb(self):
+        with self.lock:
+            if not self.paused:
+                self.step()
+
+    def step_cb(self, msg):
+        with self.lock:
+            if not self.paused:
+                return
+
+            t = msg.data
+            while t > 0:
+                t -= self.dt
+                self.step()
+
+    def pause_cb(self, msg):
+        with self.lock:
+            self.paused = msg.data
+
     def step(self):
         if not self.initialization_done:
             self.model.eq_data[0][2] += 0.5 * self.dt
 
         if self.contact_states['FR_FOOT'] or self.contact_states['FL_FOOT']:
-            self.initialization_done = True
-            self.model.eq_active = 0 # let go of the robot
+            if not self.initialization_done:
+                self.initialization_done = True
+                self.data.qvel = [0.0]* self.model.nv
+                self.model.eq_active = 0 # let go of the robot
         
         if self.visualize_mujoco is True:
             vis_update_downsampling = int(round(1.0/self.visualization_rate/self.sim_time_sec/10))
             if self.counter % vis_update_downsampling == 0:
                 self.viewer.render()
 
+        self.run_joint_controllers()
         mj.mj_step(self.model, self.data)
+        self.time += self.dt
+        self.counter += 1
 
         clock_msg = Clock()
         clock_msg.clock.sec = int(self.time)
@@ -207,34 +240,25 @@ class MujocoNode(Node):
             msg_joint_states.velocity.append(value['actual_vel'])
         self.joint_states_pub.publish(msg_joint_states)
 
-        if self.contact_states['FR_FOOT'] == True:
-            self.keep_ankle_foot_horiz_with_gnd_controller('FL_ANKLE')
-        if self.contact_states['FL_FOOT'] == True:
-            self.keep_ankle_foot_horiz_with_gnd_controller('FR_ANKLE')
+        
+        self.ankle_foot_spring('FL_ANKLE')
+        self.ankle_foot_spring('FR_ANKLE')
 
-        self.time += self.dt
-        self.counter += 1
-
-
-    def stop_controller(self, actuator_name):
-        idx_act = mj.mj_name2id(
-            self.model, mj.mjtObj.mjOBJ_ACTUATOR, actuator_name)
-        self.data.ctrl[idx_act] = 0.0
-
-    def joint_traj_cb(self, msg):
-    
+    def run_joint_controllers(self):
+        if self.joint_traj_msg is None:
+            return
         for key, value in self.q_joints.items():
             id_joint_mj = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_JOINT, key)
             value['actual_pos'] = self.data.qpos[self.model.jnt_qposadr[id_joint_mj]]
             value['actual_vel'] = self.data.qvel[self.model.jnt_dofadr[id_joint_mj]]
-            id_joint_msg = msg.joint_names.index(key)
-            value['desired_pos'] = msg.points[0].positions[id_joint_msg]
-            if msg.points[0].velocities:
-                value['desired_vel'] = msg.points[0].velocities[id_joint_msg]
+            id_joint_msg = self.joint_traj_msg.joint_names.index(key)
+            value['desired_pos'] = self.joint_traj_msg.points[0].positions[id_joint_msg]
+            if self.joint_traj_msg.points[0].velocities:
+                value['desired_vel'] = self.joint_traj_msg.points[0].velocities[id_joint_msg]
 
         Kp = 2*15.0*np.ones(self.model.njnt - 1) # exclude root
-        Kp[1] *= 6
-        Kp[6] *= 6 
+        Kp[1] *= 4
+        Kp[6] *= 4
 
         i = 0
         for key, value in self.q_joints.items():
@@ -246,6 +270,14 @@ class MujocoNode(Node):
                 self.data.ctrl[self.q_actuator_addr[str(key) + "_VEL"]] = actuators_vel
             i = i + 1
 
+    # def stop_controller(self, actuator_name):
+    #     idx_act = mj.mj_name2id(
+    #         self.model, mj.mjtObj.mjOBJ_ACTUATOR, actuator_name)
+    #     self.data.ctrl[idx_act] = 0.0
+
+    def joint_traj_cb(self, msg):
+        with self.lock:
+            self.joint_traj_msg = msg
 
     def read_contact_states(self):
         self.contact_states['FR_FOOT'] = False
@@ -282,49 +314,22 @@ class MujocoNode(Node):
         return self.name_joints
 
 
-    def keep_ankle_foot_horiz_with_gnd_controller(self, swing_foot_joint_name):
+    def ankle_foot_spring(self, foot_joint):
         'ankle modelled as a spring damped system'
+        K = 0.0003
+        offset = -0.5
+        pitch_error_foot = self.data.qpos[self.q_pos_addr_joints[foot_joint]] - offset
+        pitch_torque_setpt = - K * pitch_error_foot
 
-        if swing_foot_joint_name == 'FL_ANKLE':
-            idx_body = mj.mj_name2id(
-                self.model, mj.mjtObj.mjOBJ_BODY, 'FL_FOOT')
-            idx_act_stance = mj.mj_name2id(
-                self.model, mj.mjtObj.mjOBJ_ACTUATOR, 'FR_ANKLE')
-            idx_act_vel_stance = mj.mj_name2id(
-                self.model, mj.mjtObj.mjOBJ_ACTUATOR, 'FR_ANKLE_VEL')
-
-        else:
-            idx_body = mj.mj_name2id(
-                self.model, mj.mjtObj.mjOBJ_BODY, 'FR_FOOT')
-            idx_act_stance = mj.mj_name2id(
-                self.model, mj.mjtObj.mjOBJ_ACTUATOR, 'FL_ANKLE')
-            idx_act_vel_stance = mj.mj_name2id(
-                self.model, mj.mjtObj.mjOBJ_ACTUATOR, 'FL_ANKLE_VEL')
-
-        foot_body_quat = self.data.xquat[idx_body]
-        r = R.from_quat([foot_body_quat[1], foot_body_quat[2],
-                        foot_body_quat[3], foot_body_quat[0]])  # convention x,y,z,w
-        pitch_foot_body = r.as_euler('ZYX', degrees=False)[1] # this is not really working well for angles that are > 90 deg
-
-        pitch_error_foot = pitch_foot_body - np.deg2rad(0.0)
-        pitch_torque_setpt = self.pid_pitch_foot.pid_process(pitch_error_foot)
-
-        if abs(np.rad2deg(pitch_foot_body)) > 45:
-            print('FOOOT OVERBOARD!!!')
-            pitch_torque_setpt = 0.0
-            self.data.qpos[self.q_pos_addr_joints[swing_foot_joint_name]] = 0.0
-
-        actuator_name = swing_foot_joint_name
         idx_act = mj.mj_name2id(
-            self.model, mj.mjtObj.mjOBJ_ACTUATOR, actuator_name)
-        vel_actuator_name = str(swing_foot_joint_name) + str('_VEL')
+            self.model, mj.mjtObj.mjOBJ_ACTUATOR, foot_joint)
+        vel_actuator_name = str(foot_joint) + str('_VEL')
         idx_vel_act = mj.mj_name2id(
             self.model, mj.mjtObj.mjOBJ_ACTUATOR, vel_actuator_name)
 
         self.data.ctrl[idx_act] = pitch_torque_setpt
         self.data.ctrl[idx_vel_act] = 0.0
-        self.data.ctrl[idx_act_stance] = 0.0
-        self.data.ctrl[idx_act_vel_stance] = 0.0
+
 
 
 
