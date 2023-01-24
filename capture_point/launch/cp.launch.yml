@@ -9,6 +9,9 @@ launch:
         value: '$(var use_sim_time)'
       - name: ctrl_time_sec
         value: '$(var ctrl_time_sec)'
+    remap:
+      - from: /capture_point/vel_cmd
+        to: /vel_cmd
     output: screen
     # print GDB backtrace:
     # launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args
