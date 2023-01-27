@@ -7,7 +7,7 @@ launch:
         - name: 'gpio_chip'
           value: 'gpiochip0'
         - name: 'gpio_line'
-          value: 23 # PDD.02
+          value: 24
         - name: 'gpio_edge'
           value: 'both'
         - name: 'contact_name'
@@ -24,7 +24,7 @@ launch:
         - name: 'gpio_chip'
           value: 'gpiochip0'
         - name: 'gpio_line'
-          value: 24 # PDD.01
+          value: 23
         - name: 'gpio_edge'
           value: 'both'
       output: screen
