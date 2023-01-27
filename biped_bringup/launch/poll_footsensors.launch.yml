@@ -5,9 +5,9 @@ launch:
       name: poll_FR_FOOT
       param:
         - name: 'gpio_chip'
-          value: 'gpiochip1'
+          value: 'gpiochip0'
         - name: 'gpio_line'
-          value: 22 # PDD.02
+          value: 23 # PDD.02
         - name: 'gpio_edge'
           value: 'both'
         - name: 'contact_name'
@@ -22,9 +22,9 @@ launch:
       name: poll_FL_FOOT
       param:
         - name: 'gpio_chip'
-          value: 'gpiochip1'
+          value: 'gpiochip0'
         - name: 'gpio_line'
-          value: 21 # PDD.01
+          value: 24 # PDD.01
         - name: 'gpio_edge'
           value: 'both'
       output: screen
