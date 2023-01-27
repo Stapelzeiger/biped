@@ -10,8 +10,6 @@ launch:
           value: 24
         - name: 'gpio_edge'
           value: 'both'
-        - name: 'contact_name'
-          value: 'FR_FOOT'
       output: screen
       # print GDB backtrace:
       # launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args
