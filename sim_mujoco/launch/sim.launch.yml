@@ -17,6 +17,8 @@ launch:
         to: "/poll_FR_FOOT/gpio"
       - from: "/mujoco_sim/contact_foot_left"
         to: "/poll_FL_FOOT/gpio"
+      - from: /mujoco_sim/imu
+        to: /imu
     output: screen
     # print GDB backtrace:
     # launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args
