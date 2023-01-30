@@ -1,7 +1,7 @@
 import rclpy
 from rclpy.node import Node
 
-from sensor_msgs.msg import JointState
+from sensor_msgs.msg import JointState, Imu
 from nav_msgs.msg import Odometry
 from trajectory_msgs.msg import MultiDOFJointTrajectoryPoint, MultiDOFJointTrajectory, JointTrajectory
 from geometry_msgs.msg import TransformStamped, Vector3, PoseStamped, PoseWithCovarianceStamped
@@ -54,25 +54,17 @@ class MujocoNode(Node):
         self.time = 0
         self.model.opt.timestep = self.sim_time_sec
         self.dt = self.model.opt.timestep
-        self.clock_pub = self.create_publisher(Clock, '/clock', 10)
 
-        self.odometry_base_pub = self.create_publisher(Odometry, 'odometry', 10)
-        self.contact_right_pub = self.create_publisher(StampedBool, '~/contact_foot_right', 10)
-        self.contact_left_pub = self.create_publisher(StampedBool, '~/contact_foot_left', 10)
-
-        self.joint_states_pub = self.create_publisher(JointState, 'joint_states', 10)
-        self.tf_broadcaster = TransformBroadcaster(self)
-
-        self.joint_traj_sub = self.create_subscription(JointTrajectory, 'joint_trajectory', self.joint_traj_cb, 10)
-        self.joint_traj_msg = None
-        self.initial_pose_sub = self.create_subscription(PoseWithCovarianceStamped, 'initialpose', self.init_cb, 10)
-        self.reset_sub = self.create_subscription(Empty, '~/reset', self.reset_cb, 10)
-
-        self.paused = True
-        self.step_sim_sub = self.create_subscription(Float64, "~/step", self.step_cb, 1)
-        self.pause_sim_sub = self.create_subscription(Bool, "~/pause", self.pause_cb, 1)
-
-        self.timer = self.create_timer(self.dt, self.timer_cb)
+        self.accel_noise_density = 0.14 * 9.81/1000 # [m/s2 * sqrt(s)]
+        self.accel_bias_random_walk = 0.0004 # [m/s2 / sqrt(s)]
+        self.gyro_noise_density = 0.0035 / 180 * np.pi # [rad/s * sqrt(s)]
+        self.gyro_bias_random_walk = 8.0e-06 # [rad/s / sqrt(s)]
+        self.accel_noise_std = self.accel_noise_density / np.sqrt(self.dt)
+        self.accel_bias_noise_std = self.accel_bias_random_walk * np.sqrt(self.dt)
+        self.gyro_noise_std = self.gyro_noise_density / np.sqrt(self.dt)
+        self.gyro_bias_noise_std = self.gyro_bias_random_walk * np.sqrt(self.dt)
+        self.accel_bias = np.random.normal(0, self.accel_bias_random_walk * np.sqrt(100), 3)
+        self.gyro_bias = np.random.normal(0, self.gyro_bias_random_walk * np.sqrt(100), 3)
 
         if self.visualize_mujoco == True:
             self.viewer = mujoco_viewer.MujocoViewer(self.model, self.data)
@@ -107,6 +99,27 @@ class MujocoNode(Node):
         self.counter = 0
 
         self.init([0.0, 0.0, 0.0])
+
+        self.clock_pub = self.create_publisher(Clock, '/clock', 10)
+
+        self.odometry_base_pub = self.create_publisher(Odometry, '~/odometry', 10)
+        self.contact_right_pub = self.create_publisher(StampedBool, '~/contact_foot_right', 10)
+        self.contact_left_pub = self.create_publisher(StampedBool, '~/contact_foot_left', 10)
+
+        self.joint_states_pub = self.create_publisher(JointState, 'joint_states', 10)
+        self.imu_pub = self.create_publisher(Imu, '~/imu', 10)
+        self.tf_broadcaster = TransformBroadcaster(self)
+
+        self.joint_traj_sub = self.create_subscription(JointTrajectory, 'joint_trajectory', self.joint_traj_cb, 10)
+        self.joint_traj_msg = None
+        self.initial_pose_sub = self.create_subscription(PoseWithCovarianceStamped, 'initialpose', self.init_cb, 10)
+        self.reset_sub = self.create_subscription(Empty, '~/reset', self.reset_cb, 10)
+
+        self.paused = True
+        self.step_sim_sub = self.create_subscription(Float64, "~/step", self.step_cb, 1)
+        self.pause_sim_sub = self.create_subscription(Bool, "~/pause", self.pause_cb, 1)
+
+        self.timer = self.create_timer(self.dt, self.timer_cb)
     
     def reset_cb(self, msg):
         with self.lock:
@@ -243,6 +256,32 @@ class MujocoNode(Node):
         
         self.ankle_foot_spring('FL_ANKLE')
         self.ankle_foot_spring('FR_ANKLE')
+
+
+        gyro_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_SENSOR, "gyro")
+        accel_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_SENSOR, "accelerometer")
+        accel = self.data.sensordata[self.model.sensor_adr[accel_id]:self.model.sensor_adr[accel_id] + 3]
+        self.accel_bias += np.random.normal(0, self.accel_bias_noise_std, 3)
+        # accel += self.accel_bias + np.random.normal(0, self.accel_noise_std, 3)
+        gyro = self.data.sensordata[self.model.sensor_adr[gyro_id]:self.model.sensor_adr[gyro_id] + 3]
+        self.gyro_bias += np.random.normal(0, self.gyro_bias_noise_std, 3)
+        # gyro += self.gyro_bias + np.random.normal(0, self.gyro_noise_std, 3)
+        if not self.initialization_done:
+            accel = [0.0, 0.0, -9.81]
+            gyro = np.zeros(3)
+        msg_imu = Imu()
+        msg_imu.header.stamp.sec = int(self.time)
+        msg_imu.header.stamp.nanosec = int((self.time - clock_msg.clock.sec) * 1e9)
+        msg_imu.header.frame_id = 'imu'
+        msg_imu.linear_acceleration.x = accel[0]
+        msg_imu.linear_acceleration.y = accel[1]
+        msg_imu.linear_acceleration.z = accel[2]
+        msg_imu.angular_velocity.x = gyro[0]
+        msg_imu.angular_velocity.y = gyro[1]
+        msg_imu.angular_velocity.z = gyro[2]
+        msg_imu.orientation_covariance[0] = -1 # no orientation
+        self.imu_pub.publish(msg_imu)
+
 
     def run_joint_controllers(self):
         if self.joint_traj_msg is None:
