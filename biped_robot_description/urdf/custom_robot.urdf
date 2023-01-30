@@ -1,6 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <robot
   name="biped">
+
+  <!-- Imu -->
+  <link name="imu">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+      <box size="0.03 0.03 0.01"/>
+      </geometry>
+      <material name="red"/>
+    </visual>
+
+    <inertial>
+      <mass value="0.01" />
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <inertia ixx="1e-5" ixy="0" ixz="0" iyy="1e-5" iyz="0" izz="1e-5" />
+    </inertial>
+  </link>
+
+  <joint name="imu_joint" type="fixed">
+      <origin xyz="0 0 0" rpy="-3.141592 0 0"/>
+      <parent link="base_link"/>
+      <child link="imu"/>
+  </joint>
+    
   <link
     name="base_link">
     <inertial>
@@ -255,7 +279,8 @@
       link="FR_LOWER_LEG" />
     <axis
       xyz="0 1 0" />
-    <limit effort="1000" lower="0.01" upper="2.2" velocity="1000"/>
+    <limit effort="1000" lower="-2.2" upper="-0.1" velocity="1000"/>
+    <!-- <limit effort="1000" lower="0.1" upper="2.2" velocity="1000"/> -->
   </joint>
   <link
     name="FR_FOOT">
@@ -525,7 +550,8 @@
       link="FL_LOWER_LEG" />
     <axis
       xyz="0 1 0" />
-    <limit effort="1000" lower="0.01" upper="2.2" velocity="1000"/>
+    <limit effort="1000" lower="-2.2" upper="-0.1" velocity="1000"/>
+    <!-- <limit effort="1000" lower="0.1" upper="2.2" velocity="1000"/> -->
   </joint>
   <link
     name="FL_FOOT">
