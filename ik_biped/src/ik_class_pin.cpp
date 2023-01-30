@@ -11,6 +11,12 @@
 #include "pinocchio/algorithm/rnea.hpp"
 #pragma GCC diagnostic pop
 
+
+const double eps = 1e-3;
+const int IT_MAX = 500;
+const double DT = 0.1;
+const double damp = 1e-8;
+
 IKRobot::IKRobot()
 {
 }
@@ -20,7 +26,7 @@ void IKRobot::build_model(const std::string urdf_xml_string)
     // TODO clear previous model
     pinocchio::urdf::buildModelFromXML(urdf_xml_string, pinocchio::JointModelFreeFlyer(), model_);
     q_ = pinocchio::neutral(model_);
-    q_ += Eigen::VectorXd::Random(model_.nq) * 0.01;
+    // q_ += Eigen::VectorXd::Random(model_.nq) * 0.01;
 
     std::cout << "model nq:" << model_.nq << std::endl;
     std::cout << "model nv:" << model_.nv << std::endl;
@@ -51,7 +57,7 @@ bool IKRobot::has_model() const
 }
 
 
-std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyState>& body_states)
+std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyState>& body_states, std::vector<Eigen::Vector3d> &body_positions_solution)
 {
     auto base_link = std::find_if(body_states.begin(), body_states.end(), [](const BodyState& bs) {
         return bs.name == "base_link";
@@ -99,7 +105,8 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
     Eigen::VectorXd q = q_;
     // std::cout << "initial q:" << q.transpose() << std::endl;
     pinocchio::Data data(model_);
-    for (int i = 0; i < IT_MAX; i++) {
+    unsigned int i = 0;
+    for (i = 0; i < IT_MAX; i++) {
         pinocchio::computeJointJacobians(model_, data, q); // also computes forward kinematics
         pinocchio::updateFramePlacements(model_, data);
         Eigen::VectorXd v = Eigen::VectorXd::Zero(model_.nv);
@@ -155,6 +162,7 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
         // std::cout << v.norm() << std::endl;
         q = pinocchio::integrate(model_, q, v * DT);
     }
+    // std::cout << "iterations : " << i << "  out of " << IT_MAX << std::endl;
 
     std::vector<JointState> joint_states;
     for (int joint_idx = 0; joint_idx < model_.njoints; joint_idx++) {
@@ -175,5 +183,12 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
         }
     }
     q_ = q;
+    pinocchio::forwardKinematics(model_, data, q_);
+    for (const auto &body: body_states) {
+        auto frame_id = model_.getFrameId(body.name);
+        const auto &cur_to_world = data.oMf[frame_id];
+        body_positions_solution.push_back(cur_to_world.translation());
+    }
+
     return joint_states;
 }
