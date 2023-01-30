@@ -13,10 +13,6 @@
 
 
 using namespace std::chrono;
-const double eps = 1e-3;
-const int IT_MAX = 500;
-const double DT = 0.1;
-const double damp = 1e-5;
 
 class IKRobot
 {
@@ -57,7 +53,7 @@ public:
     IKRobot();
     void build_model(const std::string urdf_filename);
     bool has_model() const;
-    std::vector<JointState> solve(const std::vector<BodyState>& body_states);
+    std::vector<JointState> solve(const std::vector<BodyState>& body_states, std::vector<Eigen::Vector3d> &body_positions_solution);
 private:
 
     pinocchio::Model model_;
