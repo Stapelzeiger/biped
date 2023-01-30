@@ -12,6 +12,8 @@ launch:
     remap:
       - from: /capture_point/vel_cmd
         to: /vel_cmd
+      # - from: /odometry
+      #   to: /mujoco_sim/odometry
     output: screen
     # print GDB backtrace:
     # launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args
