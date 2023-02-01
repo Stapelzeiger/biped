@@ -1,8 +1,8 @@
 /ik_interface:
   ros__parameters:
-    FL_ANKLE:
+    L_ANKLE:
       joint_type: 'POS_AXIS'
       axis: [1.0, 0.0, 0.0]
-    FR_ANKLE:
+    R_ANKLE:
       joint_type: 'POS_AXIS'
       axis: [1.0, 0.0, 0.0]
