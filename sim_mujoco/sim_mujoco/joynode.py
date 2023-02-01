@@ -49,7 +49,7 @@ class JoyNode(Node):
         transforms.rotation.z = np.sin(yaw_angle_foot/2)
         transforms.rotation.w = np.cos(yaw_angle_foot/2)
         transforms.translation.y = -0.1 + input_joystick[1]
-        msg_foot.joint_names.append("FR_ANKLE")
+        msg_foot.joint_names.append("R_ANKLE")
         foot_pos_point.transforms.append(transforms)
 
         transforms = Transform()
@@ -60,7 +60,7 @@ class JoyNode(Node):
         transforms.rotation.z = np.sin(yaw_angle_foot/2)
         transforms.rotation.w = np.cos(yaw_angle_foot/2)
         transforms.translation.y = 0.1 + input_joystick[1]
-        msg_foot.joint_names.append("FL_ANKLE")
+        msg_foot.joint_names.append("L_ANKLE")
         foot_pos_point.transforms.append(transforms)
 
         msg_foot.points = [foot_pos_point]
