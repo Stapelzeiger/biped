@@ -25,7 +25,7 @@ class JoyNode(Node):
             return
         ctrl = JointTrajectory()
         ctrl.header.stamp = self.get_clock().now().to_msg()
-        ctrl.joint_names = ['FR_YAW']
+        ctrl.joint_names = ['R_YAW']
         ctrl.points = [JointTrajectoryPoint()]
         ctrl.points[0].positions.append(joy.axes[5]*3.15*0.5*0.2)
         ctrl.points[0].velocities.append(0)
