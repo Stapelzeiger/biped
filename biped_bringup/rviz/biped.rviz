@@ -92,52 +92,52 @@ Visualization Manager:
         Expand Joint Details: false
         Expand Link Details: false
         Expand Tree: false
-        FL_FOOT:
+        L_FOOT:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        FL_HIP:
+        L_HIP:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        FL_LOWER_LEG:
+        L_LOWER_LEG:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        FL_SHOULDER:
+        L_SHOULDER:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        FL_UPPER_LEG:
+        L_UPPER_LEG:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        FR_FOOT:
+        R_FOOT:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        FR_HIP:
+        R_HIP:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        FR_LOWER_LEG:
+        R_LOWER_LEG:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        FR_SHOULDER:
+        R_SHOULDER:
           Alpha: 1
           Show Axes: false
           Show Trail: false
           Value: true
-        FR_UPPER_LEG:
+        R_UPPER_LEG:
           Alpha: 1
           Show Axes: false
           Show Trail: false
