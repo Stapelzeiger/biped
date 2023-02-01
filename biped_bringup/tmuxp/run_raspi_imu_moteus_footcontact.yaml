@@ -1,0 +1,8 @@
+session_name: biped_raspi
+windows:
+- layout: tiled
+  shell_command_before:
+  - source $ROS_WS/install/local_setup.bash
+  panes:
+  - ros2 launch vectornav vectornav.launch.py
+  - ros2 launch biped_bringup poll_footsensors.launch.yml
