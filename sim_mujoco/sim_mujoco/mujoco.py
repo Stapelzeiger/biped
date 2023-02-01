@@ -43,8 +43,8 @@ class MujocoNode(Node):
         self.visualization_rate = self.get_parameter("visualization_rate").get_parameter_value().double_value
         self.initialization_done = False
         self.goal_pos = [0.0, 0.0]
-        self.contact_states = {'FR_FOOT': False,
-                               'FL_FOOT': False}
+        self.contact_states = {'R_FOOT': False,
+                               'L_FOOT': False}
 
         self.model = mj.MjModel.from_xml_path(mujoco_xml_path)
         mj.mj_printModel(self.model, 'robot_information.txt')
@@ -170,11 +170,14 @@ class MujocoNode(Node):
         with self.lock:
             self.paused = msg.data
 
+    def P_gain_safety_scaling_cb(self, msg):
+        self.P_gain_safety_scaling = msg.data
+
     def step(self):
         if not self.initialization_done:
             self.model.eq_data[0][2] += 0.5 * self.dt
 
-        if self.contact_states['FR_FOOT'] or self.contact_states['FL_FOOT']:
+        if self.contact_states['R_FOOT'] or self.contact_states['L_FOOT']:
             if not self.initialization_done:
                 self.initialization_done = True
                 self.data.qvel = [0.0]* self.model.nv
@@ -233,10 +236,10 @@ class MujocoNode(Node):
         msg_contact_left = StampedBool()
         msg_contact_right.header.stamp.sec = int(self.time)
         msg_contact_right.header.stamp.nanosec = int((self.time - clock_msg.clock.sec) * 1e9)
-        msg_contact_right.data = self.contact_states['FR_FOOT']
+        msg_contact_right.data = self.contact_states['R_FOOT']
         msg_contact_left.header.stamp.sec = int(self.time)
         msg_contact_left.header.stamp.nanosec = int((self.time - clock_msg.clock.sec) * 1e9)
-        msg_contact_left.data = self.contact_states['FL_FOOT']
+        msg_contact_left.data = self.contact_states['L_FOOT']
         self.contact_right_pub.publish(msg_contact_right)
         self.contact_left_pub.publish(msg_contact_left)
 
@@ -254,8 +257,8 @@ class MujocoNode(Node):
         self.joint_states_pub.publish(msg_joint_states)
 
         
-        self.ankle_foot_spring('FL_ANKLE')
-        self.ankle_foot_spring('FR_ANKLE')
+        self.ankle_foot_spring('L_ANKLE')
+        self.ankle_foot_spring('R_ANKLE')
 
 
         gyro_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_SENSOR, "gyro")
@@ -319,8 +322,8 @@ class MujocoNode(Node):
             self.joint_traj_msg = msg
 
     def read_contact_states(self):
-        self.contact_states['FR_FOOT'] = False
-        self.contact_states['FL_FOOT'] = False
+        self.contact_states['R_FOOT'] = False
+        self.contact_states['L_FOOT'] = False
 
         geom1_list = []
         geom2_list = []
@@ -335,15 +338,15 @@ class MujocoNode(Node):
             geom2_list.append(name_geom2)
 
         if self.data.ncon != 0:
-            if 'FL_FOOT' in geom2_list:
-                first_entry_idx = geom2_list.index('FL_FOOT')
+            if 'L_FOOT' in geom2_list:
+                first_entry_idx = geom2_list.index('L_FOOT')
                 if geom1_list[first_entry_idx] == 'floor':
-                    self.contact_states['FL_FOOT'] = True
+                    self.contact_states['L_FOOT'] = True
 
-            if 'FR_FOOT' in geom2_list:
-                first_entry_idx = geom2_list.index('FR_FOOT')
+            if 'R_FOOT' in geom2_list:
+                first_entry_idx = geom2_list.index('R_FOOT')
                 if geom1_list[first_entry_idx] == 'floor':
-                    self.contact_states['FR_FOOT'] = True
+                    self.contact_states['R_FOOT'] = True
 
     def get_joint_names(self):
         self.name_joints = []
