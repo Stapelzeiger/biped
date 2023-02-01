@@ -2,7 +2,7 @@ launch:
   - node:
       pkg: linux_gpio
       exec: poll
-      name: poll_FR_FOOT
+      name: poll_R_FOOT
       param:
         - name: 'gpio_chip'
           value: 'gpiochip0'
@@ -17,7 +17,7 @@ launch:
   - node:
       pkg: linux_gpio
       exec: poll
-      name: poll_FL_FOOT
+      name: poll_L_FOOT
       param:
         - name: 'gpio_chip'
           value: 'gpiochip0'
