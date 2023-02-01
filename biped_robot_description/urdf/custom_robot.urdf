@@ -66,7 +66,7 @@
     </collision>
   </link>
   <link
-    name="FR_HIP">
+    name="R_HIP">
     <inertial>
       <origin
         xyz="-0.04439 -4.3944E-05 -0.063969"
@@ -87,7 +87,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes/FR_HIP.STL" />
+          filename="package://biped_robot_description/meshes/R_HIP.STL" />
       </geometry>
       <material
         name="">
@@ -101,12 +101,12 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes/FR_HIP.STL" />
+          filename="package://biped_robot_description/meshes/R_HIP.STL" />
       </geometry>
     </collision>
   </link>
   <joint
-    name="FR_YAW"
+    name="R_YAW"
     type="revolute">
     <origin
       xyz="0 -0.0700000000000001 -0.0157999999999999"
@@ -114,13 +114,13 @@
     <parent
       link="base_link" />
     <child
-      link="FR_HIP" />
+      link="R_HIP" />
         <limit effort="1000" lower="-0.3" upper="0.3" velocity="1000"/>
     <axis
       xyz="0 0 1" />
   </joint>
   <link
-    name="FR_SHOULDER">
+    name="R_SHOULDER">
     <inertial>
       <origin
         xyz="0.0084801 0.022635 -0.00077539"
@@ -141,7 +141,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes/FR_SHOULDER.STL" />
+          filename="package://biped_robot_description/meshes/R_SHOULDER.STL" />
       </geometry>
       <material
         name="">
@@ -155,26 +155,26 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes/FR_SHOULDER.STL" />
+          filename="package://biped_robot_description/meshes/R_SHOULDER.STL" />
       </geometry>
     </collision>
   </link>
   <joint
-    name="FR_HAA"
+    name="R_HAA"
     type="revolute">
     <origin
       xyz="0 0 -0.073"
       rpy="0 0 0" />
     <parent
-      link="FR_HIP" />
+      link="R_HIP" />
     <child
-      link="FR_SHOULDER" />
+      link="R_SHOULDER" />
     <axis
       xyz="1 0 0" />
     <limit effort="1000" lower="-0.25" upper="0.25" velocity="1000"/>
   </joint>
   <link
-    name="FR_UPPER_LEG">
+    name="R_UPPER_LEG">
     <inertial>
       <origin
         xyz="0.00999917539850848 -0.0491846654467433 -0.0389251527043696"
@@ -195,7 +195,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes/FR_UPPER_LEG.STL" />
+          filename="package://biped_robot_description/meshes/R_UPPER_LEG.STL" />
       </geometry>
       <material
         name="">
@@ -209,26 +209,26 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes/FR_UPPER_LEG.STL" />
+          filename="package://biped_robot_description/meshes/R_UPPER_LEG.STL" />
       </geometry>
     </collision>
   </link>
   <joint
-    name="FR_HFE"
+    name="R_HFE"
     type="revolute">
     <origin
       xyz="0 0 0"
       rpy="0 0 0" />
     <parent
-      link="FR_SHOULDER" />
+      link="R_SHOULDER" />
     <child
-      link="FR_UPPER_LEG" />
+      link="R_UPPER_LEG" />
     <axis
       xyz="0 1 0" />
       <limit effort="1000" lower="-1.5" upper="1.5" velocity="1000"/>
   </joint>
   <link
-    name="FR_LOWER_LEG">
+    name="R_LOWER_LEG">
     <inertial>
       <origin
         xyz="8.85333552616378E-06 0.0171411389819433 -0.111259699580943"
@@ -249,7 +249,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes/FR_LOWER_LEG.STL" />
+          filename="package://biped_robot_description/meshes/R_LOWER_LEG.STL" />
       </geometry>
       <material
         name="">
@@ -263,27 +263,27 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes/FR_LOWER_LEG.STL" />
+          filename="package://biped_robot_description/meshes/R_LOWER_LEG.STL" />
       </geometry>
     </collision>
   </link>
   <joint
-    name="FR_KFE"
+    name="R_KFE"
     type="revolute">
     <origin
       xyz="0.01 -0.057399 -0.23429"
       rpy="0 0 0" />
     <parent
-      link="FR_UPPER_LEG" />
+      link="R_UPPER_LEG" />
     <child
-      link="FR_LOWER_LEG" />
+      link="R_LOWER_LEG" />
     <axis
       xyz="0 1 0" />
     <limit effort="1000" lower="-2.2" upper="-0.1" velocity="1000"/>
     <!-- <limit effort="1000" lower="0.1" upper="2.2" velocity="1000"/> -->
   </joint>
   <link
-    name="FR_FOOT">
+    name="R_FOOT">
     <inertial>
       <origin
         xyz="-1.50204329982598E-07 -6.55552252759595E-09 -0.0124757843132849"
@@ -304,7 +304,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes/FR_FOOT.STL" />
+          filename="package://biped_robot_description/meshes/R_FOOT.STL" />
       </geometry>
       <material
         name="">
@@ -318,26 +318,26 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes/FR_FOOT.STL" />
+          filename="package://biped_robot_description/meshes/R_FOOT.STL" />
       </geometry>
     </collision>
   </link>
   <joint
-    name="FR_ANKLE"
+    name="R_ANKLE"
     type="revolute">
     <origin
       xyz="0 0.0168 -0.30826"
       rpy="0 0 0" />
     <parent
-      link="FR_LOWER_LEG" />
+      link="R_LOWER_LEG" />
     <child
-      link="FR_FOOT" />
+      link="R_FOOT" />
     <axis
       xyz="0 1 0" />
     <limit effort="1000" lower="-1.6" upper="1.6" velocity="1000"/>
   </joint>
   <link
-    name="FL_HIP">
+    name="L_HIP">
     <inertial>
       <origin
         xyz="0 0 0"
@@ -358,7 +358,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes/FL_HIP.STL" />
+          filename="package://biped_robot_description/meshes/L_HIP.STL" />
       </geometry>
       <material
         name="">
@@ -372,12 +372,12 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes/FL_HIP.STL" />
+          filename="package://biped_robot_description/meshes/L_HIP.STL" />
       </geometry>
     </collision>
   </link>
   <joint
-    name="FL_YAW"
+    name="L_YAW"
     type="revolute">
     <origin
       xyz="0 0.07 -0.0158"
@@ -385,13 +385,13 @@
     <parent
       link="base_link" />
     <child
-      link="FL_HIP" />
+      link="L_HIP" />
     <axis
       xyz="0 0 1" />
     <limit effort="1000" lower="-0.3" upper="0.3" velocity="1000"/>
   </joint>
   <link
-    name="FL_SHOULDER">
+    name="L_SHOULDER">
     <inertial>
       <origin
         xyz="0.0104369980559036 -0.0218020195475164 0.000775390834242926"
@@ -412,7 +412,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes/FL_SHOULDER.STL" />
+          filename="package://biped_robot_description/meshes/L_SHOULDER.STL" />
       </geometry>
       <material
         name="">
@@ -426,26 +426,26 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes/FL_SHOULDER.STL" />
+          filename="package://biped_robot_description/meshes/L_SHOULDER.STL" />
       </geometry>
     </collision>
   </link>
   <joint
-    name="FL_HAA"
+    name="L_HAA"
     type="revolute">
     <origin
       xyz="0 0 -0.073"
       rpy="0 0 0" />
     <parent
-      link="FL_HIP" />
+      link="L_HIP" />
     <child
-      link="FL_SHOULDER" />
+      link="L_SHOULDER" />
     <axis
       xyz="1 0 0" />
     <limit effort="1000" lower="-0.25" upper="0.25" velocity="1000"/>
   </joint>
   <link
-    name="FL_UPPER_LEG">
+    name="L_UPPER_LEG">
     <inertial>
       <origin
         xyz="0.010000111871374 0.0493505287698992 -0.0385952598840397"
@@ -466,7 +466,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes/FL_UPPER_LEG.STL" />
+          filename="package://biped_robot_description/meshes/L_UPPER_LEG.STL" />
       </geometry>
       <material
         name="">
@@ -480,26 +480,26 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes/FL_UPPER_LEG.STL" />
+          filename="package://biped_robot_description/meshes/L_UPPER_LEG.STL" />
       </geometry>
     </collision>
   </link>
   <joint
-    name="FL_HFE"
+    name="L_HFE"
     type="revolute">
     <origin
       xyz="0 0 0"
       rpy="0 0 0" />
     <parent
-      link="FL_SHOULDER" />
+      link="L_SHOULDER" />
     <child
-      link="FL_UPPER_LEG" />
+      link="L_UPPER_LEG" />
     <axis
       xyz="0 1 0" />
     <limit effort="1000" lower="-1.5" upper="1.5" velocity="1000"/>
   </joint>
   <link
-    name="FL_LOWER_LEG">
+    name="L_LOWER_LEG">
     <inertial>
       <origin
         xyz="-8.8533379014686E-06 -0.0171411389745038 -0.111259699612872"
@@ -520,7 +520,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes/FL_LOWER_LEG.STL" />
+          filename="package://biped_robot_description/meshes/L_LOWER_LEG.STL" />
       </geometry>
       <material
         name="">
@@ -534,27 +534,27 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes/FL_LOWER_LEG.STL" />
+          filename="package://biped_robot_description/meshes/L_LOWER_LEG.STL" />
       </geometry>
     </collision>
   </link>
   <joint
-    name="FL_KFE"
+    name="L_KFE"
     type="revolute">
     <origin
       xyz="0.0099993 0.0584 -0.23393"
       rpy="0 0 0" />
     <parent
-      link="FL_UPPER_LEG" />
+      link="L_UPPER_LEG" />
     <child
-      link="FL_LOWER_LEG" />
+      link="L_LOWER_LEG" />
     <axis
       xyz="0 1 0" />
     <limit effort="1000" lower="-2.2" upper="-0.1" velocity="1000"/>
     <!-- <limit effort="1000" lower="0.1" upper="2.2" velocity="1000"/> -->
   </joint>
   <link
-    name="FL_FOOT">
+    name="L_FOOT">
     <inertial>
       <origin
         xyz="1.50204329408404E-07 6.55552259698489E-09 -0.0124757843132849"
@@ -575,7 +575,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes/FL_FOOT.STL" />
+          filename="package://biped_robot_description/meshes/L_FOOT.STL" />
       </geometry>
       <material
         name="">
@@ -589,20 +589,20 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes/FL_FOOT.STL" />
+          filename="package://biped_robot_description/meshes/L_FOOT.STL" />
       </geometry>
     </collision>
   </link>
   <joint
-    name="FL_ANKLE"
+    name="L_ANKLE"
     type="revolute">
     <origin
       xyz="0 -0.0168 -0.30826"
       rpy="0 0 0" />
     <parent
-      link="FL_LOWER_LEG" />
+      link="L_LOWER_LEG" />
     <child
-      link="FL_FOOT" />
+      link="L_FOOT" />
     <axis
       xyz="0 1 0" />
     <limit effort="1000" lower="-1.6" upper="1.6" velocity="1000"/>

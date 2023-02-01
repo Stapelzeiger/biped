@@ -5,16 +5,16 @@
     <default/>
     <asset>
         <mesh name="base_link" file="../meshes/base_link.STL"/>
-        <mesh name="FR_HIP" file="../meshes/FR_HIP.STL"/>
-        <mesh name="FR_SHOULDER" file="../meshes/FR_SHOULDER.STL"/>
-        <mesh name="FR_UPPER_LEG" file="../meshes/FR_UPPER_LEG.STL"/>
-        <mesh name="FR_LOWER_LEG" file="../meshes/FR_LOWER_LEG.STL"/>
-        <mesh name="FR_FOOT" file="../meshes/FR_FOOT.STL"/>
-        <mesh name="FL_HIP" file="../meshes/FL_HIP.STL"/>
-        <mesh name="FL_SHOULDER" file="../meshes/FL_SHOULDER.STL"/>
-        <mesh name="FL_UPPER_LEG" file="../meshes/FL_UPPER_LEG.STL"/>
-        <mesh name="FL_LOWER_LEG" file="../meshes/FL_LOWER_LEG.STL"/>
-        <mesh name="FL_FOOT" file="../meshes/FL_FOOT.STL"/>
+        <mesh name="R_HIP" file="../meshes/R_HIP.STL"/>
+        <mesh name="R_SHOULDER" file="../meshes/R_SHOULDER.STL"/>
+        <mesh name="R_UPPER_LEG" file="../meshes/R_UPPER_LEG.STL"/>
+        <mesh name="R_LOWER_LEG" file="../meshes/R_LOWER_LEG.STL"/>
+        <mesh name="R_FOOT" file="../meshes/R_FOOT.STL"/>
+        <mesh name="L_HIP" file="../meshes/L_HIP.STL"/>
+        <mesh name="L_SHOULDER" file="../meshes/L_SHOULDER.STL"/>
+        <mesh name="L_UPPER_LEG" file="../meshes/L_UPPER_LEG.STL"/>
+        <mesh name="L_LOWER_LEG" file="../meshes/L_LOWER_LEG.STL"/>
+        <mesh name="L_FOOT" file="../meshes/L_FOOT.STL"/>
 
          <texture type="skybox" builtin="gradient" width="128" height="128" rgb1=".4 .6 .8" rgb2="0 0 0"/>
         
@@ -50,26 +50,26 @@
             <joint armature="0" damping="0" limited="false" name="root" pos="0 0 0" stiffness="0" type="free"/>
             <site name="imu_location" pos="0 0 0" euler="-180 0 0" size="0.01" type="sphere" rgba="1 0 0 1"/>
 
-            <body name="FL_HIP" pos="0 0.07 -0.0158">
+            <body name="L_HIP" pos="0 0.07 -0.0158">
                 <inertial pos="0 0 0" quat="0.707107 0.707107 0 0" mass="0.4" diaginertia="0.001 0.001 1e-06"/>
-                <joint name="FL_YAW" pos="0 0 0" axis="0 0 1" limited="true" range="-45 45" />
-                <geom name="FL_HIP" type="mesh" contype="2" rgba="1 1 1 1" mesh="FL_HIP"/>
-                <body name="FL_SHOULDER" pos="0 0 -0.073">
+                <joint name="L_YAW" pos="0 0 0" axis="0 0 1" limited="true" range="-45 45" />
+                <geom name="L_HIP" type="mesh" contype="2" rgba="1 1 1 1" mesh="L_HIP"/>
+                <body name="L_SHOULDER" pos="0 0 -0.073">
                     <inertial pos="0.010437 -0.021802 0.000775391" quat="0.743978 0.0107134 -0.0142464 0.667966" mass="0.307022" diaginertia="0.0003197 0.00020666 0.000197559"/>
-                    <joint name="FL_HAA" pos="0 0 0" axis="1 0 0" limited="true" range="-45 45" />
-                    <geom name="FL_SHOULDER" type="mesh" contype="2" rgba="1 0 0 1" mesh="FL_SHOULDER"/>
-                    <body name="FL_UPPER_LEG" pos="0 0 0">
+                    <joint name="L_HAA" pos="0 0 0" axis="1 0 0" limited="true" range="-45 45" />
+                    <geom name="L_SHOULDER" type="mesh" contype="2" rgba="1 0 0 1" mesh="L_SHOULDER"/>
+                    <body name="L_UPPER_LEG" pos="0 0 0">
                         <inertial pos="0.0100001 0.0493505 -0.0385953" quat="0.7071 0.00358703 -0.00362585 0.707095" mass="0.459366" diaginertia="0.00166773 0.00143336 0.000320047"/>
-                        <joint name="FL_HFE" pos="0 0 0" axis="0 1 0" limited="true" range="-90 90" />
-                        <geom name="FL_UPPER_LEG" type="mesh" contype="2"  rgba="1 0 0 1" mesh="FL_UPPER_LEG"/>
-                        <body name="FL_LOWER_LEG" pos="0.0099993 0.0584 -0.23393">
+                        <joint name="L_HFE" pos="0 0 0" axis="0 1 0" limited="true" range="-90 90" />
+                        <geom name="L_UPPER_LEG" type="mesh" contype="2"  rgba="1 0 0 1" mesh="L_UPPER_LEG"/>
+                        <body name="L_LOWER_LEG" pos="0.0099993 0.0584 -0.23393">
                             <inertial pos="-8.85334e-06 -0.0171411 -0.11126" quat="0.832975 0.00123416 -0.000837798 0.553309" mass="0.0911246" diaginertia="0.000436812 0.000436783 1.53826e-05"/>
-                            <joint name="FL_KFE" pos="0 0 0" axis="0 1 0" limited="true" range="-140 140" />
-                            <geom name="FL_LOWER_LEG" type="mesh" contype="2" rgba="0.792157 0.819608 0.933333 1" mesh="FL_LOWER_LEG"/>
-                            <body name="FL_FOOT" pos="0 -0.0168 -0.30826">
+                            <joint name="L_KFE" pos="0 0 0" axis="0 1 0" limited="true" range="-140 140" />
+                            <geom name="L_LOWER_LEG" type="mesh" contype="2" rgba="0.792157 0.819608 0.933333 1" mesh="L_LOWER_LEG"/>
+                            <body name="L_FOOT" pos="0 -0.0168 -0.30826">
                                 <inertial pos="1.50204e-07 6.55552e-09 -0.0124758" quat="1.0 0.0 0.0 0.0" mass="0.0001" diaginertia="8.4e-07 5.7e-07 5.3e-07" />
-                                <joint name="FL_ANKLE" pos="0 0 0" axis="0 1 0" limited="true" range="-45 45"/>
-                                <geom name="FL_FOOT" friction="1. 0.3 0.3" size="0.01 0.05" pos="0 0 -0.01" quat="0.710914 0 0.703279 0"  type="capsule" rgba="0.8 0.8 0.8 1"/>
+                                <joint name="L_ANKLE" pos="0 0 0" axis="0 1 0" limited="true" range="-45 45"/>
+                                <geom name="L_FOOT" friction="1. 0.3 0.3" size="0.01 0.05" pos="0 0 -0.01" quat="0.710914 0 0.703279 0"  type="capsule" rgba="0.8 0.8 0.8 1"/>
                             </body>
                         </body>
                     </body>
@@ -77,26 +77,26 @@
             </body>
 
 
-            <body name="FR_HIP" pos="0 -0.07 -0.0158">
+            <body name="R_HIP" pos="0 -0.07 -0.0158">
                 <inertial pos="-0.04439 -4.3944e-05 -0.063969" quat="0.259345 0.691337 0.606871 0.294111" mass="0.4" diaginertia="0.001 0.001 1e-06"/>
-                <joint name="FR_YAW" pos="0 0 0" axis="0 0 1" limited="true" range="-45 45" />
-                <geom name="FR_HIP" type="mesh" contype="2" rgba="0.69804 0.69804 0.69804 1" mesh="FR_HIP"/>
-                <body name="FR_SHOULDER" pos="0 0 -0.073">
+                <joint name="R_YAW" pos="0 0 0" axis="0 0 1" limited="true" range="-45 45" />
+                <geom name="R_HIP" type="mesh" contype="2" rgba="0.69804 0.69804 0.69804 1" mesh="R_HIP"/>
+                <body name="R_SHOULDER" pos="0 0 -0.073">
                     <inertial pos="0.0084801 0.022635 -0.00077539" quat="0.713871 0.0113297 -0.0137615 0.700051" mass="0.30702" diaginertia="0.000319697 0.000206657 0.000197556"/>
-                    <joint name="FR_HAA" pos="0 0 0" axis="1 0 0" limited="true" range="-45 45" />
-                    <geom name="FR_SHOULDER" type="mesh" contype="2" rgba="1 0 0 1" mesh="FR_SHOULDER"/>
-                    <body name="FR_UPPER_LEG" pos="0 0 0">
+                    <joint name="R_HAA" pos="0 0 0" axis="1 0 0" limited="true" range="-45 45" />
+                    <geom name="R_SHOULDER" type="mesh" contype="2" rgba="1 0 0 1" mesh="R_SHOULDER"/>
+                    <body name="R_UPPER_LEG" pos="0 0 0">
                         <inertial pos="0.00999918 -0.0491847 -0.0389252" quat="0.707105 0.00207643 -0.00211527 0.707102" mass="0.459366" diaginertia="0.00166773 0.00143336 0.000320047"/>
-                        <joint name="FR_HFE" pos="0 0 0" axis="0 1 0" limited="true" range="-90 90" />
-                        <geom name="FR_UPPER_LEG" type="mesh" contype="2" rgba="1 0 0 1" mesh="FR_UPPER_LEG"/>
-                        <body name="FR_LOWER_LEG" pos="0.01 -0.057399 -0.23429">
+                        <joint name="R_HFE" pos="0 0 0" axis="0 1 0" limited="true" range="-90 90" />
+                        <geom name="R_UPPER_LEG" type="mesh" contype="2" rgba="1 0 0 1" mesh="R_UPPER_LEG"/>
+                        <body name="R_LOWER_LEG" pos="0.01 -0.057399 -0.23429">
                             <inertial pos="8.85334e-06 0.0171411 -0.11126" quat="0.832975 0.00123416 -0.000837798 0.553309" mass="0.0911246" diaginertia="0.000436812 0.000436783 1.53826e-05"/>
-                            <joint name="FR_KFE" pos="0 0 0" axis="0 1 0" limited="true" range="-140 140" />
-                            <geom name="FR_LOWER_LEG" type="mesh" contype="2" rgba="0.792157 0.819608 0.933333 1" mesh="FR_LOWER_LEG"/>
-                            <body name="FR_FOOT" pos="0 0.0168 -0.30826">
+                            <joint name="R_KFE" pos="0 0 0" axis="0 1 0" limited="true" range="-140 140" />
+                            <geom name="R_LOWER_LEG" type="mesh" contype="2" rgba="0.792157 0.819608 0.933333 1" mesh="R_LOWER_LEG"/>
+                            <body name="R_FOOT" pos="0 0.0168 -0.30826">
                                 <inertial pos="-1.50204e-07 -6.55552e-09 -0.0124758" quat="1.0 0.0 0.0 0.0" mass="0.0001" diaginertia="8.4e-07 5.7e-07 5.3e-07" />
-                                <joint name="FR_ANKLE" pos="0 0 0" axis="0 1 0" limited="true" range="-45 45"/>
-                                <geom name="FR_FOOT" friction="1. 0.3 0.3" size="0.01 0.05" pos="0 0 -0.01" quat="0.710914 0 0.703279 0"  type="capsule" rgba="0.8 0.8 0.8 1"/>
+                                <joint name="R_ANKLE" pos="0 0 0" axis="0 1 0" limited="true" range="-45 45"/>
+                                <geom name="R_FOOT" friction="1. 0.3 0.3" size="0.01 0.05" pos="0 0 -0.01" quat="0.710914 0 0.703279 0"  type="capsule" rgba="0.8 0.8 0.8 1"/>
                             </body>
                         </body>
                     </body>
@@ -111,35 +111,35 @@
 
     <actuator>
 
-        <motor gear="1"  joint="FL_YAW" name="FL_YAW"/>
-            <velocity gear="1" joint="FL_YAW" name="FL_YAW_VEL" kv="0.5" />
+        <motor gear="1"  joint="L_YAW" name="L_YAW"/>
+            <velocity gear="1" joint="L_YAW" name="L_YAW_VEL" kv="0.5" />
 
-        <motor gear="1"  joint="FL_HAA" name="FL_HAA"/>
-            <velocity gear="1" joint="FL_HAA" name="FL_HAA_VEL" kv="0.5" />
+        <motor gear="1"  joint="L_HAA" name="L_HAA"/>
+            <velocity gear="1" joint="L_HAA" name="L_HAA_VEL" kv="0.5" />
 
-        <motor gear="1"  joint="FL_HFE" name="FL_HFE"/>
-            <velocity gear="1" joint="FL_HFE" name="FL_HFE_VEL" kv="0.5" />
+        <motor gear="1"  joint="L_HFE" name="L_HFE"/>
+            <velocity gear="1" joint="L_HFE" name="L_HFE_VEL" kv="0.5" />
 
-        <motor gear="1"  joint="FL_KFE" name="FL_KFE"/>
-            <velocity gear="1" joint="FL_KFE" name="FL_KFE_VEL" kv="0.35 " />
+        <motor gear="1"  joint="L_KFE" name="L_KFE"/>
+            <velocity gear="1" joint="L_KFE" name="L_KFE_VEL" kv="0.35 " />
 
-        <motor gear="1"  joint="FL_ANKLE" name="FL_ANKLE"/>
-            <velocity gear="1" joint="FL_ANKLE" name="FL_ANKLE_VEL" kv="0.00005" />
+        <motor gear="1"  joint="L_ANKLE" name="L_ANKLE"/>
+            <velocity gear="1" joint="L_ANKLE" name="L_ANKLE_VEL" kv="0.00005" />
 
-        <motor gear="1"  joint="FR_YAW" name="FR_YAW"/>
-            <velocity gear="1" joint="FR_YAW" name="FR_YAW_VEL" kv="0.5" />
+        <motor gear="1"  joint="R_YAW" name="R_YAW"/>
+            <velocity gear="1" joint="R_YAW" name="R_YAW_VEL" kv="0.5" />
 
-        <motor gear="1"  joint="FR_HAA" name="FR_HAA"/>
-            <velocity gear="1" joint="FR_HAA" name="FR_HAA_VEL" kv="0.5" />
+        <motor gear="1"  joint="R_HAA" name="R_HAA"/>
+            <velocity gear="1" joint="R_HAA" name="R_HAA_VEL" kv="0.5" />
 
-        <motor gear="1"  joint="FR_HFE" name="FR_HFE"/>
-            <velocity gear="1" joint="FR_HFE" name="FR_HFE_VEL" kv="0.5" />
+        <motor gear="1"  joint="R_HFE" name="R_HFE"/>
+            <velocity gear="1" joint="R_HFE" name="R_HFE_VEL" kv="0.5" />
 
-        <motor gear="1"  joint="FR_KFE" name="FR_KFE"/>
-            <velocity gear="1" joint="FR_KFE" name="FR_KFE_VEL" kv="0.35 " />
+        <motor gear="1"  joint="R_KFE" name="R_KFE"/>
+            <velocity gear="1" joint="R_KFE" name="R_KFE_VEL" kv="0.35 " />
 
-        <motor gear="1"  joint="FR_ANKLE" name="FR_ANKLE"/>
-            <velocity gear="1" joint="FR_ANKLE" name="FR_ANKLE_VEL" kv="0.00005" />
+        <motor gear="1"  joint="R_ANKLE" name="R_ANKLE"/>
+            <velocity gear="1" joint="R_ANKLE" name="R_ANKLE_VEL" kv="0.00005" />
     </actuator>
     
 </mujoco>
