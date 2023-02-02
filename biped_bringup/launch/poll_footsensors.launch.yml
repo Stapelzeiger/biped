@@ -8,8 +8,10 @@ launch:
           value: 'gpiochip0'
         - name: 'gpio_line'
           value: 25 # GPIO25 on raspi
-        - name: 'gpio_edge'
-          value: 'both'
+        - name: gpio_active_low
+          value: True
+        - name: update_rate
+          value: 200.0
       output: screen
       # print GDB backtrace:
       # launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args
@@ -23,8 +25,10 @@ launch:
           value: 'gpiochip0'
         - name: 'gpio_line'
           value: 6 # GPIO6 on raspi
-        - name: 'gpio_edge'
-          value: 'both'
+        - name: gpio_active_low
+          value: True
+        - name: update_rate
+          value: 200.0
       output: screen
       # print GDB backtrace:
       # launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args

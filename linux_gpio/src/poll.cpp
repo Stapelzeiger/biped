@@ -24,12 +24,14 @@ public:
     {
         this->declare_parameter<std::string>("gpio_chip");
         this->declare_parameter<int64_t>("gpio_line");
-        this->declare_parameter<std::string>("gpio_edge");
+        this->declare_parameter<bool>("gpio_active_low", false);
 
         init_gpio();
 
+        double dt = 1 / this->declare_parameter<double>("update_rate", 100);
+
         publisher_ = this->create_publisher<biped_bringup::msg::StampedBool>("~/gpio", 10);
-        timer_ = this->create_wall_timer(100ms, std::bind(&Poll::timer_callback, this));
+        timer_ = this->create_wall_timer(1s * dt, std::bind(&Poll::timer_callback, this));
 
     }
 
@@ -37,24 +39,10 @@ public:
     {
         auto chip_name = this->get_parameter("gpio_chip").as_string();
         auto gpio_line = this->get_parameter("gpio_line").as_int();
-        auto gpio_edge = this->get_parameter("gpio_edge").as_string();
-
-        std::cout << "chip_name: " << chip_name << std::endl;
-        std::cout << "gpio_line: " << gpio_line << std::endl;
-        std::cout << "gpio_edge: " << gpio_edge << std::endl;
 
         chip_.open(chip_name);
-
         line_ = chip_.get_line(gpio_line);
-        if (gpio_edge == "rising") {
-            line_.request({this->get_name(), gpiod::line_request::EVENT_RISING_EDGE, 0});
-        } else if (gpio_edge == "falling") {
-            line_.request({this->get_name(), gpiod::line_request::EVENT_FALLING_EDGE, 0});
-        } else if (gpio_edge == "both") {
-            line_.request({this->get_name(), gpiod::line_request::EVENT_BOTH_EDGES, 0});
-        } else {
-                RCLCPP_ERROR_STREAM(this->get_logger(), "invalid edge type: " << gpio_edge);
-        }
+        line_.request({this->get_name(), gpiod::line_request::DIRECTION_INPUT, 0});
     }
 private:
 
@@ -63,8 +51,7 @@ private:
         
         auto message = biped_bringup::msg::StampedBool();
         message.header.stamp = this->now();
-        message.data = line_.get_value();
-        RCLCPP_INFO(this->get_logger(), "Publishing: '%d'", message.data);
+        message.data = line_.get_value() ^ this->get_parameter("gpio_active_low").as_bool();
         publisher_->publish(message);
 
     }
