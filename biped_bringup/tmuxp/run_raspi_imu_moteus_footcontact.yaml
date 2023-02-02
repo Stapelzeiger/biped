@@ -6,3 +6,5 @@ windows:
   panes:
   - ros2 launch vectornav vectornav.launch.py
   - ros2 launch biped_bringup poll_footsensors.launch.yml
+  - ros2 launch moteus_drv moteus.launch.yml
+  - clear
