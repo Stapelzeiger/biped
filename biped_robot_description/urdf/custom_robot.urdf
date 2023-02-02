@@ -324,7 +324,7 @@
   </link>
   <joint
     name="R_ANKLE"
-    type="revolute">
+    type="fixed">
     <origin
       xyz="0 0.0168 -0.30826"
       rpy="0 0 0" />
@@ -595,7 +595,7 @@
   </link>
   <joint
     name="L_ANKLE"
-    type="revolute">
+    type="fixed">
     <origin
       xyz="0 -0.0168 -0.30826"
       rpy="0 0 0" />

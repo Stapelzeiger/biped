@@ -11,7 +11,7 @@ struct foot_pos_vel_acc_struct {
 }; 
 
 
-foot_pos_vel_acc_struct get_swing_foot_pos_vel(double T_since_begin_step, 
+foot_pos_vel_acc_struct get_traj_foot_pos_vel(double T_since_begin_step, 
                             double T_step,
                             Eigen::Vector3d current_pos, 
                             Eigen::Vector3d current_vel, 

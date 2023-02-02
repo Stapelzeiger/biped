@@ -40,7 +40,7 @@ Eigen::Vector4d get_spline_coef(double tf, double qi, double qi_dot, double qf, 
     return coeff;
 }
 
-foot_pos_vel_acc_struct get_swing_foot_pos_vel(double T_since_begin_step, double T_step,
+foot_pos_vel_acc_struct get_traj_foot_pos_vel(double T_since_begin_step, double T_step,
                             Eigen::Vector3d current_pos, 
                             Eigen::Vector3d current_vel, 
                             Eigen::Vector3d initial_pos, 

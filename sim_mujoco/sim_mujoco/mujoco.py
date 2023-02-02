@@ -8,7 +8,7 @@ from geometry_msgs.msg import TransformStamped, Vector3, PoseStamped, PoseWithCo
 
 from rosgraph_msgs.msg import Clock
 from biped_bringup.msg import StampedBool
-from std_msgs.msg import Bool, Float64, Empty
+from std_msgs.msg import Bool, Float64, Empty, Float32
 from tf2_ros import TransformBroadcaster, TransformException
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
@@ -119,8 +119,11 @@ class MujocoNode(Node):
         self.step_sim_sub = self.create_subscription(Float64, "~/step", self.step_cb, 1)
         self.pause_sim_sub = self.create_subscription(Bool, "~/pause", self.pause_cb, 1)
 
+        self.P_gain_safety_scaling = 1.0
+        self.P_gain_safety_scaling_sub = self.create_subscription(Float32, "~/P_gain_safety_scaling", self.P_gain_safety_scaling_cb, 1)
+
         self.timer = self.create_timer(self.dt, self.timer_cb)
-    
+
     def reset_cb(self, msg):
         with self.lock:
             self.init([0.0, 0.0, 0.0], q=[1.0, 0.0, 0.0, 0.0])
@@ -304,9 +307,9 @@ class MujocoNode(Node):
 
         i = 0
         for key, value in self.q_joints.items():
-            if key != 'FL_ANKLE' and key != 'FR_ANKLE':
+            if key != 'L_ANKLE' and key != 'R_ANKLE':
                 error = value['actual_pos'] - value['desired_pos']
-                actuators_torque = -Kp[i]*error
+                actuators_torque = -self.P_gain_safety_scaling * Kp[i]*error
                 actuators_vel = value['desired_vel']
                 self.data.ctrl[self.q_actuator_addr[str(key)]] = actuators_torque
                 self.data.ctrl[self.q_actuator_addr[str(key) + "_VEL"]] = actuators_vel

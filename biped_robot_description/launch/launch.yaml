@@ -7,8 +7,8 @@ launch:
     - name: "robot_description"
       value: "$(command 'cat $(find-pkg-share biped_robot_description)/urdf/custom_robot.urdf')"
       # value: "$(command '$(find-exec xacro) $(find-pkg-share biped_robot_description)/urdf/custom_robot.urdf')"
-    - name: use_sim_time
-      value: "$(var use_sim_time)"
+    # - name: use_sim_time
+    #   value: "$(var use_sim_time)"
     - name: publish_frequency
       value: 300.0
     output: screen

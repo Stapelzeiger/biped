@@ -1,0 +1,12 @@
+<!-- example.launch.xml -->
+
+<launch>
+  <arg name="use_sim_time" default="true"/>
+  <arg name="sim_time_sec" default="0.002"/>
+  <arg name="visualization_rate" default="10.0"/>
+
+  <include file="$(find-pkg-share kinematic_odometry)/launch/kinematic_odometry.launch.yml"/>
+
+
+</launch>
+
