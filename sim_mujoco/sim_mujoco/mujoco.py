@@ -296,10 +296,11 @@ class MujocoNode(Node):
             id_joint_mj = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_JOINT, key)
             value['actual_pos'] = self.data.qpos[self.model.jnt_qposadr[id_joint_mj]]
             value['actual_vel'] = self.data.qvel[self.model.jnt_dofadr[id_joint_mj]]
-            id_joint_msg = self.joint_traj_msg.joint_names.index(key)
-            value['desired_pos'] = self.joint_traj_msg.points[0].positions[id_joint_msg]
-            if self.joint_traj_msg.points[0].velocities:
-                value['desired_vel'] = self.joint_traj_msg.points[0].velocities[id_joint_msg]
+            if key in self.joint_traj_msg.joint_names:
+                id_joint_msg = self.joint_traj_msg.joint_names.index(key)
+                value['desired_pos'] = self.joint_traj_msg.points[0].positions[id_joint_msg]
+                if self.joint_traj_msg.points[0].velocities:
+                    value['desired_vel'] = self.joint_traj_msg.points[0].velocities[id_joint_msg]
 
         Kp = 2*15.0*np.ones(self.model.njnt - 1) # exclude root
         Kp[1] *= 4
