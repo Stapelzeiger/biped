@@ -34,11 +34,11 @@ public:
     }
 
 private:
-    void img_cb(const sensor_msgs::msg::Image::SharedPtr img, const sensor_msgs::msg::TimeReference::SharedPtr time_ref)
+    void img_cb(sensor_msgs::msg::Image::SharedPtr img, const sensor_msgs::msg::TimeReference::SharedPtr time_ref)
     {
-        sensor_msgs::msg::Image out = *img;
-        out.header.stamp = time_ref->time_ref;
-        publisher_->publish(out);
+        // sensor_msgs::msg::Image out = *img;
+        img->header.stamp = time_ref->time_ref;
+        publisher_->publish(*img);
     }
 
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr publisher_;
