@@ -119,8 +119,8 @@ class IMUPoseEKF
       pos_ += dt * vel_I_;
       // update EKF (error state is zero)
       P_ = F_x * P_ * F_x.transpose() + Fi * Qi * Fi.transpose();
-      std::cout << "imu update: " << std::endl;
-      std::cout << P_ << std::endl;
+      // std::cout << "imu update: " << std::endl;
+      // std::cout << P_ << std::endl;
       // std::cout << " att: " << att_.coeffs().transpose() << std::endl;
       // std::cout << " dq: " << rot_vec.transpose() << std::endl;
       // std::cout << " vel_I: " << vel_I_.transpose() << std::endl;
@@ -157,13 +157,13 @@ class IMUPoseEKF
       att_ = att_ * delta_att;
       acc_bias_ += delta_x.block(6, 0, 3, 1);
       gyro_bias_ += delta_x.block(9, 0, 3, 1);
-      std::cout << "zero contact vel update: " << std::endl;
+      // std::cout << "zero contact vel update: " << std::endl;
       // std::cout << " att: " << att_.coeffs().transpose() << std::endl;
       // std::cout << " delta_att: " << delta_att.coeffs() << std::endl;
       // std::cout << " vel_I: " << vel_I_.transpose() << std::endl;
-      std::cout << " delta x " << delta_x.transpose() << std::endl;
-      std::cout << " h " << h.transpose() << std::endl;
-      std::cout << P_ << std::endl;
+      // std::cout << " delta x " << delta_x.transpose() << std::endl;
+      // std::cout << " h " << h.transpose() << std::endl;
+      // std::cout << P_ << std::endl;
       h_out = h;
       h_cov_out = h_cov;
     }
@@ -217,6 +217,7 @@ public:
 
     base_link_frame_id_ = this->declare_parameter<std::string>("base_link_frame_id", "base_link");
     odom_frame_id_ = this->declare_parameter<std::string>("odom_frame_id", "odom");
+    this->declare_parameter<bool>("publish_tf", false);
 
     // load noise parameters
     ekf_.vel_std_0_ = this->declare_parameter<double>("vel_std_0", 0.1);
@@ -239,6 +240,7 @@ public:
 
     odom_pub_ = this->create_publisher<nav_msgs::msg::Odometry>("~/odom", 10);
     ekf_innovations_marker_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("~/ekf_innovations", 10);
+    tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(this);
 
     imu_sub_ = this->create_subscription<sensor_msgs::msg::Imu>(
       "~/imu", 10, std::bind(&KinematicOdometry::imu_cb, this, _1));
@@ -391,6 +393,23 @@ private:
     odom.twist.twist.angular.y = omegaBL_BL[1];
     odom.twist.twist.angular.z = omegaBL_BL[2];
     odom_pub_->publish(odom);
+
+
+    if (this->get_parameter("publish_tf").as_bool())
+    {
+      geometry_msgs::msg::TransformStamped tf;
+      tf.header.stamp = msg->header.stamp;
+      tf.header.frame_id = odom_frame_id_;
+      tf.child_frame_id = base_link_frame_id_;
+      tf.transform.translation.x = posBL_I[0];
+      tf.transform.translation.y = posBL_I[1];
+      tf.transform.translation.z = posBL_I[2];
+      tf.transform.rotation.w = att_BL_to_I.w();
+      tf.transform.rotation.x = att_BL_to_I.x();
+      tf.transform.rotation.y = att_BL_to_I.y();
+      tf.transform.rotation.z = att_BL_to_I.z();
+      tf_broadcaster_->sendTransform(tf);
+    }
   }
 
 
@@ -487,6 +506,7 @@ private:
         Eigen::Matrix3d _h_cov;
         ekf_.zero_contact_vel_measurement_update(p_contact_IMU, v_contact_IMU, contact_vel_covariance_, _h, _h_cov);
         last_contact_velocity_update_ = rclcpp::Time(msg->header.stamp);
+        std::cout << "contact velocity update " << contact_joint_names_[i] << " v = " << v_contact_IMU.transpose() << std::endl;
 
         // markers
         Eigen::Vector3d posIMU_I, velIMU_I, omegaIMU_IMU;
@@ -499,8 +519,8 @@ private:
         marker.pose.position.z = p_contact_IMU(2);
         Eigen::Vector3d h_IMU = att_IMU_to_I.conjugate() * _h;
         double h_norm = h_IMU.norm();
-        std::cout << "h_norm " << h_norm << std::endl;
-        std::cout << "h_IMU " << h_IMU.transpose() << std::endl;
+        // std::cout << "h_norm " << h_norm << std::endl;
+        // std::cout << "h_IMU " << h_IMU.transpose() << std::endl;
         Eigen::Quaterniond h_dir = Eigen::Quaterniond::FromTwoVectors(Eigen::Vector3d::UnitX(), h_IMU);
         marker.pose.orientation.w = h_dir.w();
         marker.pose.orientation.x = h_dir.x();
@@ -556,6 +576,7 @@ private:
   std::vector<rclcpp::Subscription<biped_bringup::msg::StampedBool>::SharedPtr> contact_subs_;
   rclcpp::Subscription<std_msgs::msg::String>::SharedPtr robot_desc_sub_;
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
+  std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr ekf_innovations_marker_pub_;
   std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
   std::unique_ptr<tf2_ros::TransformListener> tf_listener_;

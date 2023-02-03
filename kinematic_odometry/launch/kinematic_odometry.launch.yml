@@ -1,10 +1,10 @@
 launch:
   - node:
-      pkg: state_estimation
+      pkg: kinematic_odometry
       exec: vel_estimation
       name: vel_estimation
       param:
-        - from: $(find-pkg-share state_estimation)/config/params.yaml
+        - from: $(find-pkg-share kinematic_odometry)/config/params.yaml
       remap:
         - from: /vel_estimation/L_FOOT_contact
           to: /poll_L_FOOT/gpio

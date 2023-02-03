@@ -17,7 +17,6 @@ Panels:
         - /MarkerArray2/Topic1
         - /MarkerArray2/Namespaces1
         - /IK_pos1
-        - /IK_pos1/Status1
         - /IK_pos1/Topic1
       Splitter Ratio: 0.5
     Tree Height: 1526
@@ -117,6 +116,7 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
           Value: true
+        Link Tree Style: Links in Alphabetic Order
         R_FOOT:
           Alpha: 1
           Show Axes: false
@@ -142,7 +142,6 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
           Value: true
-        Link Tree Style: Links in Alphabetic Order
         base_link:
           Alpha: 1
           Show Axes: false
@@ -185,9 +184,7 @@ Visualization Manager:
       Enabled: true
       Name: MarkerArray
       Namespaces:
-        DCM: true
-        DCM_desired: true
-        next_footstep: true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -199,7 +196,7 @@ Visualization Manager:
       Enabled: true
       Name: Marker
       Namespaces:
-        foot_trajectory: true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -316,8 +313,8 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Class: rviz_default_plugins/ThirdPersonFollower
-      Distance: 3.4186246395111084
+      Class: rviz_default_plugins/XYOrbit
+      Distance: 2.1567115783691406
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -326,16 +323,16 @@ Visualization Manager:
       Focal Point:
         X: 0
         Y: 0
-        Z: -0.20000000298023224
+        Z: -0.5
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.20979687571525574
-      Target Frame: <Fixed Frame>
-      Value: ThirdPersonFollower (rviz_default_plugins)
-      Yaw: 1.3435578346252441
+      Pitch: -0.07460154592990875
+      Target Frame: base_link
+      Value: XYOrbit (rviz_default_plugins)
+      Yaw: 0.9303982853889465
     Saved: ~
 Window Geometry:
   Displays:
