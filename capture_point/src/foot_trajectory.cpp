@@ -3,24 +3,25 @@
 using namespace std;
 
 
-double get_q(Eigen::Vector4d coeff, double t)
+double get_q(Eigen::Vector<double, 4> coeff, double t)
 {
     return coeff(0) + coeff(1)*t + coeff(2)*pow(t,2) + coeff(3)*pow(t,3);
 }
 
-double get_q_dot(Eigen::Vector4d coeff, double t)
+double get_q_dot(Eigen::Vector<double, 4> coeff, double t)
 {
     return coeff(1) + 2*coeff(2)*t + 3*coeff(3)*pow(t,2);
 }
 
-double get_q_ddot(Eigen::Vector4d coeff, double t)
+double get_q_ddot(Eigen::Vector<double, 4> coeff, double t)
 {
     return 2*coeff(2) + 6*coeff(3)*t;
 }
 
-Eigen::Vector4d get_spline_coef(double tf, double qi, double qi_dot, double qf, double qf_dot)
+
+Eigen::Vector<double, 4> get_spline_coef(double tf, double qi, double qi_dot, double qf, double qf_dot)
 {
-    Eigen::Vector4d coeff; // a0 a1 a2 a3
+    Eigen::Vector<double, 4> coeff; // a0 a1 a2 a3
     coeff(0) = qi;
     coeff(1) = qi_dot;
 
@@ -63,7 +64,7 @@ foot_pos_vel_acc_struct get_traj_foot_pos_vel(double T_since_begin_step, double 
         
         if (T_lift_remaining > 0) {
             // lift foot
-            Eigen::Vector4d coeff_z = get_spline_coef(T_lift_remaining, current_pos(2), current_vel(2), initial_pos(2) + lift_foot_hgt, delta_h_step / T_keep);
+            Eigen::Vector<double, 4> coeff_z = get_spline_coef(T_lift_remaining, current_pos(2), current_vel(2), initial_pos(2) + lift_foot_hgt, delta_h_step / T_keep);
             pos(2) = get_q(coeff_z, 0.0);
             vel(2) = get_q_dot(coeff_z, 0.0);
             acc(2) = get_q_ddot(coeff_z, 0.0);
@@ -75,7 +76,7 @@ foot_pos_vel_acc_struct get_traj_foot_pos_vel(double T_since_begin_step, double 
             acc(2) = 0;
         } else if (T_lower_remaining > 0) {
             // lower foot
-            Eigen::Vector4d coeff_z = get_spline_coef(T_lower_remaining, current_pos(2), current_vel(2), des_pos(2), -lower_foot_impact_vel);
+            Eigen::Vector<double, 4> coeff_z = get_spline_coef(T_lower_remaining, current_pos(2), current_vel(2), des_pos(2), -lower_foot_impact_vel);
             pos(2) = get_q(coeff_z, 0.0);
             vel(2) = get_q_dot(coeff_z, 0.0);
             acc(2) = get_q_ddot(coeff_z, 0.0);
@@ -91,8 +92,8 @@ foot_pos_vel_acc_struct get_traj_foot_pos_vel(double T_since_begin_step, double 
 
         if (T_remaining > 0.005)
         {
-            Eigen::Vector4d coeff_x = get_spline_coef(T_remaining, current_pos(0), current_vel(0), des_pos(0), 0);
-            Eigen::Vector4d coeff_y = get_spline_coef(T_remaining, current_pos(1), current_vel(1), des_pos(1), 0);
+            Eigen::Vector<double, 4> coeff_x = get_spline_coef(T_remaining, current_pos(0), current_vel(0), des_pos(0), 0);
+            Eigen::Vector<double, 4> coeff_y = get_spline_coef(T_remaining, current_pos(1), current_vel(1), des_pos(1), 0);
             pos(0) = get_q(coeff_x, 0.0);
             pos(1) = get_q(coeff_y, 0.0);
             vel(0) = get_q_dot(coeff_x, 0.0);
