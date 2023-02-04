@@ -84,7 +84,7 @@ public:
         timer_ = rclcpp::create_timer(this, this->get_clock(), period, std::bind(&CapturePoint::timer_callback, this));
 
         state_ = "INIT";
-        prev_state_ = "";
+        initialization_done_ = false;
         t_init_traj_ = 0.0;
 
     }
@@ -128,16 +128,9 @@ private:
 
     void get_foot_setpt(std::vector<Eigen::Vector<double, 4>> coeffs, double t, Eigen::Vector3d &foot_pos, Eigen::Vector3d &foot_vel)
     {
-
-        
         auto coef_x = coeffs[0];
         auto coef_y = coeffs[1];
         auto coef_z = coeffs[2];
-
-        std::cout << "get foot setpt coef" << coeffs[0] << std::endl;
-        std::cout << "get foot setpt coef" << coeffs[1] << std::endl;
-        std::cout << "get foot setpt coef" << coeffs[2] << std::endl;
-
 
         foot_pos[0] = get_q(coef_x, t);
         foot_pos[1] = get_q(coef_y, t);
@@ -146,10 +139,6 @@ private:
         foot_vel[0] = get_q_dot(coef_x, t);
         foot_vel[1] = get_q_dot(coef_y, t);
         foot_vel[2] = get_q_dot(coef_z, t);
-
-        std::cout << "foot pos" << foot_pos.transpose() << std::endl;
-        std::cout << "foot vel" << foot_vel.transpose() << std::endl;
-    
     }
 
     void odometry_callback(nav_msgs::msg::Odometry::SharedPtr msg)
@@ -189,29 +178,34 @@ private:
             tf_for_feet_aquired_ = true;
         } else {
             RCLCPP_INFO(this->get_logger(), "Waiting for TFs for R_FOOT and L_FOOT...");
+            return;
         }
 
         if (foot_left_contact_ == false && foot_right_contact_ == false)
         {
             timeout_for_no_feet_in_contact_ -= robot_params.dt_ctrl;
         } else {
-            timeout_for_no_feet_in_contact_ = 0.5;
-            state_ = "FOOT_IN_CONTACT";   
+            timeout_for_no_feet_in_contact_ = 0.3;
+            state_ = "FOOT_IN_CONTACT";
         }
-
-        if (timeout_for_no_feet_in_contact_ < 0 && state_ != "INIT" && prev_state_ != "INIT")
+        std::cout << "timeout_for_no_feet_in_contact_ = " << timeout_for_no_feet_in_contact_ << std::endl;
+        if (timeout_for_no_feet_in_contact_ < 0)
         {
-            state_ == "INIT";
-            prev_state_ = "";
-            t_init_traj_ = 0.0;
+            if (state_ == "FOOT_IN_CONTACT")
+            {
+                state_ = "INIT";
+                initialization_done_ = false;
+                t_init_traj_ = 0;
+            }
         }
+        
+        std::cout << "|||||||||||||||||||||||||||||||||||| STATE = " << state_ << std::endl;
+
 
         if (tf_for_feet_aquired_ == true && state_ == "INIT")
         {   
             Eigen::Vector3d init_stance_foot_pos_BF, init_swing_foot_pos_BF;
             Eigen::Vector3d fin_stance_foot_pos_BF, fin_swing_foot_pos_BF;
-            Eigen::Vector3d fin_stance_foot_vel_BF = Eigen::Vector3d::Zero();
-            Eigen::Vector3d fin_swing_foot_vel_BF = Eigen::Vector3d::Zero();
 
             fin_stance_foot_pos_BF = Eigen::Vector3d(0.0, -0.1, -robot_params.robot_height);
             fin_swing_foot_pos_BF = Eigen::Vector3d(0.0, 0.1, -robot_params.robot_height + 0.1);
@@ -219,59 +213,54 @@ private:
             init_stance_foot_pos_BF = get_eigen_transform("R_FOOT", "base_link").translation();
             init_swing_foot_pos_BF = get_eigen_transform("L_FOOT", "base_link").translation();
 
-            Eigen::Vector3d init_stance_foot_vel_BF, init_swing_foot_vel_BF;
-            init_stance_foot_vel_BF = Eigen::Vector3d::Zero();
-            init_swing_foot_vel_BF = Eigen::Vector3d::Zero();
-
-
             coeffs_stance_foot_init_traj_ = get_spline_coef_for_traj(robot_params.duration_init_traj,
-                                    init_stance_foot_pos_BF, init_stance_foot_vel_BF,
-                                    fin_stance_foot_pos_BF, fin_stance_foot_vel_BF);
+                                    init_stance_foot_pos_BF, Eigen::Vector3d::Zero(),
+                                    fin_stance_foot_pos_BF, Eigen::Vector3d::Zero());
 
             coeffs_swing_foot_init_traj_ = get_spline_coef_for_traj(robot_params.duration_init_traj,
-                        init_swing_foot_pos_BF, init_swing_foot_vel_BF,
-                        fin_swing_foot_pos_BF, fin_swing_foot_vel_BF);
+                        init_swing_foot_pos_BF, Eigen::Vector3d::Zero(),
+                        fin_swing_foot_pos_BF, Eigen::Vector3d::Zero());
 
             state_ = "RAMP_TO_STARTING_POS";
-            prev_state_ = "INIT";
         }
 
-        if (state_ == "RAMP_TO_STARTING_POS" && prev_state_ == "INIT"){
+        if (state_ == "RAMP_TO_STARTING_POS"){
 
             Eigen::Vector3d setpt_stance_foot_pos_BF, setpt_swing_foot_pos_BF;
             Eigen::Vector3d setpt_stance_foot_vel_BF, setpt_swing_foot_vel_BF;
 
+            std::cout << coeffs_stance_foot_init_traj_[0].transpose() << std::endl;
+            std::cout << coeffs_stance_foot_init_traj_[1].transpose() << std::endl;
+            std::cout << coeffs_stance_foot_init_traj_[2].transpose() << std::endl;
+            std::cout << t_init_traj_ << std::endl;
+
             get_foot_setpt(coeffs_stance_foot_init_traj_, t_init_traj_, setpt_stance_foot_pos_BF, setpt_stance_foot_vel_BF);
             get_foot_setpt(coeffs_swing_foot_init_traj_, t_init_traj_, setpt_swing_foot_pos_BF, setpt_swing_foot_vel_BF);
 
-            publish_foot_trajectories(setpt_stance_foot_pos_BF, 
-                                        Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0), 
-                                        setpt_swing_foot_pos_BF, 
-                                        Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0));
+            publish_foot_trajectories(setpt_stance_foot_pos_BF, Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0),
+                                        setpt_swing_foot_pos_BF, Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0));
             std::cout << setpt_stance_foot_pos_BF.transpose() << std::endl;
             std::cout << setpt_swing_foot_pos_BF.transpose() << std::endl;
 
             t_init_traj_ += robot_params.dt_ctrl;
-
-            std::cout << "publish_foot_traj";
+            std::cout << t_init_traj_ << std::endl;
 
             if (t_init_traj_ > robot_params.duration_init_traj)
             {
-                state_ = "INIT_DONE";
-                prev_state_ = "INIT_DONE";
+                initialization_done_ = true;
                 set_starting_to_walk_params();
+                t_init_traj_ = robot_params.duration_init_traj;
             }
         }
 
-        if (state_ == "FOOT_IN_CONTACT")
+        if (state_ == "FOOT_IN_CONTACT" && initialization_done_ == true)
         {
-        
             run_capture_point_controller();
+
         }
 
 
-        std::cout << "STATE = " << state_ << std::endl;
-        std::cout << "PREV STATE = " << prev_state_ << std::endl;
+        std::cout << "|||||||||||||||||||||||||||||||||||| STATE = " << state_ << std::endl;
 
 
     }
@@ -292,7 +281,14 @@ private:
             stance_foot_name = "L_FOOT";
         }
 
-        auto T_IF_to_BF = get_eigen_transform("odom", "base_link");
+        if (tf_buffer_->canTransform("odom", "base_link", tf2::TimePointZero) == true)
+        {
+            auto T_IF_to_BF = get_eigen_transform("odom", "base_link");
+        } else {
+            RCLCPP_INFO(this->get_logger(), "Waiting for odom to baselink transform");
+            return;
+        }
+
         auto T_BLF_to_BF = get_BLF_to_BF();
         broadcast_transform("base_link", "BLF", T_BLF_to_BF.translation(), Eigen::Quaterniond(T_BLF_to_BF.rotation()));
         auto T_BF_to_BLF = T_BLF_to_BF.inverse();
@@ -316,7 +312,7 @@ private:
             computed_swing_foot_vel_STF_ << 0.0, 0.0, 0.0;
             swing_foot_position_beginning_of_step_STF_ = computed_swing_foot_pos_STF_;
 
-            std::cout << "-------------------------- switch! (miau)" << std::endl;
+            std::cout << "-------------------------- switch!" << std::endl;
             std::cout << " Stance foot: " << stance_foot_name << std::endl;
             std::cout << " Swing foot: " << swing_foot_name << std::endl;
             std::cout << " swing_foot_is_left_: " << swing_foot_is_left_ << std::endl;
@@ -360,13 +356,13 @@ private:
         next_footstep_STF = -dcm_desired_STF + dcm_STF * exp(robot_params.omega * remaining_time_in_step_);
         auto norm_next_footstep_STF_xy = sqrt(next_footstep_STF(0) * next_footstep_STF(0) + next_footstep_STF(1) * next_footstep_STF(1));
 
-        // if (norm_next_footstep_STF_xy > threshold_next_footstep_)
-        // {
-        //     std_msgs::msg::Float32 P_gain_scaling_msg;
-        //     P_gain_scaling_msg.data = P_gain_scaling_param_;
-        //     P_gain_scaling_pub_->publish(P_gain_scaling_msg);
-        //     timeout_for_no_feet_in_contact_ = 1;
-        // }
+        if (norm_next_footstep_STF_xy > threshold_next_footstep_)
+        {
+            std_msgs::msg::Float32 P_gain_scaling_msg;
+            P_gain_scaling_msg.data = P_gain_scaling_param_;
+            P_gain_scaling_pub_->publish(P_gain_scaling_msg);
+            timeout_for_no_feet_in_contact_ = 1;
+        }
 
 
         Eigen::Vector3d des_pos_foot_STF;
@@ -697,7 +693,6 @@ private:
     rclcpp::Time time_tf_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
     
     std::string state_;
-    std::string prev_state_;
 
     double timeout_for_no_feet_in_contact_;
 
@@ -705,6 +700,7 @@ private:
     double t_init_traj_;
     std::vector<Eigen::Vector<double, 4>> coeffs_stance_foot_init_traj_;
     std::vector<Eigen::Vector<double, 4>> coeffs_swing_foot_init_traj_;
+    bool initialization_done_;
 
     bool tf_for_feet_aquired_;
 };

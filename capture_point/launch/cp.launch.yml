@@ -1,4 +1,3 @@
-launch:
 - node:
     pkg: capture_point
     exec: capture_point
@@ -13,6 +12,8 @@ launch:
         value: 0.5
       - name: P_gain_scaling
         value: 0.1
+      - name: duration_init_traj
+        value: 2.0 # seconds
     remap:
       - from: /capture_point/vel_cmd
         to: /vel_cmd
@@ -20,8 +21,8 @@ launch:
         to: /poll_R_FOOT/gpio
       - from: /capture_point/contact_foot_left
         to: /poll_L_FOOT/gpio
-      # - from: /odometry
-      #   to: /mujoco_sim/odometry
+      - from: /odometry
+        to: /mujoco_sim/odometry
     output: screen
     # print GDB backtrace:
     # launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args
