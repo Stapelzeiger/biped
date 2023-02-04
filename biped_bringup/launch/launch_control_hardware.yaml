@@ -65,10 +65,6 @@ launch:
 #         value: '$(var use_sim_time)'
 #       - name: ctrl_time_sec
 #         value: '$(var ctrl_time_sec)'
-#       - name: threshold_next_footstep
-#         value: 0.5
-#       - name: P_gain_scaling
-#         value: 0.1
 #     remap:
 #       - from: /capture_point/vel_cmd
 #         to: /vel_cmd

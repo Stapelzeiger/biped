@@ -53,17 +53,22 @@ launch:
     output: screen
 
 
-- node:
-    pkg: ik_biped
-    exec: ik
-    name: ik_interface
-    param:
-      - from: $(find-pkg-share ik_biped)/config/params.yaml
-      - name: use_sim_time
-        value: '$(var use_sim_time)'
-    output: screen
-    # print GDB backtrace:
-    launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args
+- include:
+    file: "$(find-pkg-share ik_biped)/launch/ik.launch.yml"
+
+
+
+# - node:
+#     pkg: ik_biped
+#     exec: ik
+#     name: ik_interface
+#     param:
+#       - from: $(find-pkg-share ik_biped)/config/params.yaml
+#       - name: use_sim_time
+#         value: '$(var use_sim_time)'
+#     output: screen
+#     # print GDB backtrace:
+#     # launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args
 
 
 # - node:
@@ -100,10 +105,6 @@ launch:
         value: '$(var use_sim_time)'
       - name: ctrl_time_sec
         value: '$(var ctrl_time_sec)'
-      - name: threshold_next_footstep
-        value: 0.5
-      - name: P_gain_scaling
-        value: 0.1
     remap:
       - from: /capture_point/vel_cmd
         to: /vel_cmd
