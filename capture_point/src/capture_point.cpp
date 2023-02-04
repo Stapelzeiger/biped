@@ -46,15 +46,16 @@ public:
         this->declare_parameter<double>("threshold_next_footstep");
         this->declare_parameter<double>("P_gain_scaling");
         this->declare_parameter<double>("duration_init_traj");
+        this->declare_parameter<double>("safety_radius_CP");
+        this->declare_parameter<double>("T_contact_ignore");
 
         robot_params.robot_height = this->get_parameter("robot_height").as_double();
         robot_params.t_step = this->get_parameter("t_step").as_double();
         robot_params.dt_ctrl = this->get_parameter("ctrl_time_sec").as_double();
         robot_params.omega = sqrt(9.81 / robot_params.robot_height);
         robot_params.duration_init_traj = this->get_parameter("duration_init_traj").as_double();
-
-        threshold_next_footstep_ = this->get_parameter("threshold_next_footstep").as_double();
-        P_gain_scaling_param_ = this->get_parameter("P_gain_scaling").as_double();
+        robot_params.safety_radius_CP = this->get_parameter("safety_radius_CP").as_double();
+        robot_params.T_contact_ignore = this->get_parameter("T_contact_ignore").as_double();
 
         tf_for_feet_aquired_ = false;
         tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
@@ -63,8 +64,13 @@ public:
 
         pub_feet_trajectory_ = this->create_publisher<trajectory_msgs::msg::MultiDOFJointTrajectory>("/foot_positions", 10);
 
-        pub_markers_traj_ = this->create_publisher<visualization_msgs::msg::Marker>("/markers_traj", 10);
-        pub_markers_array_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("/markers_array", 10);
+        pub_markers_foot_traj_ = this->create_publisher<visualization_msgs::msg::Marker>("/markers_traj_feet", 10);
+        pub_markers_safety_circle_ = this->create_publisher<visualization_msgs::msg::Marker>("/markers_safety_circle", 10);
+
+        pub_marker_next_footstep_ = this->create_publisher<visualization_msgs::msg::Marker>("/markers_next_footstep", 10);
+        pub_marker_next_safe_footstep_ = this->create_publisher<visualization_msgs::msg::Marker>("/markers_next_safe_footstep", 10);
+        pub_marker_dcm_ = this->create_publisher<visualization_msgs::msg::Marker>("/markers_dcm", 10);
+        pub_marker_desired_dcm_ = this->create_publisher<visualization_msgs::msg::Marker>("/markers_desired_dcm", 10);
 
         P_gain_scaling_pub_ = this->create_publisher<std_msgs::msg::Float32>("/P_gain_scaling", 10);
 
@@ -293,8 +299,7 @@ private:
         broadcast_transform("base_link", "BLF", T_BLF_to_BF.translation(), Eigen::Quaterniond(T_BLF_to_BF.rotation()));
         auto T_BF_to_BLF = T_BLF_to_BF.inverse();
         
-        float T_contact_ignore = 0.1;
-        if (time_since_last_step_ > T_contact_ignore && swing_foot_contact == true)
+        if (time_since_last_step_ > robot_params.T_contact_ignore && swing_foot_contact == true)
         {
             swing_foot_is_left_ = !swing_foot_is_left_;
             std::swap(stance_foot_name, swing_foot_name);
@@ -338,7 +343,7 @@ private:
         } else {
             dcm_desired_STF(1) = 0.04 + vel_d_[1];
         }
-        publish_sphere_markers(dcm_desired_STF, "DCM_desired", "STF", 2, Eigen::Vector3d(1.0, 0.0, 0.0));
+        publish_sphere_marker(dcm_desired_STF, "DCM_desired", "STF", 2, Eigen::Vector3d(1.0, 0.0, 0.0), pub_marker_desired_dcm_);
 
 
         Eigen::Vector3d base_link_vel_BF;
@@ -349,25 +354,47 @@ private:
         dcm_STF(0) = T_STF_to_BLF.inverse().translation()[0] + 1.0 / robot_params.omega * base_link_vel_STF(0);
         dcm_STF(1) = T_STF_to_BLF.inverse().translation()[1] + 1.0 / robot_params.omega * base_link_vel_STF(1);
         dcm_STF(2) = 0;
-
-        publish_sphere_markers(dcm_STF, "DCM", "STF", 0, Eigen::Vector3d(0.0, 0.0, 1.0));
+        publish_sphere_marker(dcm_STF, "DCM", "STF", 0, Eigen::Vector3d(0.0, 0.0, 1.0), pub_marker_dcm_);
 
         Eigen::Vector3d next_footstep_STF;
         next_footstep_STF = -dcm_desired_STF + dcm_STF * exp(robot_params.omega * remaining_time_in_step_);
-        auto norm_next_footstep_STF_xy = sqrt(next_footstep_STF(0) * next_footstep_STF(0) + next_footstep_STF(1) * next_footstep_STF(1));
+        publish_sphere_marker(next_footstep_STF, "next_footstep", "STF", 1, Eigen::Vector3d(1.0, 0.0, 1.0), pub_marker_next_footstep_);
 
-        if (norm_next_footstep_STF_xy > threshold_next_footstep_)
+        // pub safety circle around the STF
+        std::list<Eigen::Vector3d> safety_circle_points;
+        for (int i=0; i <= 2 * M_PI / 0.1; i++)
+        {
+            Eigen::Vector3d safety_circle_point;
+            safety_circle_point << robot_params.safety_radius_CP * cos(i * 0.1), robot_params.safety_radius_CP * sin(i * 0.1), 0.0;
+            safety_circle_points.push_back(safety_circle_point);
+        }
+        publish_line_traj_markers(safety_circle_points, "safety_circle", "STF", 4, Eigen::Vector3d(0.0, 1.0, 0.0), pub_markers_safety_circle_);
+
+        Eigen::Vector3d vec_STF_to_next_CP = next_footstep_STF - Eigen::Vector3d(0.0, 0.0, 0.0);
+        auto norm_vec_STF_to_next_CP = sqrt(vec_STF_to_next_CP(0) * vec_STF_to_next_CP(0) + vec_STF_to_next_CP(1) * vec_STF_to_next_CP(1));
+        Eigen::Vector3d safe_next_footstep_STF =  robot_params.safety_radius_CP / norm_vec_STF_to_next_CP * vec_STF_to_next_CP; 
+
+        if (norm_vec_STF_to_next_CP > robot_params.safety_radius_CP)
+        {
+            next_footstep_STF = safe_next_footstep_STF;
+        }
+
+        publish_sphere_marker(safe_next_footstep_STF, "safe_next_footstep", "STF", 1, Eigen::Vector3d(0.0, 0.0, 0.0), pub_marker_next_safe_footstep_);
+
+
+        if (safety)
         {
             std_msgs::msg::Float32 P_gain_scaling_msg;
-            P_gain_scaling_msg.data = P_gain_scaling_param_;
+            P_gain_scaling_msg.data = robot_params.P_gain_scaling_param;
             P_gain_scaling_pub_->publish(P_gain_scaling_msg);
             timeout_for_no_feet_in_contact_ = 1;
         }
 
 
+
+
         Eigen::Vector3d des_pos_foot_STF;
         des_pos_foot_STF << next_footstep_STF(0), next_footstep_STF(1), 0;
-        publish_sphere_markers(next_footstep_STF, "next_footstep", "STF", 1, Eigen::Vector3d(1.0, 0.0, 1.0));
 
         desired_swing_foot_pos_vel_acc_STF_ = get_traj_foot_pos_vel(
             time_since_last_step_,
@@ -386,7 +413,7 @@ private:
 
         foot_traj_list_STF_.push_back(desired_swing_foot_pos_vel_acc_STF_.pos);
 
-        publish_line_traj_markers(foot_traj_list_STF_, "foot_trajectory", "STF", 3, Eigen::Vector3d(1.0, 0.0, 1.0));
+        publish_line_traj_markers(foot_traj_list_STF_, "foot_trajectory", "STF", 3, Eigen::Vector3d(1.0, 0.0, 1.0), pub_markers_foot_traj_);
 
         remaining_time_in_step_ = robot_params.t_step - time_since_last_step_;
 
@@ -532,9 +559,8 @@ private:
 
 
 
-    void publish_sphere_markers(Eigen::Vector3d pos, std::string name_marker, std::string frame_id, int id, Eigen::Vector3d color)
+    void publish_sphere_marker(Eigen::Vector3d pos, std::string name_marker, std::string frame_id, int id, Eigen::Vector3d color, rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub)
     {
-        visualization_msgs::msg::MarkerArray marker_array;
         visualization_msgs::msg::Marker marker_msg;
         marker_msg.header.frame_id = frame_id;
         marker_msg.header.stamp = this->get_clock()->now();
@@ -556,13 +582,12 @@ private:
         marker_msg.color.r = color(0);
         marker_msg.color.g = color(1);
         marker_msg.color.b = color(2);
-        marker_array.markers.push_back(marker_msg);
-        pub_markers_array_->publish( marker_array );
+        pub->publish( marker_msg );
 
     }
 
 
-    void publish_line_traj_markers(std::list<Eigen::Vector3d> pos_list, std::string name_marker, std::string frame_id, int id, Eigen::Vector3d color)
+    void publish_line_traj_markers(std::list<Eigen::Vector3d> pos_list, std::string name_marker, std::string frame_id, int id, Eigen::Vector3d color, rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub)
     {
         visualization_msgs::msg::Marker marker_msg;
         marker_msg.header.frame_id = frame_id;
@@ -589,7 +614,7 @@ private:
             marker_msg.points.push_back(p);
         }
 
-        pub_markers_traj_->publish( marker_msg );
+        pub->publish( marker_msg );
 
     }
 
@@ -630,10 +655,16 @@ private:
 
     rclcpp::TimerBase::SharedPtr timer_;
     rclcpp::Publisher<trajectory_msgs::msg::MultiDOFJointTrajectory>::SharedPtr pub_feet_trajectory_;
-    rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr pub_markers_array_;
-    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_markers_traj_;
-    rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr P_gain_scaling_pub_;
 
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_marker_next_footstep_;
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_marker_next_safe_footstep_;
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_marker_dcm_;
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_marker_desired_dcm_;
+
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_markers_foot_traj_;
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_markers_safety_circle_;
+    rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr P_gain_scaling_pub_;
+    
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odometry_sub_;
     rclcpp::Subscription<biped_bringup::msg::StampedBool>::SharedPtr contact_right_sub_;
     rclcpp::Subscription<biped_bringup::msg::StampedBool>::SharedPtr contact_left_sub_;
@@ -652,6 +683,11 @@ private:
         double omega;
         double dt_ctrl;
         double duration_init_traj;
+        double safety_radius_CP;
+        double T_contact_ignore;
+        double P_gain_scaling;
+        double threshold_next_footstep;
+
     } robot_params;
 
     bool foot_right_contact_;
@@ -686,9 +722,6 @@ private:
 
     foot_pos_vel_acc_struct desired_swing_foot_pos_vel_acc_STF_;
     double counter_points_traj;
-
-    double threshold_next_footstep_;
-    double P_gain_scaling_param_;
 
     rclcpp::Time time_tf_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
     
