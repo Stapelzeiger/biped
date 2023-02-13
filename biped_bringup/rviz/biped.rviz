@@ -94,6 +94,10 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
           Value: true
+        L_FOOT_CONTACT:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
         L_HIP:
           Alpha: 1
           Show Axes: false
@@ -120,6 +124,10 @@ Visualization Manager:
           Show Axes: false
           Show Trail: false
           Value: true
+        R_FOOT_CONTACT:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
         R_HIP:
           Alpha: 1
           Show Axes: false
@@ -182,7 +190,7 @@ Visualization Manager:
       Enabled: true
       Name: Marker_dcm
       Namespaces:
-        DCM: true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -246,12 +254,7 @@ Visualization Manager:
       Enabled: true
       Name: IK_pos
       Namespaces:
-        L_ANKLE: true
-        L_ANKLE_desired: true
-        R_ANKLE: true
-        R_ANKLE_desired: true
-        base_link: true
-        base_link_desired: true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -263,7 +266,7 @@ Visualization Manager:
       Enabled: true
       Name: Marker
       Namespaces:
-        safety_circle: true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -276,7 +279,7 @@ Visualization Manager:
       Enabled: true
       Name: Marker_dcm_desired
       Namespaces:
-        DCM_desired: true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -289,7 +292,7 @@ Visualization Manager:
       Enabled: true
       Name: Marker_next_footstep
       Namespaces:
-        next_footstep: true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -302,7 +305,7 @@ Visualization Manager:
       Enabled: true
       Name: Marker_next_safe_footstep
       Namespaces:
-        safe_next_footstep: true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -357,7 +360,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/XYOrbit
-      Distance: 2.705379009246826
+      Distance: 1.4767005443572998
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -372,10 +375,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.235398530960083
+      Pitch: 0.05020378902554512
       Target Frame: base_link
       Value: XYOrbit (rviz_default_plugins)
-      Yaw: 5.328585147857666
+      Yaw: 2.870391607284546
     Saved: ~
 Window Geometry:
   Displays:

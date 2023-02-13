@@ -439,12 +439,13 @@ private:
     
     // initialize q for base_link
     assert(model_.existFrame(base_link_frame_id_));
-    int base_link_joint_id = model_.frames[model_.getFrameId(base_link_frame_id_)].parent;
+    auto base_link_joint_id = model_.frames[model_.getFrameId(base_link_frame_id_)].parent;
     const auto &base_link_joint = model_.joints[base_link_joint_id];
     assert(base_link_joint.nq() == 7);
     Eigen::VectorXd q(model_.nq);
     Eigen::VectorXd qvel(model_.nv);
     qvel.setZero();
+    q.setZero();
 
     q[base_link_joint.idx_q()] = 0;
     q[base_link_joint.idx_q() + 1] = 0;
@@ -454,20 +455,43 @@ private:
     q[base_link_joint.idx_q() + 5] = 0;
     q[base_link_joint.idx_q() + 6] = 1;
 
-    int count_assignments = base_link_joint.nq();
-    for (size_t i = 0; i < msg->name.size(); i++) {
-        if (model_.existJointName(msg->name[i])) {
-            int joint_id = model_.getJointId(msg->name[i]);
-            const auto &joint = model_.joints[joint_id];
-            // std::cout << msg->name[i] << " joint.idx_q() " << joint.idx_q() << " joint.idx_v()" << joint.idx_v() << std::endl;
-            q[joint.idx_q()] = msg->position[i];
-            qvel[joint.idx_v()] = msg->velocity[i];
-            count_assignments++;
+    // int count_assignments = base_link_joint.nq();
+    // for (size_t i = 0; i < msg->name.size(); i++) {
+    //     if (model_.existJointName(msg->name[i])) {
+    //         int joint_id = model_.getJointId(msg->name[i]);
+    //         const auto &joint = model_.joints[joint_id];
+    //         // std::cout << msg->name[i] << " joint.idx_q() " << joint.idx_q() << " joint.idx_v()" << joint.idx_v() << std::endl;
+    //         q[joint.idx_q()] = msg->position[i];
+    //         qvel[joint.idx_v()] = msg->velocity[i];
+    //         count_assignments++;
+    //     }
+    // }
+    // if (count_assignments != model_.nq) {
+    //   RCLCPP_ERROR_THROTTLE(this->get_logger(), *this->get_clock(), 100 /* [ms] */, "Joint state message does not contain all joints. Only %d of %d joints are assigned", count_assignments, model_.nq);
+    //   return;
+    // }
+    for (const auto &contact_joint_name : contact_joint_names_) {
+      auto frame_id = model_.getFrameId(contact_joint_name);
+      auto joint_id = model_.frames[frame_id].parent;
+      while (joint_id != base_link_joint_id) {
+        std::string joint_name = model_.names[joint_id];
+        auto it = std::find(msg->name.begin(), msg->name.end(), joint_name);
+        if (it != msg->name.end()) {
+          size_t index = std::distance(msg->name.begin(), it);
+          const auto &joint = model_.joints[joint_id];
+          q[joint.idx_q()] = msg->position[index];
+          qvel[joint.idx_v()] = msg->velocity[index];
+        } else {
+          RCLCPP_ERROR_THROTTLE(this->get_logger(), *this->get_clock(), 100 /* [ms] */, "Joint state message does not contain joint %s", joint_name.c_str());
+          return;
         }
-    }
-    if (count_assignments != model_.nq) {
-      RCLCPP_ERROR_THROTTLE(this->get_logger(), *this->get_clock(), 100 /* [ms] */, "Joint state message does not contain all joints. Only %d of %d joints are assigned", count_assignments, model_.nq);
-      return;
+        joint_id = model_.parents[joint_id];
+        if (joint_id == 0) // universe joint
+        {
+          RCLCPP_ERROR_THROTTLE(this->get_logger(), *this->get_clock(), 100 /* [ms] */, "Could not find base_link form contact_frame");
+          return;
+        }
+      }
     }
     pinocchio::Data data(model_);
     pinocchio::computeJointJacobians(model_, data, q); // also computes forward kinematics

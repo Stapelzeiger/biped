@@ -49,6 +49,10 @@ public:
         this->declare_parameter<double>("safety_radius_CP");
         this->declare_parameter<double>("T_contact_ignore");
 
+        r_foot_frame_id_ = this->declare_parameter<std::string>("r_foot_frame_id", "R_FOOT");
+        l_foot_frame_id_ = this->declare_parameter<std::string>("l_foot_frame_id", "L_FOOT");
+        base_link_frame_id_ = this->declare_parameter<std::string>("base_link_frame_id", "base_link");
+
         robot_params.robot_height = this->get_parameter("robot_height").as_double();
         robot_params.t_step = this->get_parameter("t_step").as_double();
         robot_params.dt_ctrl = this->get_parameter("ctrl_time_sec").as_double();
@@ -57,7 +61,6 @@ public:
         robot_params.safety_radius_CP = this->get_parameter("safety_radius_CP").as_double();
         robot_params.T_contact_ignore = this->get_parameter("T_contact_ignore").as_double();
 
-        tf_for_feet_aquired_ = false;
         tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
         tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
         tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(this);
@@ -178,11 +181,9 @@ private:
             return;
         }
 
-        if (tf_buffer_->canTransform("base_link", "R_FOOT", tf2::TimePointZero) == true && 
-            tf_buffer_->canTransform("base_link", "L_FOOT", tf2::TimePointZero) == true)
+        if (!tf_buffer_->canTransform(base_link_frame_id_, r_foot_frame_id_, tf2::TimePointZero) || 
+            !tf_buffer_->canTransform(base_link_frame_id_, l_foot_frame_id_, tf2::TimePointZero))
         {
-            tf_for_feet_aquired_ = true;
-        } else {
             RCLCPP_INFO(this->get_logger(), "Waiting for TFs for R_FOOT and L_FOOT...");
             return;
         }
@@ -208,7 +209,7 @@ private:
         std::cout << "|||||||||||||||||||||||||||||||||||| STATE = " << state_ << std::endl;
 
 
-        if (tf_for_feet_aquired_ == true && state_ == "INIT")
+        if (state_ == "INIT")
         {   
             Eigen::Vector3d init_stance_foot_pos_BF, init_swing_foot_pos_BF;
             Eigen::Vector3d fin_stance_foot_pos_BF, fin_swing_foot_pos_BF;
@@ -216,8 +217,8 @@ private:
             fin_stance_foot_pos_BF = Eigen::Vector3d(0.0, -0.1, -robot_params.robot_height);
             fin_swing_foot_pos_BF = Eigen::Vector3d(0.0, 0.1, -robot_params.robot_height + 0.1);
 
-            init_stance_foot_pos_BF = get_eigen_transform("R_FOOT", "base_link").translation();
-            init_swing_foot_pos_BF = get_eigen_transform("L_FOOT", "base_link").translation();
+            init_stance_foot_pos_BF = get_eigen_transform(r_foot_frame_id_, base_link_frame_id_).translation();
+            init_swing_foot_pos_BF = get_eigen_transform(l_foot_frame_id_, base_link_frame_id_).translation();
 
             coeffs_stance_foot_init_traj_ = get_spline_coef_for_traj(robot_params.duration_init_traj,
                                     init_stance_foot_pos_BF, Eigen::Vector3d::Zero(),
@@ -279,24 +280,16 @@ private:
         if (swing_foot_is_left_)
         {
             swing_foot_contact = foot_left_contact_;
-            swing_foot_name = "L_FOOT";
-            stance_foot_name = "R_FOOT";
+            swing_foot_name = l_foot_frame_id_;
+            stance_foot_name = r_foot_frame_id_;
         } else {
             swing_foot_contact = foot_right_contact_;
-            swing_foot_name = "R_FOOT";
-            stance_foot_name = "L_FOOT";
-        }
-
-        if (tf_buffer_->canTransform("odom", "base_link", tf2::TimePointZero) == true)
-        {
-            auto T_IF_to_BF = get_eigen_transform("odom", "base_link");
-        } else {
-            RCLCPP_INFO(this->get_logger(), "Waiting for odom to baselink transform");
-            return;
+            swing_foot_name = r_foot_frame_id_;
+            stance_foot_name = l_foot_frame_id_;
         }
 
         auto T_BLF_to_BF = get_BLF_to_BF();
-        broadcast_transform("base_link", "BLF", T_BLF_to_BF.translation(), Eigen::Quaterniond(T_BLF_to_BF.rotation()));
+        broadcast_transform(base_link_frame_id_, "BLF", T_BLF_to_BF.translation(), Eigen::Quaterniond(T_BLF_to_BF.rotation()));
         auto T_BF_to_BLF = T_BLF_to_BF.inverse();
         
         if (time_since_last_step_ > robot_params.T_contact_ignore && swing_foot_contact == true)
@@ -304,8 +297,8 @@ private:
             swing_foot_is_left_ = !swing_foot_is_left_;
             std::swap(stance_foot_name, swing_foot_name);
 
-            Eigen::Vector3d stance_foot_BF = get_eigen_transform(stance_foot_name, "base_link").translation();
-            Eigen::Vector3d swing_foot_BF = get_eigen_transform(swing_foot_name, "base_link").translation();
+            Eigen::Vector3d stance_foot_BF = get_eigen_transform(stance_foot_name, base_link_frame_id_).translation();
+            Eigen::Vector3d swing_foot_BF = get_eigen_transform(swing_foot_name, base_link_frame_id_).translation();
             
             auto swing_foot_BLF = T_BF_to_BLF * swing_foot_BF;
             Eigen::Transform<double, 3, Eigen::AffineCompact> T_STF_to_BLF;
@@ -328,7 +321,7 @@ private:
         }
 
 
-        Eigen::Vector3d stance_foot_BF = get_eigen_transform(stance_foot_name, "base_link").translation();
+        Eigen::Vector3d stance_foot_BF = get_eigen_transform(stance_foot_name, base_link_frame_id_).translation();
         Eigen::Vector3d stance_foot_BLF = T_BF_to_BLF * stance_foot_BF;
         Eigen::Transform<double, 3, Eigen::AffineCompact> T_STF_to_BLF;
         T_STF_to_BLF.linear() = Eigen::Matrix3d::Identity();
@@ -382,16 +375,6 @@ private:
         publish_sphere_marker(safe_next_footstep_STF, "safe_next_footstep", "STF", 1, Eigen::Vector3d(0.0, 0.0, 0.0), pub_marker_next_safe_footstep_);
 
 
-        if (safety)
-        {
-            std_msgs::msg::Float32 P_gain_scaling_msg;
-            P_gain_scaling_msg.data = robot_params.P_gain_scaling_param;
-            P_gain_scaling_pub_->publish(P_gain_scaling_msg);
-            timeout_for_no_feet_in_contact_ = 1;
-        }
-
-
-
 
         Eigen::Vector3d des_pos_foot_STF;
         des_pos_foot_STF << next_footstep_STF(0), next_footstep_STF(1), 0;
@@ -418,14 +401,12 @@ private:
         remaining_time_in_step_ = robot_params.t_step - time_since_last_step_;
 
         time_since_last_step_ = time_since_last_step_ + robot_params.dt_ctrl;
-
-        Eigen::Transform transform_stance_foot_BF = get_eigen_transform(stance_foot_name, "base_link");
     
-        Eigen::Vector3d desired_stance_foot_BLF = T_BF_to_BLF * transform_stance_foot_BF.translation();
+        Eigen::Vector3d desired_stance_foot_BLF = T_BF_to_BLF * stance_foot_BF;
         Eigen::Vector3d desired_swing_foot_pos_BF = T_BLF_to_BF * T_STF_to_BLF * desired_swing_foot_pos_vel_acc_STF_.pos;
 
         const double foot_separation = 0.01;
-        if (swing_foot_name == "R_FOOT")
+        if (swing_foot_name == r_foot_frame_id_)
         {
             Eigen::Vector3d pos_right_foot = Eigen::Vector3d(desired_swing_foot_pos_BF(0),
                                                              fmin(desired_swing_foot_pos_BF(1), -foot_separation*0.5),
@@ -466,20 +447,21 @@ private:
 
     Eigen::Transform<double, 3, Eigen::AffineCompact> get_BLF_to_BF()
     {
-        Eigen::Transform<double, 3, Eigen::AffineCompact> transform_BF_to_IF = get_eigen_transform("base_link", "odom");
-        
+        Eigen::Quaterniond quat_BF_to_IF = base_link_odom_.orientation;
+
         Eigen::Vector3d x_vec_BF; x_vec_BF << 1.0, 0.0, 0.0;
-        Eigen::Vector3d x_vec_IF = transform_BF_to_IF.rotation() * x_vec_BF;
-        Eigen::Vector3d bl_x_vec_IF; bl_x_vec_IF << x_vec_IF(0), x_vec_IF(1), 0.0;
+        Eigen::Vector3d x_vec_IF = quat_BF_to_IF * x_vec_BF;
+        Eigen::Vector3d bl_x_vec_IF(x_vec_IF(0), x_vec_IF(1), 0.0);
         bl_x_vec_IF.normalize();
-        Eigen::Vector3d bl_z_vec_IF; bl_z_vec_IF << 0.0, 0.0, 1.0;
+        Eigen::Vector3d bl_z_vec_IF(0.0, 0.0, 1.0);
         Eigen::Vector3d bl_y_vec_IF = bl_z_vec_IF.cross(bl_x_vec_IF);
 
-        Eigen::Transform<double, 3, Eigen::AffineCompact> T_BLF_to_IF;
-        T_BLF_to_IF.linear() << bl_x_vec_IF, bl_y_vec_IF, bl_z_vec_IF;
-        T_BLF_to_IF.translation() = transform_BF_to_IF.translation();
+        Eigen::Matrix3d R_BLF_to_IF;
+        R_BLF_to_IF << bl_x_vec_IF, bl_y_vec_IF, bl_z_vec_IF;
 
-        Eigen::Transform<double, 3, Eigen::AffineCompact> T_BLF_to_BF = transform_BF_to_IF.inverse() * T_BLF_to_IF;
+        Eigen::Transform<double, 3, Eigen::AffineCompact> T_BLF_to_BF;
+        T_BLF_to_BF.linear() = quat_BF_to_IF.conjugate().toRotationMatrix() * R_BLF_to_IF;
+        T_BLF_to_BF.translation() = Eigen::Vector3d::Zero();
         return T_BLF_to_BF;
     }
 
@@ -493,22 +475,12 @@ private:
                 toFrameRel, fromFrameRel,
                 tf2::TimePointZero, tf2::durationFromSec(0.0));
 
-            auto new_time = rclcpp::Time(t.header.stamp);
-
-            if (time_tf_ == rclcpp::Time(0, 0, RCL_ROS_TIME))  // first message
-            {
-                time_tf_ = new_time;
-            }
-            double dt = (new_time - time_tf_).seconds();
+            auto now = this->get_clock()->now();
+            double dt = (now - rclcpp::Time(t.header.stamp)).seconds();
             if (dt > 0.1)
             {
-                RCLCPP_INFO(this->get_logger(), "TF is too old: %f", dt);
-            }
-
-            time_tf_ = new_time;
-            
-            std::cout << "delta t" << dt << std::endl;
-            
+                RCLCPP_WARN(this->get_logger(), "TF is too old: %f", dt);
+            } 
         }
         catch (const tf2::TransformException &ex)
         {
@@ -623,7 +595,7 @@ private:
     {
         trajectory_msgs::msg::MultiDOFJointTrajectory msg;
         msg.header.stamp = this->now();
-        msg.header.frame_id = "base_link";
+        msg.header.frame_id = base_link_frame_id_;
         msg.joint_names.push_back("R_ANKLE");
         msg.joint_names.push_back("L_ANKLE");
 
@@ -676,6 +648,10 @@ private:
     std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
     std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
 
+    std::string r_foot_frame_id_;
+    std::string l_foot_frame_id_;
+    std::string base_link_frame_id_;
+
     struct
     {
         double robot_height;
@@ -695,7 +671,7 @@ private:
 
     struct
     {
-        rclcpp::Time stamp;
+        rclcpp::Time stamp = rclcpp::Time(0, 0, RCL_ROS_TIME);
         Eigen::Vector3d position;
         Eigen::Quaterniond orientation;
         Eigen::Vector3d linear_velocity;
@@ -722,8 +698,6 @@ private:
 
     foot_pos_vel_acc_struct desired_swing_foot_pos_vel_acc_STF_;
     double counter_points_traj;
-
-    rclcpp::Time time_tf_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
     
     std::string state_;
 

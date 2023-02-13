@@ -324,7 +324,7 @@
   </link>
   <joint
     name="R_ANKLE"
-    type="fixed">
+    type="revolute">
     <origin
       xyz="0 0.0168 -0.30826"
       rpy="0 0 0" />
@@ -335,6 +335,16 @@
     <axis
       xyz="0 1 0" />
     <limit effort="1000" lower="-1.6" upper="1.6" velocity="1000"/>
+  </joint>
+  <link name="R_FOOT_CONTACT"></link>
+  <joint
+    name="R_FOOT_CONTACT_JOINT"
+    type="fixed">
+    <origin
+      xyz="0 0.0 -0.32"
+      rpy="0 0 0" />
+    <parent link="R_LOWER_LEG" />
+    <child link="R_FOOT_CONTACT" />
   </joint>
   <link
     name="L_HIP">
@@ -595,7 +605,7 @@
   </link>
   <joint
     name="L_ANKLE"
-    type="fixed">
+    type="revolute">
     <origin
       xyz="0 -0.0168 -0.30826"
       rpy="0 0 0" />
@@ -606,5 +616,15 @@
     <axis
       xyz="0 1 0" />
     <limit effort="1000" lower="-1.6" upper="1.6" velocity="1000"/>
+  </joint>
+  <link name="L_FOOT_CONTACT"></link>
+  <joint
+    name="L_FOOT_CONTACT_JOINT"
+    type="fixed">
+    <origin
+      xyz="0 0.0 -0.32"
+      rpy="0 0 0" />
+    <parent link="L_LOWER_LEG" />
+    <child link="L_FOOT_CONTACT" />
   </joint>
 </robot>
