@@ -21,4 +21,4 @@ launch:
       # print GDB backtrace:
       # launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args
       # launch-prefix: xterm -e gdb -ex run --args
-
+      #  launch-prefix: tmux split-window gdb -ex run --args

@@ -18,62 +18,11 @@ launch:
       value: 300.0
     output: screen
 
-- node:
-    pkg: ik_biped
-    exec: ik
-    name: ik_interface
-    param:
-      - from: $(find-pkg-share ik_biped)/config/params.yaml
-      - name: use_sim_time
-        value: '$(var use_sim_time)'
-    output: screen
-    # print GDB backtrace:
-    launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args
+
+- include:
+    file: "$(find-pkg-share ik_biped)/launch/ik.launch.yml"
 
 
-- node:
-    pkg: kinematic_odometry
-    exec: vel_estimation
-    name: vel_estimation
-    param:
-      - from: $(find-pkg-share kinematic_odometry)/config/params.yaml
-    remap:
-      - from: /vel_estimation/L_FOOT_contact
-        to: /poll_L_FOOT/gpio
-      - from: /vel_estimation/R_FOOT_contact
-        to: /poll_R_FOOT/gpio
-      - from: /vel_estimation/imu
-        to: /imu
-      - from: /vel_estimation/joint_states
-        to: /joint_states
-      - from: /vel_estimation/odom
-        to: /odometry
-    # args: "--ros-args --log-level DEBUG"
-    output: screen
-    # print GDB backtrace:
-    # launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args
-    # launch-prefix: xterm -e gdb -ex run --args
 
-
-# - node:
-#     pkg: capture_point
-#     exec: capture_point
-#     name: capture_point
-#     param:
-#       - from: $(find-pkg-share capture_point)/config/params.yaml
-#       - name: use_sim_time
-#         value: '$(var use_sim_time)'
-#       - name: ctrl_time_sec
-#         value: '$(var ctrl_time_sec)'
-#     remap:
-#       - from: /capture_point/vel_cmd
-#         to: /vel_cmd
-#       - from: /capture_point/contact_foot_right
-#         to: /poll_R_FOOT/gpio
-#       - from: /capture_point/contact_foot_left
-#         to: /poll_L_FOOT/gpio
-#       - from: /odometry
-#         to: /mujoco_sim/odometry
-#     output: screen
-#     # print GDB backtrace:
-#     # launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args
+- include:
+    file: "$(find-pkg-share kinematic_odometry)/launch/kinematic_odometry.launch.yml"
