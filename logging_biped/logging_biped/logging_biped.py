@@ -23,7 +23,7 @@ class Record(Node):
         
         now = datetime.now()
         self.time_string = now.strftime("%H-%M-%S")
-        date_today = now.strftime("%d-%m-%Y")
+        date_today = now.strftime("%Y-%m-%d")
         outdir = os.path.join(self.output_directory, date_today)
         self.prefix = '{}_{}'.format(outdir, test_name)
         self.process = None
