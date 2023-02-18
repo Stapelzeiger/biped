@@ -75,6 +75,9 @@ public:
         pub_marker_dcm_ = this->create_publisher<visualization_msgs::msg::Marker>("/markers_dcm", 10);
         pub_marker_desired_dcm_ = this->create_publisher<visualization_msgs::msg::Marker>("/markers_desired_dcm", 10);
 
+        pub_desired_left_contact_ = this->create_publisher<biped_bringup::msg::StampedBool>("~/desired_left_contact", 10);
+        pub_desired_right_contact_ = this->create_publisher<biped_bringup::msg::StampedBool>("~/desired_right_contact", 10);
+
         P_gain_scaling_pub_ = this->create_publisher<std_msgs::msg::Float32>("/P_gain_scaling", 10);
 
         odometry_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
@@ -85,6 +88,8 @@ public:
 
         contact_left_sub_ = this->create_subscription<biped_bringup::msg::StampedBool>(
             "~/contact_foot_left", 10, std::bind(&CapturePoint::contact_left_callback, this, _1));
+
+
 
         vel_cmd_sub_ = this->create_subscription<geometry_msgs::msg::TwistStamped>(
             "~/vel_cmd", 10, std::bind(&CapturePoint::vel_cmd_cb, this, _1));
@@ -195,7 +200,7 @@ private:
             timeout_for_no_feet_in_contact_ = 0.3;
             state_ = "FOOT_IN_CONTACT";
         }
-        std::cout << "timeout_for_no_feet_in_contact_ = " << timeout_for_no_feet_in_contact_ << std::endl;
+
         if (timeout_for_no_feet_in_contact_ < 0)
         {
             if (state_ == "FOOT_IN_CONTACT")
@@ -236,21 +241,20 @@ private:
             Eigen::Vector3d setpt_stance_foot_pos_BF, setpt_swing_foot_pos_BF;
             Eigen::Vector3d setpt_stance_foot_vel_BF, setpt_swing_foot_vel_BF;
 
-            std::cout << coeffs_stance_foot_init_traj_[0].transpose() << std::endl;
-            std::cout << coeffs_stance_foot_init_traj_[1].transpose() << std::endl;
-            std::cout << coeffs_stance_foot_init_traj_[2].transpose() << std::endl;
-            std::cout << t_init_traj_ << std::endl;
-
             get_foot_setpt(coeffs_stance_foot_init_traj_, t_init_traj_, setpt_stance_foot_pos_BF, setpt_stance_foot_vel_BF);
             get_foot_setpt(coeffs_swing_foot_init_traj_, t_init_traj_, setpt_swing_foot_pos_BF, setpt_swing_foot_vel_BF);
 
             publish_foot_trajectories(setpt_stance_foot_pos_BF, Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0),
                                         setpt_swing_foot_pos_BF, Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0));
-            std::cout << setpt_stance_foot_pos_BF.transpose() << std::endl;
-            std::cout << setpt_swing_foot_pos_BF.transpose() << std::endl;
+
+            biped_bringup::msg::StampedBool des_contact_msg;
+            des_contact_msg.header.stamp = this->get_clock()->now();
+            des_contact_msg.data = false;
+            pub_desired_left_contact_->publish(des_contact_msg);
+            des_contact_msg.data = false;
+            pub_desired_right_contact_->publish(des_contact_msg);
 
             t_init_traj_ += robot_params.dt_ctrl;
-            std::cout << t_init_traj_ << std::endl;
 
             if (t_init_traj_ > robot_params.duration_init_traj)
             {
@@ -408,6 +412,13 @@ private:
         const double foot_separation = 0.01;
         if (swing_foot_name == r_foot_frame_id_)
         {
+            biped_bringup::msg::StampedBool des_contact_msg;
+            des_contact_msg.header.stamp = this->get_clock()->now();
+            des_contact_msg.data = false;
+            pub_desired_right_contact_->publish(des_contact_msg);
+            des_contact_msg.data = true;
+            pub_desired_left_contact_->publish(des_contact_msg);
+
             Eigen::Vector3d pos_right_foot = Eigen::Vector3d(desired_swing_foot_pos_BF(0),
                                                              fmin(desired_swing_foot_pos_BF(1), -foot_separation*0.5),
                                                              desired_swing_foot_pos_BF(2));
@@ -418,6 +429,13 @@ private:
         }
         else
         {
+            biped_bringup::msg::StampedBool des_contact_msg;
+            des_contact_msg.header.stamp = this->get_clock()->now();
+            des_contact_msg.data = false;
+            pub_desired_left_contact_->publish(des_contact_msg);
+            des_contact_msg.data = true;
+            pub_desired_right_contact_->publish(des_contact_msg);
+
             Eigen::Vector3d pos_left_foot = Eigen::Vector3d(desired_swing_foot_pos_BF(0),
                                                             fmax(desired_swing_foot_pos_BF(1), foot_separation*0.5),
                                                             desired_swing_foot_pos_BF(2));
@@ -636,6 +654,9 @@ private:
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_markers_foot_traj_;
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_markers_safety_circle_;
     rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr P_gain_scaling_pub_;
+
+    rclcpp::Publisher<biped_bringup::msg::StampedBool>::SharedPtr pub_desired_left_contact_;
+    rclcpp::Publisher<biped_bringup::msg::StampedBool>::SharedPtr pub_desired_right_contact_;
     
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odometry_sub_;
     rclcpp::Subscription<biped_bringup::msg::StampedBool>::SharedPtr contact_right_sub_;
