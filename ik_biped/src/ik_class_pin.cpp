@@ -10,7 +10,7 @@
 #include "pinocchio/algorithm/crba.hpp"
 #include "pinocchio/algorithm/rnea.hpp"
 #pragma GCC diagnostic pop
-
+#include <iomanip>
 
 const double eps = 1e-3;
 const int IT_MAX = 500;
@@ -55,6 +55,7 @@ bool IKRobot::has_model() const
 {
     return model_.njoints > 1;
 }
+
 
 
 std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyState>& body_states, std::vector<Eigen::Vector3d> &body_positions_solution)
@@ -189,6 +190,92 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
         const auto &cur_to_world = data.oMf[frame_id];
         body_positions_solution.push_back(cur_to_world.translation());
     }
+
+    // std::cout << std::fixed;
+    // std::cout << std::setprecision(3);
+
+    int nb_contacts = 0;
+    for (const auto &body: body_states)
+    {
+        if (body.name != "base_link")
+        {
+            if (body.in_contact == true)
+            {
+                nb_contacts++;
+            }
+        }
+    }
+
+    // std::cout << "nb_contacts:" << nb_contacts << std::endl;
+    if (nb_contacts == 1)
+    {
+        Eigen::MatrixXd J_contacts;
+        J_contacts.resize(5*nb_contacts, model_.nv);
+        J_contacts.setZero();
+
+        int i = 0;
+        for (const auto &body: body_states)
+        {
+            if (body.name != "base_link")
+            {
+                if (body.in_contact == true)
+                {
+                    auto frame_id = model_.getFrameId(body.name);
+                    Eigen::MatrixXd J(6, model_.nv);
+                    J.setZero();
+                    pinocchio::getFrameJacobian(model_, data, frame_id, pinocchio::LOCAL, J);
+                    Eigen::MatrixXd J_block(5, model_.nv);
+                    J_block << J.block(0, 0, 3, model_.nv), J.block(4, 0, 2, model_.nv);
+                    J_contacts.block(5 * i, 0, 5, model_.nv) = J_block;
+                    i++;
+                }
+            }
+        }
+
+        Eigen::MatrixXd P(model_.nv, model_.nv);
+        Eigen::MatrixXd I_nv = Eigen::MatrixXd::Identity(model_.nv, model_.nv);
+        P = I_nv - J_contacts.transpose() * (J_contacts * J_contacts.transpose()).inverse() * J_contacts;
+        // std::cout << "P:" << P << std::endl;
+
+
+        auto joints_actuators = model_.njoints - 2;
+        Eigen::MatrixXd B_matrix = Eigen::MatrixXd::Zero(model_.nv, joints_actuators);
+        B_matrix.block(6, 0, joints_actuators, joints_actuators) = Eigen::MatrixXd::Identity(joints_actuators, joints_actuators);
+        // std::cout << "B_matrix:" << B_matrix << std::endl;
+
+        auto PB = P * B_matrix;
+        Eigen::EigenSolver<Eigen::MatrixXd> eigensolver_P;
+        eigensolver_P.compute(P);
+        Eigen::VectorXd eigen_values = eigensolver_P.eigenvalues().real();
+
+        pinocchio::computeGeneralizedGravity(model_, data, q_); // data.g
+
+        auto feedforward_torque = (PB.transpose() * PB).inverse() * PB.transpose() * P * data.g;
+
+        // todo write the below code more robustly
+        for (auto &joint_state: joint_states)
+        {
+            auto joint_id = model_.getJointId(joint_state.name);
+            if (joint_id != 0 && joint_id != 1)
+            {
+                joint_state.effort = feedforward_torque[joint_id - 2];
+            }
+        }
+    }
+
+    if (nb_contacts == 0)
+    {
+        for (auto &joint_state: joint_states)
+        {
+            joint_state.effort = std::numeric_limits<double>::quiet_NaN(); // todo check
+        }
+    }
+
+    // for (auto joint : joint_states)
+    // {
+    //     std::cout << joint.name << " " << joint.position << " " << joint.effort << std::endl;
+    // }
+
 
     return joint_states;
 }
