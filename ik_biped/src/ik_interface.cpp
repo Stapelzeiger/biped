@@ -11,6 +11,7 @@
 #include "nav_msgs/msg/odometry.hpp"
 #include "geometry_msgs/msg/transform.hpp"
 #include "ik_class_pin.hpp"
+#include "biped_bringup/msg/stamped_bool.hpp"
 #include <math.h>
 
 using namespace std::placeholders;
@@ -29,11 +30,43 @@ public:
         foot_desired_sub_ = this->create_subscription<trajectory_msgs::msg::MultiDOFJointTrajectory>(
             "foot_positions", 10, std::bind(&IKNode::foot_desired_cb, this, _1));
 
+        contact_right_sub_ = this->create_subscription<biped_bringup::msg::StampedBool>(
+            "~/contact_foot_right", 10, std::bind(&IKNode::contact_right_callback, this, _1));
+
+        contact_left_sub_ = this->create_subscription<biped_bringup::msg::StampedBool>(
+            "~/contact_foot_left", 10, std::bind(&IKNode::contact_left_callback, this, _1));
+
+
         robot_joints_pub_ = this->create_publisher<trajectory_msgs::msg::JointTrajectory>("joint_trajectory", 10);
         markers_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("~/markers", 10);
     }
 
 private:
+
+
+    void contact_right_callback(biped_bringup::msg::StampedBool::SharedPtr msg)
+    {
+        auto now = this->get_clock()->now();
+        double dt = (now - rclcpp::Time(msg->header.stamp)).seconds();
+        if (dt > 0.1)
+        {
+            RCLCPP_WARN(this->get_logger(), "contact right footsensor data is too old: %f", dt);
+        }
+
+        foot_right_contact_ = msg->data;
+    }
+
+    void contact_left_callback(biped_bringup::msg::StampedBool::SharedPtr msg)
+    {
+        auto now = this->get_clock()->now();
+        double dt = (now - rclcpp::Time(msg->header.stamp)).seconds();
+        if (dt > 0.1)
+        {
+            RCLCPP_WARN(this->get_logger(), "contact left footsensor data is too old: %f", dt);
+        }
+
+        foot_left_contact_ = msg->data;
+    }
 
     void foot_desired_cb(trajectory_msgs::msg::MultiDOFJointTrajectory::SharedPtr msg)
     {
@@ -76,6 +109,7 @@ private:
                 if (!this->has_parameter(name + ".joint_type")) {
                     this->declare_parameter(name + ".joint_type", "FULL_6DOF");
                 }
+
                 std::string joint_type = this->get_parameter(name + ".joint_type").as_string();
                 if (joint_type == "POS_AXIS" && !this->has_parameter(name + ".axis")) {
                     this->declare_parameter(name + ".axis", std::vector<double>{1, 0, 0});
@@ -92,6 +126,15 @@ private:
                     RCLCPP_ERROR(this->get_logger(), "Invalid joint constraint type parameter: %s", joint_type.c_str());
                     return;
                 }
+
+                // not nice code
+                if (name == "L_ANKLE"){
+                    body_state.in_contact = foot_left_contact_;
+                }
+                if (name == "R_ANKLE"){
+                    body_state.in_contact = foot_right_contact_;
+                }
+
                 bodies.push_back(body_state);
             }
             RCLCPP_DEBUG_STREAM(this->get_logger(), "solving with bodies :");
@@ -107,10 +150,16 @@ private:
             }
             trajectory_msgs::msg::JointTrajectoryPoint out_pt;
             out_pt.positions.resize(joint_states.size());
+
             for (size_t i = 0; i < joint_states.size(); i++) {
                 out_pt.positions[i] = joint_states[i].position;
             }
-            // todo check if velocities are present and copy them
+
+            out_pt.effort.resize(joint_states.size()); // todo make this more robust
+            for (size_t i = 0; i < joint_states.size(); i++) {
+                out_pt.effort[i] = joint_states[i].effort;
+            }
+
             out_pt.time_from_start = pt.time_from_start;
             out_msg.points.push_back(out_pt);
 
@@ -173,8 +222,12 @@ private:
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr markers_pub_;
     rclcpp::Subscription<std_msgs::msg::String>::SharedPtr robot_desc_sub_;
     rclcpp::Subscription<trajectory_msgs::msg::MultiDOFJointTrajectory>::SharedPtr foot_desired_sub_;
+    rclcpp::Subscription<biped_bringup::msg::StampedBool>::SharedPtr contact_right_sub_;
+    rclcpp::Subscription<biped_bringup::msg::StampedBool>::SharedPtr contact_left_sub_;
 
     IKRobot robot_;
+    bool foot_right_contact_;
+    bool foot_left_contact_;
 };
 
 int main(int argc, char *argv[])
