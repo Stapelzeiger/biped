@@ -38,6 +38,7 @@ public:
         typedef enum {FULL_6DOF, POS_ONLY, POS_AXIS} ContraintType;
         ContraintType type;
         Eigen::Vector3d align_axis;  // in the body frame, only used if type == POS_AXIS
+        bool in_contact;
 
         BodyState(const std::string& name, const Eigen::Vector3d& position, const Eigen::Quaterniond& orientation)
             : name(name), position(position), orientation(orientation) {
@@ -47,6 +48,7 @@ public:
             angular_acceleration.setConstant(std::numeric_limits<double>::quiet_NaN());
             type = ContraintType::FULL_6DOF;
             align_axis = Eigen::Vector3d::UnitX();
+            in_contact = false;
         }
     };
 
