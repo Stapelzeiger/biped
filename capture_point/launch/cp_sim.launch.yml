@@ -1,0 +1,22 @@
+launch:
+
+- node:
+    pkg: capture_point
+    exec: capture_point
+    name: capture_point
+    param:
+      - from: $(find-pkg-share capture_point)/config/params.yaml
+      - name: use_sim_time
+        value: '$(var use_sim_time)'
+    remap:
+      - from: /capture_point/vel_cmd
+        to: /vel_cmd
+      - from: /capture_point/contact_foot_right
+        to: /poll_R_FOOT/gpio
+      - from: /capture_point/contact_foot_left
+        to: /poll_L_FOOT/gpio
+      - from: /odometry
+        to: /mujoco_sim/odometry
+    output: screen
+    # print GDB backtrace:
+    # launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args
