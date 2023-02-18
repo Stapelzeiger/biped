@@ -21,5 +21,6 @@
     <depend>nav_msgs</depend>
     <depend>geometry_msgs</depend>
     <depend>visualization_msgs</depend>
+    <depend>biped_bringup</depend>
   </export>
 </package>
