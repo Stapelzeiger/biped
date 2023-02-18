@@ -22,6 +22,7 @@ import json
 from sim_mujoco.submodules.pid import pid as pid_ctrl
 
 from threading import Lock
+import math 
 
 def setup_pid(control_rate, kp, ki, kd):
     pid = pid_ctrl()
@@ -81,6 +82,7 @@ class MujocoNode(Node):
                 'actual_vel': 0.0,
                 'desired_pos': 0.0,
                 'desired_vel': 0.0,
+                'feedforward_torque': 0.0
             }
 
         self.name_actuators = []
@@ -301,8 +303,13 @@ class MujocoNode(Node):
                 value['desired_pos'] = self.joint_traj_msg.points[0].positions[id_joint_msg]
                 if self.joint_traj_msg.points[0].velocities:
                     value['desired_vel'] = self.joint_traj_msg.points[0].velocities[id_joint_msg]
+                if self.joint_traj_msg.points[0].effort:
+                    if math.isnan(self.joint_traj_msg.points[0].effort[id_joint_msg]) is False:
+                        value['feedforward_torque'] = self.joint_traj_msg.points[0].effort[id_joint_msg]
+                    else:
+                        value['feedforward_torque'] = 0.0
 
-        Kp = 2*15.0*np.ones(self.model.njnt - 1) # exclude root
+        Kp = 1.5*15.0*np.ones(self.model.njnt - 1) # exclude root
         Kp[1] *= 4
         Kp[6] *= 4
 
@@ -310,10 +317,14 @@ class MujocoNode(Node):
         for key, value in self.q_joints.items():
             if key != 'L_ANKLE' and key != 'R_ANKLE':
                 error = value['actual_pos'] - value['desired_pos']
-                actuators_torque = -self.P_gain_safety_scaling * Kp[i]*error
+                actuators_torque = - Kp[i]*error
+                print(key, "----> KP=", Kp[i])
                 actuators_vel = value['desired_vel']
+                feedforward_torque = value['feedforward_torque']
                 self.data.ctrl[self.q_actuator_addr[str(key)]] = actuators_torque
                 self.data.ctrl[self.q_actuator_addr[str(key) + "_VEL"]] = actuators_vel
+                id_joint_mj = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_JOINT, key)
+                self.data.qfrc_applied[self.model.jnt_dofadr[id_joint_mj]] = feedforward_torque
             i = i + 1
 
     # def stop_controller(self, actuator_name):
@@ -363,7 +374,7 @@ class MujocoNode(Node):
     def ankle_foot_spring(self, foot_joint):
         'ankle modelled as a spring damped system'
         K = 0.0003
-        offset = -0.5
+        offset = 0.5
         pitch_error_foot = self.data.qpos[self.q_pos_addr_joints[foot_joint]] - offset
         pitch_torque_setpt = - K * pitch_error_foot
 
