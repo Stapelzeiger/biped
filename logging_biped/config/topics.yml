@@ -3,7 +3,7 @@
     topics: ["/joy",
               "/imu",
               "/odometry", "/joint_states", "/foot_positions", 
-              "/capture_points/contact_foot_right", "/capture_points/contact_foot_left",
+              "/capture_point/contact_foot_right", "/capture_point/contact_foot_left",
               "/joint_trajectories",
               "/tf", "/tf_static",
               "/markers_next_footstep", "/markers_next_safe_footstep", "/markers_dcm", "/markers_desired_dcm",
