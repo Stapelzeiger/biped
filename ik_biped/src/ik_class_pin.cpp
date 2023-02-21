@@ -13,7 +13,7 @@
 #include <iomanip>
 
 const double eps = 1e-3;
-const int IT_MAX = 500;
+const int IT_MAX = 600;
 const double DT = 0.1;
 const double damp = 1e-8;
 
@@ -235,8 +235,6 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
         Eigen::MatrixXd P(model_.nv, model_.nv);
         Eigen::MatrixXd I_nv = Eigen::MatrixXd::Identity(model_.nv, model_.nv);
         P = I_nv - J_contacts.transpose() * (J_contacts * J_contacts.transpose()).inverse() * J_contacts;
-        // std::cout << "P:" << P << std::endl;
-
 
         auto joints_actuators = model_.njoints - 2;
         Eigen::MatrixXd B_matrix = Eigen::MatrixXd::Zero(model_.nv, joints_actuators);
@@ -244,9 +242,6 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
         // std::cout << "B_matrix:" << B_matrix << std::endl;
 
         auto PB = P * B_matrix;
-        Eigen::EigenSolver<Eigen::MatrixXd> eigensolver_P;
-        eigensolver_P.compute(P);
-        Eigen::VectorXd eigen_values = eigensolver_P.eigenvalues().real();
 
         pinocchio::computeGeneralizedGravity(model_, data, q_); // data.g
 
@@ -260,14 +255,17 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
             {
                 joint_state.effort = feedforward_torque[joint_id - 2];
             }
+            else
+            {
+                joint_state.effort = 0.0;
+            }
         }
     }
-
-    if (nb_contacts == 0)
+    else
     {
         for (auto &joint_state: joint_states)
         {
-            joint_state.effort = std::numeric_limits<double>::quiet_NaN(); // todo check
+            joint_state.effort = 0.0;
         }
     }
 
