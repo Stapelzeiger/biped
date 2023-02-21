@@ -189,7 +189,10 @@ class MujocoNode(Node):
                 self.model.eq_active = 0 # let go of the robot
         
         if self.visualize_mujoco is True:
+            print(self.visualization_rate)
+            print(self.sim_time_sec)
             vis_update_downsampling = int(round(1.0/self.visualization_rate/self.sim_time_sec/10))
+            print(vis_update_downsampling)
             if self.counter % vis_update_downsampling == 0:
                 self.viewer.render()
 
@@ -255,10 +258,11 @@ class MujocoNode(Node):
             id_joint_mj = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_JOINT, key)
             value['actual_pos'] = self.data.qpos[self.model.jnt_qposadr[id_joint_mj]]
             value['actual_vel'] = self.data.qvel[self.model.jnt_dofadr[id_joint_mj]]
-
+            value['actual_acc'] = self.data.qacc[self.model.jnt_dofadr[id_joint_mj]]
             msg_joint_states.name.append(key)
             msg_joint_states.position.append(value['actual_pos'])
             msg_joint_states.velocity.append(value['actual_vel'])
+            msg_joint_states.effort.append(value['actual_acc'])
         self.joint_states_pub.publish(msg_joint_states)
 
         
@@ -298,6 +302,7 @@ class MujocoNode(Node):
             id_joint_mj = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_JOINT, key)
             value['actual_pos'] = self.data.qpos[self.model.jnt_qposadr[id_joint_mj]]
             value['actual_vel'] = self.data.qvel[self.model.jnt_dofadr[id_joint_mj]]
+            value['actual_acc'] = self.data.qacc[self.model.jnt_dofadr[id_joint_mj]] 
             if key in self.joint_traj_msg.joint_names:
                 id_joint_msg = self.joint_traj_msg.joint_names.index(key)
                 value['desired_pos'] = self.joint_traj_msg.points[0].positions[id_joint_msg]
@@ -309,7 +314,7 @@ class MujocoNode(Node):
                     else:
                         value['feedforward_torque'] = 0.0
 
-        Kp = 1.5*15.0*np.ones(self.model.njnt - 1) # exclude root
+        Kp = 2*15.0*np.ones(self.model.njnt - 1) # exclude root
         Kp[1] *= 4
         Kp[6] *= 4
 
@@ -373,7 +378,7 @@ class MujocoNode(Node):
 
     def ankle_foot_spring(self, foot_joint):
         'ankle modelled as a spring damped system'
-        K = 0.0003
+        K = 0.005
         offset = 0.5
         pitch_error_foot = self.data.qpos[self.q_pos_addr_joints[foot_joint]] - offset
         pitch_torque_setpt = - K * pitch_error_foot
