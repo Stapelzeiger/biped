@@ -1,51 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- This URDF was automatically created by SolidWorks to URDF Exporter! Originally created by Stephen Brawner (brawner@gmail.com) 
+     Commit Version: 1.6.0-4-g7f85cfe  Build Version: 1.6.7995.38578
+     For more information, please see http://wiki.ros.org/sw_urdf_exporter -->
 <robot
-  name="biped">
-
-  <mujoco>
+  name="robot_urdf_2023_02_20_v3">
+    <mujoco>
         <compiler 
         meshdir="../meshes/" 
         balanceinertia="true" 
         discardvisual="false" />
   </mujoco>
-
-  <!-- Imu -->
-  <link name="imu">
-    <visual>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry>
-      <box size="0.03 0.03 0.01"/>
-      </geometry>
-      <material name="red"/>
-    </visual>
-
-    <inertial>
-      <mass value="0.01" />
-      <origin xyz="0 0 0" rpy="0 0 0"/>
-      <inertia ixx="1e-5" ixy="0" ixz="0" iyy="1e-5" iyz="0" izz="1e-5" />
-    </inertial>
-  </link>
-
-  <joint name="imu_joint" type="fixed">
-      <origin xyz="0 0 0" rpy="-3.141592 0 0"/>
-      <parent link="base_link"/>
-      <child link="imu"/>
-  </joint>
-
+  
   <link
     name="base_link">
     <inertial>
       <origin
-        xyz="-0.0448709592682471 -0.00330083392235171 0.0716121411080205"
+        xyz="-0.0448709592682472 -0.00330083392235171 0.0716121411080205"
         rpy="0 0 0" />
       <mass
         value="2.12328496021261" />
       <inertia
-        ixx="0.00628451938896954"
-        ixy="9.03731456394116E-06"
+        ixx="0.00628451938896953"
+        ixy="9.03731456394113E-06"
         ixz="3.74558764975459E-05"
         iyy="0.00292007116050446"
-        iyz="2.33861350302106E-09"
+        iyz="2.33861350301923E-09"
         izz="0.00751646623969033" />
     </inertial>
     <visual>
@@ -54,7 +33,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes/base_link.STL" />
+          filename="package://robot_urdf_2023_02_20_v3/meshes/base_link.STL" />
       </geometry>
       <material
         name="">
@@ -68,7 +47,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes/base_link.STL" />
+          filename="package://robot_urdf_2023_02_20_v3/meshes/base_link.STL" />
       </geometry>
     </collision>
   </link>
@@ -82,10 +61,10 @@
         value="0.0629568480892821" />
       <inertia
         ixx="5.16473545517217E-05"
-        ixy="-3.57588662688557E-11"
+        ixy="-3.57588662689144E-11"
         ixz="4.61970829805285E-05"
         iyy="0.000152966439888968"
-        iyz="6.07063380526832E-12"
+        iyz="6.07063380591114E-12"
         izz="0.000116288804420767" />
     </inertial>
     <visual>
@@ -94,7 +73,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes/R_HIP.STL" />
+          filename="package://robot_urdf_2023_02_20_v3/meshes/R_HIP.STL" />
       </geometry>
       <material
         name="">
@@ -108,7 +87,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes/R_HIP.STL" />
+          filename="package://robot_urdf_2023_02_20_v3/meshes/R_HIP.STL" />
       </geometry>
     </collision>
   </link>
@@ -134,13 +113,13 @@
     name="R_SHOULDER">
     <inertial>
       <origin
-        xyz="-0.0382844310441067 0.0118964401352487 0.00123886924581125"
+        xyz="-0.0382844310441066 0.0118964401352487 0.00123886924581128"
         rpy="0 0 0" />
       <mass
         value="0.588643548762149" />
       <inertia
         ixx="0.000521980550813748"
-        ixy="-9.2608882286471E-07"
+        ixy="-9.26088822864709E-07"
         ixz="4.06359835642879E-06"
         iyy="0.000511051697800316"
         iyz="4.33469818121015E-06"
@@ -152,7 +131,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes/R_SHOULDER.STL" />
+          filename="package://robot_urdf_2023_02_20_v3/meshes/R_SHOULDER.STL" />
       </geometry>
       <material
         name="">
@@ -166,7 +145,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes/R_SHOULDER.STL" />
+          filename="package://robot_urdf_2023_02_20_v3/meshes/R_SHOULDER.STL" />
       </geometry>
     </collision>
   </link>
@@ -210,7 +189,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes/R_UPPER_LEG.STL" />
+          filename="package://robot_urdf_2023_02_20_v3/meshes/R_UPPER_LEG.STL" />
       </geometry>
       <material
         name="">
@@ -224,7 +203,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes/R_UPPER_LEG.STL" />
+          filename="package://robot_urdf_2023_02_20_v3/meshes/R_UPPER_LEG.STL" />
       </geometry>
     </collision>
   </link>
@@ -268,7 +247,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes/R_LOWER_LEG.STL" />
+          filename="package://robot_urdf_2023_02_20_v3/meshes/R_LOWER_LEG.STL" />
       </geometry>
       <material
         name="">
@@ -282,7 +261,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes/R_LOWER_LEG.STL" />
+          filename="package://robot_urdf_2023_02_20_v3/meshes/R_LOWER_LEG.STL" />
       </geometry>
     </collision>
   </link>
@@ -326,7 +305,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes/R_FOOT.STL" />
+          filename="package://robot_urdf_2023_02_20_v3/meshes/R_FOOT.STL" />
       </geometry>
       <material
         name="">
@@ -340,7 +319,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes/R_FOOT.STL" />
+          filename="package://robot_urdf_2023_02_20_v3/meshes/R_FOOT.STL" />
       </geometry>
     </collision>
   </link>
@@ -348,7 +327,7 @@
     name="R_ANKLE"
     type="revolute">
     <origin
-      xyz="0 0.0173 -0.30826"
+      xyz="0 0.0168 -0.30826"
       rpy="0 0 0" />
     <parent
       link="R_LOWER_LEG" />
@@ -362,33 +341,20 @@
       effort="1000"
       velocity="1000" />
   </joint>
-
-  <link name="R_FOOT_CONTACT"></link>
-  <joint
-    name="R_FOOT_CONTACT_JOINT"
-    type="fixed">
-    <origin
-      xyz="0.0 0.0173 -0.30826"
-      rpy="0 0 0" />
-    <parent link="R_LOWER_LEG" />
-    <child link="R_FOOT_CONTACT" />
-  </joint>
-
-
   <link
     name="L_HIP">
     <inertial>
       <origin
-        xyz="0.0219446414797471 2.88517175428549E-09 -0.0303916818415699"
+        xyz="0.0219446414797471 2.8851717404077E-09 -0.0303916818415699"
         rpy="0 0 0" />
       <mass
-        value="0.0629568480892822" />
+        value="0.0629568480892821" />
       <inertia
-        ixx="5.16473545517216E-05"
-        ixy="-3.57588662405679E-11"
+        ixx="5.16473545517217E-05"
+        ixy="-3.57588662402191E-11"
         ixz="4.61970829805285E-05"
         iyy="0.000152966439888968"
-        iyz="6.07063377437121E-12"
+        iyz="6.07063377409065E-12"
         izz="0.000116288804420767" />
     </inertial>
     <visual>
@@ -397,7 +363,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes/L_HIP.STL" />
+          filename="package://robot_urdf_2023_02_20_v3/meshes/L_HIP.STL" />
       </geometry>
       <material
         name="">
@@ -411,7 +377,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes/L_HIP.STL" />
+          filename="package://robot_urdf_2023_02_20_v3/meshes/L_HIP.STL" />
       </geometry>
     </collision>
   </link>
@@ -455,7 +421,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes/L_SHOULDER.STL" />
+          filename="package://robot_urdf_2023_02_20_v3/meshes/L_SHOULDER.STL" />
       </geometry>
       <material
         name="">
@@ -469,7 +435,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes/L_SHOULDER.STL" />
+          filename="package://robot_urdf_2023_02_20_v3/meshes/L_SHOULDER.STL" />
       </geometry>
     </collision>
   </link>
@@ -501,8 +467,8 @@
         value="0.544557667315214" />
       <inertia
         ixx="0.00110960756931559"
-        ixy="7.62193303280927E-07"
-        ixz="7.86366765052434E-07"
+        ixy="7.62193303280925E-07"
+        ixz="7.86366765052468E-07"
         iyy="0.00134742538778517"
         iyz="1.40083657004109E-05"
         izz="0.000337097363318948" />
@@ -513,7 +479,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes/L_UPPER_LEG.STL" />
+          filename="package://robot_urdf_2023_02_20_v3/meshes/L_UPPER_LEG.STL" />
       </geometry>
       <material
         name="">
@@ -527,7 +493,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes/L_UPPER_LEG.STL" />
+          filename="package://robot_urdf_2023_02_20_v3/meshes/L_UPPER_LEG.STL" />
       </geometry>
     </collision>
   </link>
@@ -559,8 +525,8 @@
         value="0.0923618682215969" />
       <inertia
         ixx="0.000437183481260274"
-        ixy="-1.07399882823296E-08"
-        ixz="-1.29195313484862E-08"
+        ixy="-1.07399882823297E-08"
+        ixz="-1.2919531348486E-08"
         iyy="0.000437218894302394"
         iyz="-1.30274858435487E-06"
         izz="1.55764253409593E-05" />
@@ -571,7 +537,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes/L_LOWER_LEG.STL" />
+          filename="package://robot_urdf_2023_02_20_v3/meshes/L_LOWER_LEG.STL" />
       </geometry>
       <material
         name="">
@@ -585,7 +551,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes/L_LOWER_LEG.STL" />
+          filename="package://robot_urdf_2023_02_20_v3/meshes/L_LOWER_LEG.STL" />
       </geometry>
     </collision>
   </link>
@@ -605,22 +571,22 @@
       lower="-2.2"
       upper="-0.1"
       effort="1000"
-      velocity="1000" />
+      velocity="0" />
   </joint>
   <link
     name="L_FOOT">
     <inertial>
       <origin
-        xyz="3.02321900789151E-05 -2.36197425507179E-08 -0.0242542849058648"
+        xyz="3.02321900789168E-05 -2.36197425368401E-08 -0.0242542849058649"
         rpy="0 0 0" />
       <mass
         value="0.0313407448211584" />
       <inertia
         ixx="1.53505900340824E-06"
-        ixy="3.21655852743254E-11"
-        ixz="-3.8785192756099E-09"
+        ixy="3.21655852743234E-11"
+        ixz="-3.8785192756102E-09"
         iyy="3.35525061902412E-05"
-        iyz="1.30436886701902E-12"
+        iyz="1.30436886701454E-12"
         izz="3.39895836736297E-05" />
     </inertial>
     <visual>
@@ -629,7 +595,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes/L_FOOT.STL" />
+          filename="package://robot_urdf_2023_02_20_v3/meshes/L_FOOT.STL" />
       </geometry>
       <material
         name="">
@@ -643,7 +609,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes/L_FOOT.STL" />
+          filename="package://robot_urdf_2023_02_20_v3/meshes/L_FOOT.STL" />
       </geometry>
     </collision>
   </link>
@@ -665,16 +631,4 @@
       effort="1000"
       velocity="1000" />
   </joint>
-
-  <link name="L_FOOT_CONTACT"></link>
-  <joint
-    name="L_FOOT_CONTACT_JOINT"
-    type="fixed">
-    <origin
-      xyz="0.0 -0.0173 -0.30826"
-      rpy="0 0 0" />
-    <parent link="L_LOWER_LEG" />
-    <child link="L_FOOT_CONTACT" />
-  </joint>
-
 </robot>
