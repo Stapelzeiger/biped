@@ -9,6 +9,7 @@ TODO install script
 
 ros-humble-desktop
 ros-humble-robot-state-publisher
+ros-humble-compressed-image-transport
 
 ## Pinocchio
 ```
