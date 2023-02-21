@@ -27,28 +27,9 @@ launch:
       value: 300.0
     output: screen
 
-- node:
-    pkg: sim_mujoco
-    exec: mujoco
-    name: mujoco_sim
-    param:
-      - name: mujoco_xml_path
-        value: "$(find-pkg-share biped_robot_description)/urdf/custom_robot.mujoco.xml"
-      - name: visualize_mujoco
-        value: False
-      - name: sim_time_sec
-        value: $(var sim_time_sec)
-      - name: visualization_rate
-        value: $(var visualization_rate)
-    remap:
-      - from: /mujoco_sim/contact_foot_right
-        to: /poll_R_FOOT/gpio
-      - from: /mujoco_sim/contact_foot_left
-        to: /poll_L_FOOT/gpio
-      - from: /mujoco_sim/imu
-        to: /imu
-    output: screen
 
+- include:
+    file: "$(find-pkg-share sim_mujoco)/sim.launch.yml"
 
 - include:
     file: "$(find-pkg-share ik_biped)/launch/ik.launch.yml"
