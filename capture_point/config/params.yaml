@@ -5,9 +5,11 @@
     ctrl_time_sec: 0.01
     threshold_next_footstep: 0.5
     P_gain_scaling: 0.1
-    duration_init_traj: 1.5 # seconds
+    duration_init_traj: 1.0 # seconds
     safety_radius_CP: 1.0 # double
     T_contact_ignore: 0.1
     r_foot_frame_id: R_FOOT_CONTACT
+    r_foot_urdf_frame_id: R_ANKLE
     l_foot_frame_id: L_FOOT_CONTACT
+    l_foot_urdf_frame_id: L_ANKLE
     base_link_frame_id: base_link
