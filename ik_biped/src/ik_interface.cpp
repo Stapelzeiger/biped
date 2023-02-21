@@ -179,9 +179,9 @@ private:
                     marker_array_msg.markers[i].pose.position.y = body_positions_solution[i][1];
                     marker_array_msg.markers[i].pose.position.z = body_positions_solution[i][2];
                     marker_array_msg.markers[i].pose.orientation.w = 1.0;
-                    marker_array_msg.markers[i].scale.x = 0.1;
-                    marker_array_msg.markers[i].scale.y = 0.1;
-                    marker_array_msg.markers[i].scale.z = 0.1;
+                    marker_array_msg.markers[i].scale.x = 0.05;
+                    marker_array_msg.markers[i].scale.y = 0.05;
+                    marker_array_msg.markers[i].scale.z = 0.05;
                     marker_array_msg.markers[i].color.a = 1.0;
                     marker_array_msg.markers[i].color.r = 0.0;
                     marker_array_msg.markers[i].color.g = 1.0;
@@ -196,9 +196,9 @@ private:
                     marker_array_msg.markers[i + body_positions_solution.size()].pose.position.y = pt.transforms[i].translation.y;
                     marker_array_msg.markers[i + body_positions_solution.size()].pose.position.z = pt.transforms[i].translation.z;
                     marker_array_msg.markers[i + body_positions_solution.size()].pose.orientation.w = 1.0;
-                    marker_array_msg.markers[i + body_positions_solution.size()].scale.x = 0.1;
-                    marker_array_msg.markers[i + body_positions_solution.size()].scale.y = 0.1;
-                    marker_array_msg.markers[i + body_positions_solution.size()].scale.z = 0.1;
+                    marker_array_msg.markers[i + body_positions_solution.size()].scale.x = 0.05;
+                    marker_array_msg.markers[i + body_positions_solution.size()].scale.y = 0.05;
+                    marker_array_msg.markers[i + body_positions_solution.size()].scale.z = 0.05;
                     marker_array_msg.markers[i + body_positions_solution.size()].color.a = 1.0;
                     marker_array_msg.markers[i + body_positions_solution.size()].color.r = 1.0;
                     marker_array_msg.markers[i + body_positions_solution.size()].color.g = 0.0;
