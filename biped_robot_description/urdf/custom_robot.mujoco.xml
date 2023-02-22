@@ -51,27 +51,27 @@
 
       
       <body name="L_HIP" pos="0 0.07 -0.005">
-        <inertial pos="0.0219446 2.88517e-09 -0.0303917" quat="0.366769 0.60455 0.60455 0.366769" mass="0.0629568" diaginertia="0.000152966 0.000140349 2.75872e-05"/>
+        <inertial pos="0.0219446 2.88517e-09 -0.0303917" quat="1. 0. 0. 0." mass="0.0629568" diaginertia="0.000152966 0.000140349 2.75872e-05"/>
         <joint name="L_YAW" pos="0 0 0" axis="0 0 1" limited="true" range="-0.3 0.3"/>
         <geom name="L_HIP" type="mesh" contype="2" rgba="1 1 1 1" mesh="L_HIP"/>
         
         <body name="L_SHOULDER" pos="0.0069 0 -0.081">
-          <inertial pos="-0.0382844 -0.0118964 0.00204772" quat="0.99855 0.0172952 -0.0163405 0.0482982" mass="0.588644" diaginertia="0.00052221 0.000511105 0.000391968"/>
+          <inertial pos="-0.0382844 -0.0118964 0.00204772" quat="1. 0. 0. 0."  mass="0.588644" diaginertia="0.00052221 0.000511105 0.000391968"/>
           <joint name="L_HAA" pos="0 0 0" axis="1 0 0" limited="true" range="-0.25 0.25"/>
           <geom name="L_SHOULDER" type="mesh" contype="2" rgba="1 0 0 1" mesh="L_SHOULDER"/>
 
           <body name="L_UPPER_LEG" pos="0 0 0">
-            <inertial pos="-0.000328851 0.0508507 -0.0528924" quat="0.708239 0.00455438 -0.00524832 0.705938" mass="0.544558" diaginertia="0.00134762 0.00110961 0.000336902"/>
+            <inertial pos="-0.000328851 0.0508507 -0.0528924" quat="1. 0. 0. 0." mass="0.544558" diaginertia="0.00134762 0.00110961 0.000336902"/>
             <joint name="L_HFE" pos="0 0 0" axis="0 1 0" limited="true" range="-1.5 1.5"/>
             <geom name="L_UPPER_LEG" type="mesh" contype="2"  rgba="1 0 0 1" mesh="L_UPPER_LEG"/>
             
             <body name="L_LOWER_LEG" pos="0 0.0589 -0.23405">
-              <inertial pos="0.0167444 -0.010503 -0.111301" quat="0.61399 -0.000936386 0.00122879 0.789312" mass="0.0923619" diaginertia="0.000437226 0.000437181 1.55724e-05"/>
+              <inertial pos="0.0167444 -0.010503 -0.111301" quat="1. 0. 0. 0." mass="0.0923619" diaginertia="0.000437226 0.000437181 1.55724e-05"/>
               <joint name="L_KFE" pos="0 0 0" axis="0 1 0" limited="true" range="-2.2 -0.1"/>
               <geom name="L_LOWER_LEG" type="mesh" contype="2" rgba="0.792157 0.819608 0.933333 1" mesh="L_LOWER_LEG"/>
               
               <body name="L_FOOT" pos="0 -0.0168 -0.30826">
-                <inertial pos="3.02322e-05 -2.36197e-08 -0.0242543" quat="0 0.707065 0 0.707149" mass="0.0313407" diaginertia="3.39896e-05 3.35525e-05 1.53506e-06"/>
+                <inertial pos="3.02322e-05 -2.36197e-08 -0.0242543" quat="0.710914 0 0.703279 0" mass="0.0313407" diaginertia="3.39896e-05 3.35525e-05 1.53506e-06"/>
                 <joint name="L_ANKLE" pos="0 0 0" axis="0 1 0" limited="true" range="-0.7 0.7"/>
                 <geom name="L_FOOT" friction="1. 0.3 0.3" size="0.015 0.05" pos="0 0 -0.01" quat="0.710914 0 0.703279 0"  type="capsule" rgba="0.8 0.8 0.8 1"/>
 
@@ -83,27 +83,27 @@
 
 
       <body name="R_HIP" pos="0 -0.07 -0.005">
-        <inertial pos="0.0219446 2.88517e-09 -0.0303917" quat="0.366769 0.60455 0.60455 0.366769" mass="0.0629568" diaginertia="0.000152966 0.000140349 2.75872e-05"/>
+        <inertial pos="0.0219446 2.88517e-09 -0.0303917" quat="1. 0. 0. 0." mass="0.0629568" diaginertia="0.000152966 0.000140349 2.75872e-05"/>
         <joint name="R_YAW" pos="0 0 0" axis="0 0 1" limited="true" range="-0.3 0.3"/>
         <geom name="R_HIP" type="mesh" contype="2" rgba="0.69804 0.69804 0.69804 1" mesh="R_HIP"/>
         
         <body name="R_SHOULDER" pos="0.0069 0 -0.081">
-          <inertial pos="-0.0382844 0.0118964 0.00123887" quat="0.999072 0.0188564 -0.0150807 -0.0356764" mass="0.588644" diaginertia="0.000522165 0.000511155 0.000391964"/>
+          <inertial pos="-0.0382844 0.0118964 0.00123887" quat="1. 0. 0. 0." mass="0.588644" diaginertia="0.000522165 0.000511155 0.000391964"/>
           <joint name="R_HAA" pos="0 0 0" axis="1 0 0" limited="true" range="-0.25 0.25"/>
           <geom name="R_SHOULDER" type="mesh" contype="2" rgba="1 0 0 1" mesh="R_SHOULDER"/>
           
           <body name="R_UPPER_LEG" pos="0 0 0">
-            <inertial pos="0.000674123 -0.0518216 -0.040538" quat="0.708424 -0.00163377 0.0024851 0.705781" mass="0.512204" diaginertia="0.00132251 0.00110712 0.000298067"/>
+            <inertial pos="0.000674123 -0.0518216 -0.040538" quat="1. 0. 0. 0." mass="0.512204" diaginertia="0.00132251 0.00110712 0.000298067"/>
             <joint name="R_HFE" pos="0 0 0" axis="0 1 0" limited="true" range="-1.5 1.5"/>
             <geom name="R_UPPER_LEG" type="mesh" contype="2" rgba="1 0 0 1" mesh="R_UPPER_LEG"/>
             
             <body name="R_LOWER_LEG" pos="0 -0.0584 -0.23405">
-              <inertial pos="-0.14942 0.0171035 -0.165665" quat="0.61399 0.000936386 -0.00122879 0.789312" mass="0.0923619" diaginertia="0.000437226 0.000437181 1.55724e-05"/>
+              <inertial pos="-0.14942 0.0171035 -0.165665" quat="1. 0. 0. 0." mass="0.0923619" diaginertia="0.000437226 0.000437181 1.55724e-05"/>
               <joint name="R_KFE" pos="0 0 0" axis="0 1 0" limited="true" range="-2.2 -0.1"/>
               <geom name="R_LOWER_LEG" type="mesh" contype="2" rgba="0.792157 0.819608 0.933333 1" mesh="R_LOWER_LEG"/>
               
               <body name="R_FOOT" pos="0 0.0168 -0.30826">
-                <inertial pos="-3.02322e-05 2.36197e-08 -0.0242543" quat="0 0.707149 0 0.707065" mass="0.0313407" diaginertia="3.39896e-05 3.35525e-05 1.53506e-06"/>
+                <inertial pos="-3.02322e-05 2.36197e-08 -0.0242543" quat="0.710914 0 0.703279 0" mass="0.0313407" diaginertia="3.39896e-05 3.35525e-05 1.53506e-06"/>
                 <joint name="R_ANKLE" pos="0 0 0" axis="0 1 0" limited="true" range="-0.7 0.7"/>
                 <geom name="R_FOOT" friction="1. 0.3 0.3" size="0.015 0.05" pos="0 0 -0.01" quat="0.710914 0 0.703279 0"  type="capsule" rgba="0.8 0.8 0.8 1"/>
               </body>
@@ -128,7 +128,7 @@
             <velocity gear="1" joint="L_HFE" name="L_HFE_VEL" kv="0.5" />
 
         <motor gear="1"  joint="L_KFE" name="L_KFE"/>
-            <velocity gear="1" joint="L_KFE" name="L_KFE_VEL" kv="0.35 " />
+            <velocity gear="1" joint="L_KFE" name="L_KFE_VEL" kv="0.8" />
 
         <motor gear="1"  joint="L_ANKLE" name="L_ANKLE"/>
             <velocity gear="1" joint="L_ANKLE" name="L_ANKLE_VEL" kv="0.005" />
@@ -143,7 +143,7 @@
             <velocity gear="1" joint="R_HFE" name="R_HFE_VEL" kv="0.5" />
 
         <motor gear="1"  joint="R_KFE" name="R_KFE"/>
-            <velocity gear="1" joint="R_KFE" name="R_KFE_VEL" kv="0.35 " />
+            <velocity gear="1" joint="R_KFE" name="R_KFE_VEL" kv="0.8" />
 
         <motor gear="1"  joint="R_ANKLE" name="R_ANKLE"/>
             <velocity gear="1" joint="R_ANKLE" name="R_ANKLE_VEL" kv="0.005" />
