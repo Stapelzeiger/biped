@@ -38,14 +38,14 @@ target_compile_features(vel_estimation PUBLIC c_std_99 cxx_std_17)  # Require C9
 
 ament_target_dependencies(
   vel_estimation
-  "rclcpp"
-  "std_msgs"
-  "sensor_msgs"
-  "biped_bringup"
-  "tf2"
-  "tf2_ros"
-  "nav_msgs"
-  "visualization_msgs"
+  rclcpp
+  std_msgs
+  sensor_msgs
+  biped_bringup
+  tf2
+  tf2_ros
+  nav_msgs
+  visualization_msgs
   )
 
 target_link_libraries(vel_estimation ${PINOCCHIO_LIBRARIES})
