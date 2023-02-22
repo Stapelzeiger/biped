@@ -40,30 +40,19 @@ class CapturePoint : public rclcpp::Node
 public:
     CapturePoint() : Node("cp_node")
     {
-        this->declare_parameter<double>("robot_height");
-        this->declare_parameter<double>("t_step");
-        this->declare_parameter<double>("ctrl_time_sec");
-        this->declare_parameter<double>("threshold_next_footstep");
-        this->declare_parameter<double>("P_gain_scaling");
-        this->declare_parameter<double>("duration_init_traj");
-        this->declare_parameter<double>("safety_radius_CP");
-        this->declare_parameter<double>("T_contact_ignore");
+        robot_params.robot_height = this->declare_parameter<double>("robot_height",  0.54);
+        robot_params.t_step = this->declare_parameter<double>("t_step", 0.25);
+        robot_params.dt_ctrl = this->declare_parameter<double>("ctrl_time_sec", 0.01);
+        robot_params.duration_init_traj = this->declare_parameter<double>("duration_init_traj", 3.0);
+        robot_params.safety_radius_CP = this->declare_parameter<double>("safety_radius_CP", 1.0);
+        robot_params.T_contact_ignore = this->declare_parameter<double>("T_contact_ignore", 0.1);
+        robot_params.omega = sqrt(9.81 / robot_params.robot_height);
 
         r_foot_frame_id_ = this->declare_parameter<std::string>("r_foot_frame_id", "R_FOOT");
         l_foot_frame_id_ = this->declare_parameter<std::string>("l_foot_frame_id", "L_FOOT");
-        
         r_foot_urdf_frame_id_ = this->declare_parameter<std::string>("r_foot_urdf_frame_id", "R_FOOT");
         l_foot_urdf_frame_id_ = this->declare_parameter<std::string>("l_foot_urdf_frame_id", "L_FOOT");
-
         base_link_frame_id_ = this->declare_parameter<std::string>("base_link_frame_id", "base_link");
-
-        robot_params.robot_height = this->get_parameter("robot_height").as_double();
-        robot_params.t_step = this->get_parameter("t_step").as_double();
-        robot_params.dt_ctrl = this->get_parameter("ctrl_time_sec").as_double();
-        robot_params.omega = sqrt(9.81 / robot_params.robot_height);
-        robot_params.duration_init_traj = this->get_parameter("duration_init_traj").as_double();
-        robot_params.safety_radius_CP = this->get_parameter("safety_radius_CP").as_double();
-        robot_params.T_contact_ignore = this->get_parameter("T_contact_ignore").as_double();
 
         tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
         tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
@@ -698,9 +687,6 @@ private:
         double duration_init_traj;
         double safety_radius_CP;
         double T_contact_ignore;
-        double P_gain_scaling;
-        double threshold_next_footstep;
-
     } robot_params;
 
     bool foot_right_contact_;
