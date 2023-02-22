@@ -189,10 +189,7 @@ class MujocoNode(Node):
                 self.model.eq_active = 0 # let go of the robot
         
         if self.visualize_mujoco is True:
-            print(self.visualization_rate)
-            print(self.sim_time_sec)
             vis_update_downsampling = int(round(1.0/self.visualization_rate/self.sim_time_sec/10))
-            print(vis_update_downsampling)
             if self.counter % vis_update_downsampling == 0:
                 self.viewer.render()
 
@@ -314,16 +311,18 @@ class MujocoNode(Node):
                     else:
                         value['feedforward_torque'] = 0.0
 
-        Kp = 2*15.0*np.ones(self.model.njnt - 1) # exclude root
-        Kp[1] *= 4
-        Kp[6] *= 4
+        kp_moteus = 600
+        Kp = (kp_moteus/(2*math.pi)) * np.ones(self.model.njnt - 1) # exclude root
+        # Kp = 2.5*15.0*np.ones(self.model.njnt - 1) # exclude root
+
+        # Kp[1] *= 4
+        # Kp[6] *= 4
 
         i = 0
         for key, value in self.q_joints.items():
             if key != 'L_ANKLE' and key != 'R_ANKLE':
                 error = value['actual_pos'] - value['desired_pos']
                 actuators_torque = - Kp[i]*error
-                print(key, "----> KP=", Kp[i])
                 actuators_vel = value['desired_vel']
                 feedforward_torque = value['feedforward_torque']
                 self.data.ctrl[self.q_actuator_addr[str(key)]] = actuators_torque
