@@ -49,6 +49,11 @@ void IKRobot::build_model(const std::string urdf_xml_string)
         // std::cout << "joint type:" << j.type() << std::endl;
         std::cout << "" << std::endl;
     }
+
+    // build actuation matrix
+    auto joints_actuators = model_.njoints - 2; // - root - universe
+    B_matrix_ = Eigen::MatrixXd::Zero(model_.nv, joints_actuators);
+    B_matrix_.block(6, 0, joints_actuators, joints_actuators) = Eigen::MatrixXd::Identity(joints_actuators, joints_actuators);
 }
 
 bool IKRobot::has_model() const
@@ -216,18 +221,12 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
         }
     }
 
-    std::cout << "---------------" << std::endl;
-    std::cout << model_.gravity << std::endl;
-    std::cout << "---------------" << std::endl;
-
-    // std::cout << "nb_contacts:" << nb_contacts << std::endl;
     if (nb_contacts == 1)
     {
         Eigen::MatrixXd J_contacts;
-        J_contacts.resize(5*nb_contacts, model_.nv);
+        J_contacts.resize(5, model_.nv);
         J_contacts.setZero();
 
-        int i = 0;
         for (const auto &body: body_states)
         {
             if (body.name != "base_link")
@@ -237,31 +236,28 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
                     auto frame_id = model_.getFrameId(body.name);
                     Eigen::MatrixXd J(6, model_.nv);
                     J.setZero();
-                    pinocchio::getFrameJacobian(model_, data, frame_id, pinocchio::LOCAL, J);
+                    pinocchio::getFrameJacobian(model_, data, frame_id, pinocchio::WORLD, J);
                     Eigen::MatrixXd J_block(5, model_.nv);
                     J_block << J.block(0, 0, 3, model_.nv), J.block(4, 0, 2, model_.nv);
-                    J_contacts.block(5 * i, 0, 5, model_.nv) = J_block;
-                    i++;
+                    J_contacts.block(0, 0, 5, model_.nv) = J_block;
                 }
             }
         }
 
         Eigen::MatrixXd P(model_.nv, model_.nv);
         Eigen::MatrixXd I_nv = Eigen::MatrixXd::Identity(model_.nv, model_.nv);
-        P = I_nv - J_contacts.transpose() * (J_contacts * J_contacts.transpose()).inverse() * J_contacts;
 
-        auto joints_actuators = model_.njoints - 2;
-        Eigen::MatrixXd B_matrix = Eigen::MatrixXd::Zero(model_.nv, joints_actuators);
-        B_matrix.block(6, 0, joints_actuators, joints_actuators) = Eigen::MatrixXd::Identity(joints_actuators, joints_actuators);
-        // std::cout << "B_matrix:" << B_matrix << std::endl;
+        Eigen::CompleteOrthogonalDecomposition<Eigen::MatrixXd> complete_orth_decomp(J_contacts);
+        auto J_contacts_pinv = complete_orth_decomp.pseudoInverse();
 
-        auto PB = P * B_matrix;
-
+        P = I_nv - J_contacts_pinv * J_contacts;
+        auto PB = P * B_matrix_;
         pinocchio::computeGeneralizedGravity(model_, data, q_); // data.g
 
-        auto feedforward_torque = (PB.transpose() * PB).inverse() * PB.transpose() * P * data.g;
+        Eigen::HouseholderQR<Eigen::MatrixXd> QR(PB);
+        auto y = P * data.g;
+        Eigen::VectorXd feedforward_torque(QR.solve(y));
 
-        // todo write the below code more robustly
         for (auto &joint_state: joint_states)
         {
             auto joint_id = model_.getJointId(joint_state.name);
