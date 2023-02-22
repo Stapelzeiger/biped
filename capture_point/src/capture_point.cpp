@@ -106,7 +106,7 @@ private:
 
         computed_swing_foot_pos_STF_ = computed_swing_foot_pos_BF_ - computed_stance_foot_pos_BF_;
         computed_swing_foot_vel_STF_ << 0.0, 0.0, 0.0;
-        swing_foot_position_beginning_of_step_STF_ << 0.0, 0.0, 0.0;
+        swing_foot_position_beginning_of_step_STF_ = computed_swing_foot_pos_STF_;
         foot_traj_list_STF_.clear();
     }
 
@@ -201,16 +201,15 @@ private:
             }
         }
 
-        std::cout << "|||||||||||||||||||||||||||||||||||| STATE = " << state_ << std::endl;
 
         if (state_ == "INIT")
         {
             Eigen::Vector3d init_stance_foot_pos_BF, init_swing_foot_pos_BF;
             Eigen::Vector3d fin_stance_foot_pos_BF, fin_swing_foot_pos_BF;
 
-            fin_stance_foot_pos_BF = Eigen::Vector3d(0.0, -0.05, -robot_params.robot_height);
+            fin_stance_foot_pos_BF = Eigen::Vector3d(0.0, 0.0, -robot_params.robot_height);
             previous_desired_stance_foot_BLF_ = fin_stance_foot_pos_BF;
-            fin_swing_foot_pos_BF = Eigen::Vector3d(0.0, 0.1, -robot_params.robot_height + 0.1);
+            fin_swing_foot_pos_BF = Eigen::Vector3d(0.0, 0.15, -robot_params.robot_height + 0.1);
 
             init_stance_foot_pos_BF = get_eigen_transform(r_foot_frame_id_, base_link_frame_id_).translation();
             init_swing_foot_pos_BF = get_eigen_transform(l_foot_frame_id_, base_link_frame_id_).translation();
