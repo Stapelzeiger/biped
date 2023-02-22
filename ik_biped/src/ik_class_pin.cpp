@@ -13,7 +13,7 @@
 #include <iomanip>
 
 const double eps = 1e-3;
-const int IT_MAX = 600;
+const int IT_MAX = 500;
 const double DT = 0.1;
 const double damp = 1e-8;
 
@@ -163,7 +163,6 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
         // std::cout << v.norm() << std::endl;
         q = pinocchio::integrate(model_, q, v * DT);
     }
-    // std::cout << "iterations : " << i << "  out of " << IT_MAX << std::endl;
 
     std::vector<JointState> joint_states;
     for (int joint_idx = 0; joint_idx < model_.njoints; joint_idx++) {
@@ -191,8 +190,19 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
         body_positions_solution.push_back(cur_to_world.translation());
     }
 
-    // std::cout << std::fixed;
-    // std::cout << std::setprecision(3);
+    Eigen::VectorXd q_vel(model_.nv);
+    q_vel.setZero();
+    for (const auto &body: body_states) {
+        if (body.linear_velocity.hasNaN() == false) {
+            auto frame_id = model_.getFrameId(body.name);
+            Eigen::MatrixXd J(6, model_.nv);
+            J.setZero();
+            pinocchio::getFrameJacobian(model_, data, frame_id, pinocchio::WORLD, J);
+            // q_vel += Eigen::HouseholderQR(J.block(0, 0, 3, model_.nv)).solve(body.linear_velocity);
+        }
+    }
+
+
 
     int nb_contacts = 0;
     for (const auto &body: body_states)
@@ -205,6 +215,10 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
             }
         }
     }
+
+    std::cout << "---------------" << std::endl;
+    std::cout << model_.gravity << std::endl;
+    std::cout << "---------------" << std::endl;
 
     // std::cout << "nb_contacts:" << nb_contacts << std::endl;
     if (nb_contacts == 1)
@@ -258,6 +272,7 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
             else
             {
                 joint_state.effort = 0.0;
+                joint_state.velocity = 0.0;
             }
         }
     }
@@ -266,6 +281,8 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
         for (auto &joint_state: joint_states)
         {
             joint_state.effort = 0.0;
+            joint_state.velocity = 0.0;
+
         }
     }
 

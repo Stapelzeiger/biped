@@ -105,7 +105,9 @@ private:
                 const auto &pos = Eigen::Vector3d(pt.transforms[i].translation.x, pt.transforms[i].translation.y, pt.transforms[i].translation.z);
                 const auto &rot = Eigen::Quaterniond(pt.transforms[i].rotation.w, pt.transforms[i].rotation.x, pt.transforms[i].rotation.y, pt.transforms[i].rotation.z);
                 IKRobot::BodyState body_state(name, pos, rot);
-                // TODO add velocities and accelerations if they are present
+                if (pt.velocities.size() > 0) {
+                    body_state.linear_velocity = Eigen::Vector3d(pt.velocities[i].linear.x, pt.velocities[i].linear.y, pt.velocities[i].linear.z);
+                }
                 if (!this->has_parameter(name + ".joint_type")) {
                     this->declare_parameter(name + ".joint_type", "FULL_6DOF");
                 }
@@ -127,7 +129,8 @@ private:
                     return;
                 }
 
-                // not nice code
+                // not nice code, todo fix
+                std::cout << "name: " << name << std::endl;
                 if (name == "L_ANKLE"){
                     body_state.in_contact = foot_left_contact_;
                 }
@@ -149,13 +152,18 @@ private:
                 out_msg.joint_names[i] = joint_states[i].name;
             }
             trajectory_msgs::msg::JointTrajectoryPoint out_pt;
-            out_pt.positions.resize(joint_states.size());
 
+            out_pt.positions.resize(joint_states.size());
             for (size_t i = 0; i < joint_states.size(); i++) {
                 out_pt.positions[i] = joint_states[i].position;
             }
 
-            out_pt.effort.resize(joint_states.size()); // todo make this more robust
+            // out_pt.velocities.resize(joint_states.size());
+            // for (size_t i = 0; i < joint_states.size(); i++) {
+            //     out_pt.velocities[i] = joint_states[i].velocity;
+            // }
+
+            out_pt.effort.resize(joint_states.size());
             for (size_t i = 0; i < joint_states.size(); i++) {
                 out_pt.effort[i] = joint_states[i].effort;
             }
@@ -184,7 +192,7 @@ private:
                     marker_array_msg.markers[i].scale.z = 0.05;
                     marker_array_msg.markers[i].color.a = 1.0;
                     marker_array_msg.markers[i].color.r = 0.0;
-                    marker_array_msg.markers[i].color.g = 1.0;
+                    marker_array_msg.markers[i].color.g = 1.0; // green blob
                     marker_array_msg.markers[i].color.b = 0.0;
 
                     marker_array_msg.markers[i + body_positions_solution.size()].header = msg->header;
@@ -200,7 +208,7 @@ private:
                     marker_array_msg.markers[i + body_positions_solution.size()].scale.y = 0.05;
                     marker_array_msg.markers[i + body_positions_solution.size()].scale.z = 0.05;
                     marker_array_msg.markers[i + body_positions_solution.size()].color.a = 1.0;
-                    marker_array_msg.markers[i + body_positions_solution.size()].color.r = 1.0;
+                    marker_array_msg.markers[i + body_positions_solution.size()].color.r = 1.0; // red blob
                     marker_array_msg.markers[i + body_positions_solution.size()].color.g = 0.0;
                     marker_array_msg.markers[i + body_positions_solution.size()].color.b = 0.0;
                 }
