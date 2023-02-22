@@ -62,19 +62,16 @@ public:
 
         pub_markers_foot_traj_ = this->create_publisher<visualization_msgs::msg::Marker>("/markers_traj_feet", 10);
         pub_markers_safety_circle_ = this->create_publisher<visualization_msgs::msg::Marker>("/markers_safety_circle", 10);
-
         pub_marker_next_footstep_ = this->create_publisher<visualization_msgs::msg::Marker>("/markers_next_footstep", 10);
         pub_marker_next_safe_footstep_ = this->create_publisher<visualization_msgs::msg::Marker>("/markers_next_safe_footstep", 10);
         pub_marker_dcm_ = this->create_publisher<visualization_msgs::msg::Marker>("/markers_dcm", 10);
         pub_marker_desired_dcm_ = this->create_publisher<visualization_msgs::msg::Marker>("/markers_desired_dcm", 10);
-
         pub_marker_stance_foot_BF_ = this->create_publisher<visualization_msgs::msg::Marker>("/markers_stance_foot_BF", 10);
         pub_marker_swing_foot_BF_ = this->create_publisher<visualization_msgs::msg::Marker>("/markers_swing_foot_BF", 10);
+        pub_marker_vel_BF_ = this->create_publisher<visualization_msgs::msg::Marker>("/marker_vel_BF", 10);
 
         pub_desired_left_contact_ = this->create_publisher<biped_bringup::msg::StampedBool>("~/desired_left_contact", 10);
         pub_desired_right_contact_ = this->create_publisher<biped_bringup::msg::StampedBool>("~/desired_right_contact", 10);
-
-        P_gain_scaling_pub_ = this->create_publisher<std_msgs::msg::Float32>("/P_gain_scaling", 10);
 
         odometry_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
             "/odometry", 10, std::bind(&CapturePoint::odometry_callback, this, _1));
@@ -263,7 +260,6 @@ private:
             run_capture_point_controller();
         }
 
-        std::cout << "|||||||||||||||||||||||||||||||||||| STATE = " << state_ << std::endl;
     }
 
     void run_capture_point_controller()
@@ -315,7 +311,7 @@ private:
             std::cout << " Swing foot: " << swing_foot_name << std::endl;
             std::cout << " swing_foot_is_left_: " << swing_foot_is_left_ << std::endl;
             std::cout << "time_since_last_step = " << time_since_last_step_ << std::endl;
-            time_since_last_step_ = 0;
+            time_since_last_step_ = 0.0;
 
             foot_traj_list_STF_.clear();
         }
@@ -328,13 +324,18 @@ private:
         T_STF_to_BLF.translation() = stance_foot_BLF;
         broadcast_transform("BLF", "STF", T_STF_to_BLF.translation(), Eigen::Quaterniond(T_STF_to_BLF.rotation()));
 
-        std::cout << "r_foot_frame_id_" << r_foot_frame_id_ << std::endl;
 
-        publish_sphere_marker(swing_foot_BF, "swing_foot", base_link_frame_id_, 5, Eigen::Vector3d(1.0, 1.0, 0.0), pub_marker_swing_foot_BF_);
-        publish_sphere_marker(stance_foot_BF, "stance_foot", base_link_frame_id_, 6, Eigen::Vector3d(1.0, 1.0, 0.0), pub_marker_stance_foot_BF_);
+        // THINGS I TRIED
+        // add 0.05 in the desired DCM
+
+        int type_of_marker = visualization_msgs::msg::Marker::SPHERE;
+        publish_marker(type_of_marker, swing_foot_BF, "swing_foot", base_link_frame_id_, 5, Eigen::Vector3d(1.0, 1.0, 0.0), pub_marker_swing_foot_BF_);
+        publish_marker(type_of_marker, stance_foot_BF, "stance_foot", base_link_frame_id_, 6, Eigen::Vector3d(1.0, 1.0, 0.0), pub_marker_stance_foot_BF_);
 
         Eigen::Vector3d dcm_desired_STF;
-        dcm_desired_STF << vel_d_[0], 0.0, 0.0;
+        std::cout << "vel_d_[0] = " << vel_d_[0] << std::endl;
+        std::cout << "vel_d_[1] = " << vel_d_[1] << std::endl;
+        dcm_desired_STF << 0.05 + vel_d_[0], 0.0, 0.0;
         if (swing_foot_is_left_)
         {
             dcm_desired_STF(1) = -0.04 + vel_d_[1];
@@ -343,7 +344,7 @@ private:
         {
             dcm_desired_STF(1) = 0.04 + vel_d_[1];
         }
-        publish_sphere_marker(dcm_desired_STF, "DCM_desired", "STF", 2, Eigen::Vector3d(1.0, 0.0, 0.0), pub_marker_desired_dcm_);
+        // publish_marker(type_of_marker, dcm_desired_STF, "DCM_desired", "STF", 2, Eigen::Vector3d(1.0, 0.0, 0.0), pub_marker_desired_dcm_);
 
         Eigen::Vector3d base_link_vel_BF;
         base_link_vel_BF << base_link_odom_.linear_velocity(0), base_link_odom_.linear_velocity(1), base_link_odom_.linear_velocity(2);
@@ -353,11 +354,24 @@ private:
         dcm_STF(0) = T_STF_to_BLF.inverse().translation()[0] + 1.0 / robot_params.omega * base_link_vel_STF(0);
         dcm_STF(1) = T_STF_to_BLF.inverse().translation()[1] + 1.0 / robot_params.omega * base_link_vel_STF(1);
         dcm_STF(2) = 0;
-        publish_sphere_marker(dcm_STF, "DCM", "STF", 0, Eigen::Vector3d(0.0, 0.0, 1.0), pub_marker_dcm_);
+        // publish_marker(type_of_marker, dcm_STF, "DCM", "STF", 0, Eigen::Vector3d(0.0, 0.0, 1.0), pub_marker_dcm_);
+
+        type_of_marker = visualization_msgs::msg::Marker::ARROW;
+        auto base_link_vel_BF_normalized = base_link_vel_BF.normalized();
+        Eigen::Vector3d pos1_arrow_vel_BF;
+        pos1_arrow_vel_BF << base_link_odom_.position(0), base_link_odom_.position(1), base_link_odom_.position(2);
+        Eigen::Vector3d pos2_arrow_vel_BF;
+        pos2_arrow_vel_BF << pos1_arrow_vel_BF(0) + base_link_vel_BF_normalized(0),
+                                                pos1_arrow_vel_BF(1) + base_link_vel_BF_normalized(1),
+                                                pos1_arrow_vel_BF(2) + base_link_vel_BF_normalized(2);
+
+        publish_arrow_marker(pos1_arrow_vel_BF, pos2_arrow_vel_BF, "vel_BF", "odom", 0, Eigen::Vector3d(0.0, 0.0, 1.0), pub_marker_vel_BF_);
+
 
         Eigen::Vector3d next_footstep_STF;
         next_footstep_STF = -dcm_desired_STF + dcm_STF * exp(robot_params.omega * remaining_time_in_step_);
-        publish_sphere_marker(next_footstep_STF, "next_footstep", "STF", 1, Eigen::Vector3d(1.0, 0.0, 1.0), pub_marker_next_footstep_);
+        type_of_marker = visualization_msgs::msg::Marker::SPHERE;
+        publish_marker(type_of_marker, next_footstep_STF, "next_footstep", "STF", 1, Eigen::Vector3d(1.0, 0.0, 1.0), pub_marker_next_footstep_);
 
         // pub safety circle around the STF
         std::list<Eigen::Vector3d> safety_circle_points;
@@ -378,7 +392,7 @@ private:
             next_footstep_STF = safe_next_footstep_STF;
         }
 
-        publish_sphere_marker(safe_next_footstep_STF, "safe_next_footstep", "STF", 1, Eigen::Vector3d(0.0, 0.0, 0.0), pub_marker_next_safe_footstep_);
+        // publish_marker(type_of_marker, safe_next_footstep_STF, "safe_next_footstep", "STF", 1, Eigen::Vector3d(0.0, 0.0, 0.0), pub_marker_next_safe_footstep_);
 
         Eigen::Vector3d des_pos_foot_STF;
         des_pos_foot_STF << next_footstep_STF(0), next_footstep_STF(1), 0;
@@ -554,14 +568,14 @@ private:
         tf_broadcaster_->sendTransform(t);
     }
 
-    void publish_sphere_marker(Eigen::Vector3d pos, std::string name_marker, std::string frame_id, int id, Eigen::Vector3d color, rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub)
+    void publish_marker(int type_of_marker, Eigen::Vector3d pos, std::string name_marker, std::string frame_id, int id, Eigen::Vector3d color, rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub)
     {
         visualization_msgs::msg::Marker marker_msg;
         marker_msg.header.frame_id = frame_id;
         marker_msg.header.stamp = this->get_clock()->now();
         marker_msg.ns = name_marker;
         marker_msg.id = id;
-        marker_msg.type = visualization_msgs::msg::Marker::SPHERE;
+        marker_msg.type = type_of_marker;
         marker_msg.action = visualization_msgs::msg::Marker::ADD;
         marker_msg.pose.position.x = pos[0];
         marker_msg.pose.position.y = pos[1];
@@ -569,6 +583,36 @@ private:
         marker_msg.pose.orientation.x = 0;
         marker_msg.pose.orientation.y = 0;
         marker_msg.pose.orientation.z = 0;
+        marker_msg.pose.orientation.w = 1;
+        marker_msg.scale.x = 0.05;
+        marker_msg.scale.y = 0.05;
+        marker_msg.scale.z = 0.05;
+        marker_msg.color.a = 1.0;
+        marker_msg.color.r = color(0);
+        marker_msg.color.g = color(1);
+        marker_msg.color.b = color(2);
+        pub->publish(marker_msg);
+    }
+
+    void publish_arrow_marker(Eigen::Vector3d pos_start, Eigen::Vector3d pos_end, std::string name_marker, std::string frame_id, int id, Eigen::Vector3d color, rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub)
+    {
+        visualization_msgs::msg::Marker marker_msg;
+        marker_msg.header.frame_id = frame_id;
+        marker_msg.header.stamp = this->get_clock()->now();
+        marker_msg.ns = name_marker;
+        marker_msg.id = id;
+        marker_msg.type = visualization_msgs::msg::Marker::ARROW;
+        marker_msg.action = visualization_msgs::msg::Marker::ADD;
+
+        geometry_msgs::msg::Point p;
+        p.x = pos_start(0);
+        p.y = pos_start(1);
+        p.z = pos_start(2);
+        marker_msg.points.push_back(p);
+        p.x = pos_end(0);
+        p.y = pos_end(1);
+        p.z = pos_end(2);
+        marker_msg.points.push_back(p);
         marker_msg.pose.orientation.w = 1;
         marker_msg.scale.x = 0.05;
         marker_msg.scale.y = 0.05;
@@ -653,10 +697,9 @@ private:
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_marker_desired_dcm_;
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_marker_stance_foot_BF_;
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_marker_swing_foot_BF_;
-
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_markers_foot_traj_;
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_markers_safety_circle_;
-    rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr P_gain_scaling_pub_;
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_marker_vel_BF_;
 
     rclcpp::Publisher<biped_bringup::msg::StampedBool>::SharedPtr pub_desired_left_contact_;
     rclcpp::Publisher<biped_bringup::msg::StampedBool>::SharedPtr pub_desired_right_contact_;
