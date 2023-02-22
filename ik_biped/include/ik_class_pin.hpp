@@ -60,6 +60,7 @@ private:
 
     pinocchio::Model model_;
     Eigen::VectorXd q_;
+    Eigen::MatrixXd B_matrix_;
 };
 
 #endif
