@@ -437,10 +437,10 @@ Visualization Manager:
         Value: /markers_traj_feet
       Value: true
     - Class: rviz_default_plugins/Marker
-      Enabled: true
+      Enabled: false
       Name: Marker
       Namespaces:
-        vel_BF: true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -448,7 +448,7 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /marker_vel_BF
-      Value: true
+      Value: false
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -510,10 +510,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.3152051270008087
+      Pitch: 0.025205276906490326
       Target Frame: base_link
       Value: XYOrbit (rviz_default_plugins)
-      Yaw: 0.6072295308113098
+      Yaw: 1.2122280597686768
     Saved: ~
 Window Geometry:
   Displays:
