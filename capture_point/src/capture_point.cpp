@@ -94,7 +94,7 @@ public:
     }
 
 private:
-    void set_starting_to_walk_params()
+    void set_starting_to_walk_params(Eigen::Vector3d swing_foot, Eigen::Vector3d stance_foot)
     {
         swing_foot_is_left_ = true;
         foot_right_contact_ = false;
@@ -104,7 +104,7 @@ private:
         remaining_time_in_step_ = robot_params.t_step - time_since_last_step_;
         timeout_for_no_feet_in_contact_ = 0;
 
-        computed_swing_foot_pos_STF_ = computed_swing_foot_pos_BF_ - computed_stance_foot_pos_BF_;
+        computed_swing_foot_pos_STF_ = swing_foot - stance_foot;
         computed_swing_foot_vel_STF_ << 0.0, 0.0, 0.0;
         swing_foot_position_beginning_of_step_STF_ = computed_swing_foot_pos_STF_;
         foot_traj_list_STF_.clear();
@@ -249,7 +249,7 @@ private:
             if (t_init_traj_ > robot_params.duration_init_traj)
             {
                 initialization_done_ = true;
-                set_starting_to_walk_params();
+                set_starting_to_walk_params(setpt_swing_foot_pos_BF, setpt_stance_foot_pos_BF);
                 t_init_traj_ = robot_params.duration_init_traj;
             }
         }
@@ -264,21 +264,17 @@ private:
     void run_capture_point_controller()
     {
         bool swing_foot_contact;
-        bool stance_foot_contact;
         std::string swing_foot_name;
         std::string stance_foot_name;
         if (swing_foot_is_left_)
         {
             swing_foot_contact = foot_left_contact_;
-            stance_foot_contact = foot_right_contact_;
             swing_foot_name = l_foot_frame_id_;
             stance_foot_name = r_foot_frame_id_;
         }
         else
         {
             swing_foot_contact = foot_right_contact_;
-            stance_foot_contact = foot_left_contact_;
-
             swing_foot_name = r_foot_frame_id_;
             stance_foot_name = l_foot_frame_id_;
         }
@@ -780,10 +776,6 @@ private:
     Eigen::Vector3d computed_swing_foot_pos_STF_;
     Eigen::Vector3d computed_swing_foot_vel_STF_;
 
-    Eigen::Vector3d computed_stance_foot_pos_BF_;
-    Eigen::Vector3d computed_stance_foot_vel_BF_;
-    Eigen::Vector3d computed_swing_foot_pos_BF_;
-    Eigen::Vector3d computed_swing_foot_vel_BF_;
 
     Eigen::Vector3d swing_foot_position_beginning_of_step_STF_;
     std::list<Eigen::Vector3d> foot_traj_list_STF_;
