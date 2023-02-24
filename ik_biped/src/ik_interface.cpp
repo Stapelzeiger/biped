@@ -130,7 +130,6 @@ private:
                 }
 
                 // not nice code, todo fix
-                std::cout << "name: " << name << std::endl;
                 if (name == "L_ANKLE"){
                     body_state.in_contact = foot_left_contact_;
                 }
