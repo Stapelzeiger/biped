@@ -264,8 +264,8 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
     }
     Eigen::HouseholderQR<Eigen::MatrixXd> QR_ff(J_for_ff_stacked);
     Eigen::VectorXd q_vel(QR_ff.solve(body_vels_stacked));
-    std::cout << "q_vel: " << q_vel.transpose() << std::endl;
-    std::cout << "body vels: " << body_vels_stacked.transpose() << std::endl;
+    // std::cout << "q_vel: " << q_vel.transpose() << std::endl;
+    // std::cout << "body vels: " << body_vels_stacked.transpose() << std::endl;
     for (auto &joint_state: joint_states)
     {
         auto joint_id = model_.getJointId(joint_state.name);
