@@ -34,8 +34,8 @@ launch:
 - include:
     file: "$(find-pkg-share ik_biped)/launch/ik.launch.yml"
 
-# - include:
-#     file: "$(find-pkg-share kinematic_odometry)/launch/kinematic_odometry.launch.yml"
+- include:
+    file: "$(find-pkg-share kinematic_odometry)/launch/kinematic_odometry.launch.yml"
 
 - include:
     file: "$(find-pkg-share capture_point)/launch/cp_sim.launch.yml"
