@@ -320,16 +320,11 @@ private:
         broadcast_transform("BLF", "STF", T_STF_to_BLF.translation(), Eigen::Quaterniond(T_STF_to_BLF.rotation()));
 
 
-        // THINGS I TRIED
-        // add 0.05 in the desired DCM
-
         int type_of_marker = visualization_msgs::msg::Marker::SPHERE;
         publish_marker(type_of_marker, swing_foot_BF, "swing_foot", base_link_frame_id_, 5, Eigen::Vector3d(1.0, 1.0, 0.0), pub_marker_swing_foot_BF_);
         publish_marker(type_of_marker, stance_foot_BF, "stance_foot", base_link_frame_id_, 6, Eigen::Vector3d(1.0, 1.0, 0.0), pub_marker_stance_foot_BF_);
 
         Eigen::Vector3d dcm_desired_STF;
-        std::cout << "vel_d_[0] = " << vel_d_[0] << std::endl;
-        std::cout << "vel_d_[1] = " << vel_d_[1] << std::endl;
         dcm_desired_STF << vel_d_[0], 0.0, 0.0;
         if (swing_foot_is_left_)
         {
@@ -350,18 +345,6 @@ private:
         dcm_STF(1) = T_STF_to_BLF.inverse().translation()[1] + 1.0 / robot_params.omega * base_link_vel_STF(1);
         dcm_STF(2) = 0;
         // publish_marker(type_of_marker, dcm_STF, "DCM", "STF", 0, Eigen::Vector3d(0.0, 0.0, 1.0), pub_marker_dcm_);
-
-        type_of_marker = visualization_msgs::msg::Marker::ARROW;
-        auto base_link_vel_BF_normalized = base_link_vel_BF.normalized();
-        Eigen::Vector3d pos1_arrow_vel_BF;
-        pos1_arrow_vel_BF << base_link_odom_.position(0), base_link_odom_.position(1), base_link_odom_.position(2);
-        Eigen::Vector3d pos2_arrow_vel_BF;
-        pos2_arrow_vel_BF << pos1_arrow_vel_BF(0) + base_link_vel_BF_normalized(0),
-                                                pos1_arrow_vel_BF(1) + base_link_vel_BF_normalized(1),
-                                                pos1_arrow_vel_BF(2) + base_link_vel_BF_normalized(2);
-
-        publish_arrow_marker(pos1_arrow_vel_BF, pos2_arrow_vel_BF, "vel_BF", "odom", 0, Eigen::Vector3d(0.0, 0.0, 1.0), pub_marker_vel_BF_);
-
 
         Eigen::Vector3d next_footstep_STF;
         next_footstep_STF = -dcm_desired_STF + dcm_STF * exp(robot_params.omega * remaining_time_in_step_);
