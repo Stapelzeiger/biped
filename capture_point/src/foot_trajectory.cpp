@@ -59,10 +59,9 @@ foot_pos_vel_acc_struct get_traj_foot_pos_vel(double T_since_begin_step, double 
         Eigen::Vector3d acc;
 
         double T_lift_remaining = T_lift - T_since_begin_step;
-        double T_keep_remaining = (T_step - T_lower) - T_since_begin_step;
+        double T_keep_remaining = T_step - T_lower - T_since_begin_step;
         double T_lower_remaining = T_step - T_since_begin_step;
-        
-        if (T_lift_remaining > 0) {
+        if (T_lift_remaining > 0) { // here we should have T_step*T_control, because of discretization.
             // lift foot
             Eigen::Vector<double, 4> coeff_z = get_spline_coef(T_lift_remaining, current_pos(2), current_vel(2), initial_pos(2) + lift_foot_hgt, delta_h_step / T_keep);
             pos(2) = get_q(coeff_z, 0.0);
