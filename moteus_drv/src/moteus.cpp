@@ -130,7 +130,7 @@ private:
                     moteus_command_buf_[joint_idx].mode = moteus::Mode::kPosition;
                     if (joint_traj_[joint_idx].points[traj_idx].positions.size() == 1) {
                         double p = joint_traj_[joint_idx].points[traj_idx].positions[0];
-                        moteus_command_buf_[joint_idx].position.position = revolutions * (p * joint_signs_[joint_idx] + joint_offsets_[joint_idx]);
+                        moteus_command_buf_[joint_idx].position.position = revolutions * ((p + joint_offsets_[joint_idx]) * joint_signs_[joint_idx]);
                     }
                     if (joint_traj_[joint_idx].points[traj_idx].velocities.size() == 1) {
                         double v = joint_traj_[joint_idx].points[traj_idx].velocities[0];
@@ -188,7 +188,7 @@ private:
                 msg.name.push_back(joint_name);
                 double p = res.position * 2 * M_PI;
                 double sign = joint_signs_[joint_idx];
-                msg.position.push_back((p - joint_offsets_[joint_idx]) * sign);
+                msg.position.push_back(p * sign - joint_offsets_[joint_idx]);
                 msg.velocity.push_back(res.velocity * 2 * M_PI * sign);
                 msg.effort.push_back(res.torque * sign);
                 sensor_msgs::msg::Temperature temp_msg;
