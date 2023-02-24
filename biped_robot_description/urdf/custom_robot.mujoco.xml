@@ -47,7 +47,7 @@
       <inertial pos="-0.04487 -0.003300 0.071612" quat="1. 0. 0. 0." mass="3.213" diaginertia="0.0062845 0.002920 0.0075164" />
       <geom name="base_link" type="mesh" contype="2" rgba="1 1 1 1" mesh="base_link"/>
       <joint armature="0" damping="0" limited="false" name="root" pos="0 0 0" stiffness="0" type="free"/>
-      <site name="imu_location" pos="0 0 0" euler="-180 0 0" size="0.01" type="sphere" rgba="1 0 0 1"/>
+      <site name="imu_location" pos="0 0 0" euler="-3.141592 0 0" size="0.01" type="sphere" rgba="1 0 0 1"/>
 
       
       <body name="L_HIP" pos="0 0.07 -0.005">
