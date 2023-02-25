@@ -147,7 +147,6 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
             Eigen::MatrixXd J_block;
             J_block.setZero();
 
-            // std::cout << "  J:" << J << std::endl;
             if (body.type == BodyState::ContraintType::FULL_6DOF) {
                 pinocchio::SE3 cur_to_des = des_to_world.actInv(cur_to_world);
                 err = pinocchio::log6(cur_to_des).toVector();
@@ -157,9 +156,7 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
                 J_stacked.block(cur_constraint, 0, 6, model_.nv) = J_block;
                 err_stacked.block(cur_constraint, 0, 6, 1) = err;
                 cur_constraint += 6;
-                // Eigen::Matrix<double, 6, 6> I6 = Eigen::Matrix<double, 6, 6>::Identity();
-                // v -= J.transpose() * (J * J.transpose() + damp * I6).ldlt().solve(err);
-                // std::cout << " 6dof err:" << err.transpose() << std::endl;
+
             } else if (body.type == BodyState::ContraintType::POS_ONLY) {
                 pinocchio::SE3 des_to_cur = cur_to_world.actInv(des_to_world);
                 err = - des_to_cur.translation();
@@ -167,9 +164,7 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
                 J_stacked.block(cur_constraint, 0, 3, model_.nv) = J_block;
                 err_stacked.block(cur_constraint, 0, 3, 1) = err;
                 cur_constraint += 3;
-                // Eigen::Matrix<double, 3, 3> I3 = Eigen::Matrix<double, 3, 3>::Identity();
-                // v -= J_block.transpose() * (J_block * J_block.transpose() + damp * I3).ldlt().solve(err);
-                // std::cout << " pos err:" << err.transpose() << std::endl;
+
             } else if (body.type == BodyState::ContraintType::POS_AXIS) {
                 pinocchio::SE3 des_to_cur = cur_to_world.actInv(des_to_world);
                 Eigen::Vector3d a_des_in_cur = des_to_cur.rotation() * body.align_axis;
@@ -192,9 +187,7 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
                 J_stacked.block(cur_constraint, 0, 5, model_.nv) = J_block;
                 err_stacked.block(cur_constraint, 0, 5, 1) = err;
                 cur_constraint += 5;
-                // Eigen::Matrix<double, 5, 5> I5 = Eigen::Matrix<double, 5, 5>::Identity();
-                // v -= J_block.transpose() * (J_block * J_block.transpose() + damp * I5).ldlt().solve(err);
-                // std::cout << " pos axis err:" << err.transpose() << std::endl;
+
             }
         }
 
@@ -234,7 +227,9 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
 
 
     Eigen::MatrixXd J_for_ff_stacked(nb_constraints, model_.nv);
+    J_for_ff_stacked.setZero();
     Eigen::MatrixXd body_vels_stacked(nb_constraints, 1);
+    body_vels_stacked.setZero();
 
     int cur_constraint_ff = 0;
     for (const auto &body: body_states) {
@@ -264,6 +259,7 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
     }
     Eigen::HouseholderQR<Eigen::MatrixXd> QR_ff(J_for_ff_stacked);
     Eigen::VectorXd q_vel(QR_ff.solve(body_vels_stacked));
+
     // std::cout << "q_vel: " << q_vel.transpose() << std::endl;
     // std::cout << "body vels: " << body_vels_stacked.transpose() << std::endl;
     for (auto &joint_state: joint_states)
