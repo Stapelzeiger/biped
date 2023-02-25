@@ -19,7 +19,12 @@ list_of_topics = ['/joy',
                 '/markers_next_safe_footstep',
                 '/markers_dcm',
                 '/markers_desired_dcm',
-                '/blackfly_0/image_raw']
+                '/markers_traj_feet',
+                '/markers_swing_foot_BF',
+                '/markers_stance_foot_BF',
+                '/ik_interface/markers',
+                '/rosout',
+                '/blackfly_0/image_raw/compressed']
 
 
 def generate_launch_description():
