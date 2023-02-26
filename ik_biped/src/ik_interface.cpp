@@ -16,8 +16,6 @@
 
 using namespace std::placeholders;
 
-const int offset_pos_quat = 7;
-
 class IKNode : public rclcpp::Node
 {
 
