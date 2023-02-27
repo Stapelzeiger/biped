@@ -4,7 +4,7 @@
 #include "sensor_msgs/msg/temperature.hpp"
 #include "std_msgs/msg/float32.hpp"
 #include "trajectory_msgs/msg/joint_trajectory.hpp"
-
+#include "moteus_drv/msg/stamped_sensors.hpp"
 #include <stdexcept>
 #include <tuple>
 
@@ -65,10 +65,8 @@ public:
         joint_pub_ = this->create_publisher<sensor_msgs::msg::JointState>("~/joint_states", 10);
         joint_sub_ = this->create_subscription<trajectory_msgs::msg::JointTrajectory>(
             "~/joint_traj", 10, std::bind(&MoteusServo::traj_cb, this, std::placeholders::_1));
-        for (auto joint_name : joint_names_) {
-            volt_pub_.push_back(this->create_publisher<std_msgs::msg::Float32>("~/" + joint_name + "/voltage", 10));
-            temp_pub_.push_back(this->create_publisher<sensor_msgs::msg::Temperature>("~/" + joint_name + "/temperature", 10));
-        }
+
+        sensors_pub_ = this->create_publisher<moteus_drv::msg::StampedSensors>("~/motor_sensors", 10);
 
         // const int r = ::mlockall(MCL_CURRENT | MCL_FUTURE);
         // if (r < 0) {
@@ -180,6 +178,7 @@ private:
         sensor_msgs::msg::JointState msg;
         msg.header.stamp = now;
         std::vector<std::string> joints_not_responding;
+        moteus_drv::msg::StampedSensors msg_sensors;
         for (size_t joint_idx = 0; joint_idx < nb_joints_; joint_idx++)
         {
             auto joint_name = joint_names_[joint_idx];
@@ -192,17 +191,18 @@ private:
                 msg.position.push_back(p * sign - joint_offsets_[joint_idx]);
                 msg.velocity.push_back(res.velocity * 2 * M_PI * sign);
                 msg.effort.push_back(res.torque * sign);
-                sensor_msgs::msg::Temperature temp_msg;
-                temp_msg.temperature = res.temperature;
-                temp_pub_[joint_idx]->publish(temp_msg);
-                std_msgs::msg::Float32 volt_msg;
-                volt_msg.data = res.voltage;
-                volt_pub_[joint_idx]->publish(volt_msg);
+
+                msg_sensors.motor_names.push_back(joint_name);
+                msg_sensors.temperatures.push_back(res.temperature);
+                msg_sensors.voltages.push_back(res.voltage);
+
             } else {
                 joints_not_responding.push_back(joint_name);
             }
         }
         joint_pub_->publish(msg);
+        sensors_pub_->publish(msg_sensors);
+
         if (!joints_not_responding.empty()) {
             // concatenate joints_not_responding
             std::string joint_list_str;
@@ -264,8 +264,8 @@ private:
     double joint_command_timeout_;
 
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_pub_;
-    std::vector<rclcpp::Publisher<sensor_msgs::msg::Temperature>::SharedPtr> temp_pub_;
-    std::vector<rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr> volt_pub_;
+    rclcpp::Publisher<moteus_drv::msg::StampedSensors>::SharedPtr sensors_pub_;
+
     rclcpp::Subscription<trajectory_msgs::msg::JointTrajectory>::SharedPtr joint_sub_;
     std::vector<trajectory_msgs::msg::JointTrajectory> joint_traj_;
     rclcpp::TimerBase::SharedPtr timer_;
