@@ -14,7 +14,8 @@ find_package(rclcpp_components REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(trajectory_msgs REQUIRED)
-
+find_package(rosidl_default_generators REQUIRED)
+find_package(rosidl_cmake REQUIRED)
 
 INCLUDE(CheckIncludeFiles)
 CHECK_INCLUDE_FILES(bcm_host.h HAS_RASPBERRY_PI_HEADER)
@@ -36,11 +37,18 @@ if( HAS_RASPBERRY_PI_HEADER )
   )
   rclcpp_components_register_node(moteus PLUGIN "MoteusServo" EXECUTABLE "moteus_node")
 
+  rosidl_generate_interfaces(${PROJECT_NAME}
+  "msg/StampedSensors.msg"
+  DEPENDENCIES std_msgs)
+
+  rosidl_get_typesupport_target(cpp_typesupport_target
+  ${PROJECT_NAME} "rosidl_typesupport_cpp")
+
   target_include_directories(moteus PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/lib_external/pi3hat/lib/cpp
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>)
-  target_link_libraries(moteus bcm_host)
+  target_link_libraries(moteus bcm_host "${cpp_typesupport_target}")
   target_compile_features(moteus PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 
 install(TARGETS
@@ -58,6 +66,7 @@ install(DIRECTORY
 )
 
 
+ament_export_dependencies(rosidl_default_runtime)
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights
