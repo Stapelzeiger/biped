@@ -60,15 +60,15 @@ public:
 
         pub_feet_trajectory_ = this->create_publisher<trajectory_msgs::msg::MultiDOFJointTrajectory>("/foot_positions", 10);
 
-        pub_markers_foot_traj_ = this->create_publisher<visualization_msgs::msg::Marker>("/markers_traj_feet", 10);
-        pub_markers_safety_circle_ = this->create_publisher<visualization_msgs::msg::Marker>("/markers_safety_circle", 10);
-        pub_marker_next_footstep_ = this->create_publisher<visualization_msgs::msg::Marker>("/markers_next_footstep", 10);
-        pub_marker_next_safe_footstep_ = this->create_publisher<visualization_msgs::msg::Marker>("/markers_next_safe_footstep", 10);
-        pub_marker_dcm_ = this->create_publisher<visualization_msgs::msg::Marker>("/markers_dcm", 10);
-        pub_marker_desired_dcm_ = this->create_publisher<visualization_msgs::msg::Marker>("/markers_desired_dcm", 10);
-        pub_marker_stance_foot_BF_ = this->create_publisher<visualization_msgs::msg::Marker>("/markers_stance_foot_BF", 10);
-        pub_marker_swing_foot_BF_ = this->create_publisher<visualization_msgs::msg::Marker>("/markers_swing_foot_BF", 10);
-        pub_marker_vel_BF_ = this->create_publisher<visualization_msgs::msg::Marker>("/marker_vel_BF", 10);
+        pub_markers_foot_traj_ = this->create_publisher<visualization_msgs::msg::Marker>("~/markers_traj_feet", 10);
+        pub_markers_safety_circle_ = this->create_publisher<visualization_msgs::msg::Marker>("~/markers_safety_circle", 10);
+        pub_marker_next_footstep_ = this->create_publisher<visualization_msgs::msg::Marker>("~/markers_next_footstep", 10);
+        pub_marker_next_safe_footstep_ = this->create_publisher<visualization_msgs::msg::Marker>("~/markers_next_safe_footstep", 10);
+        pub_marker_dcm_ = this->create_publisher<visualization_msgs::msg::Marker>("~/markers_dcm", 10);
+        pub_marker_desired_dcm_ = this->create_publisher<visualization_msgs::msg::Marker>("~/markers_desired_dcm", 10);
+        pub_marker_stance_foot_BF_ = this->create_publisher<visualization_msgs::msg::Marker>("~/markers_stance_foot_BF", 10);
+        pub_marker_swing_foot_BF_ = this->create_publisher<visualization_msgs::msg::Marker>("~/markers_swing_foot_BF", 10);
+        pub_marker_vel_BF_ = this->create_publisher<visualization_msgs::msg::Marker>("~/marker_vel_BF", 10);
 
         pub_desired_left_contact_ = this->create_publisher<biped_bringup::msg::StampedBool>("~/desired_left_contact", 10);
         pub_desired_right_contact_ = this->create_publisher<biped_bringup::msg::StampedBool>("~/desired_right_contact", 10);
