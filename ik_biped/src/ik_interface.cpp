@@ -16,8 +16,6 @@
 
 using namespace std::placeholders;
 
-const int offset_pos_quat = 7;
-
 class IKNode : public rclcpp::Node
 {
 
@@ -31,10 +29,10 @@ public:
             "foot_positions", 10, std::bind(&IKNode::foot_desired_cb, this, _1));
 
         contact_right_sub_ = this->create_subscription<biped_bringup::msg::StampedBool>(
-            "~/contact_foot_right", 10, std::bind(&IKNode::contact_right_callback, this, _1));
+            "~/contact_foot_right", 10, std::bind(&IKNode::contact_right_cb, this, _1));
 
         contact_left_sub_ = this->create_subscription<biped_bringup::msg::StampedBool>(
-            "~/contact_foot_left", 10, std::bind(&IKNode::contact_left_callback, this, _1));
+            "~/contact_foot_left", 10, std::bind(&IKNode::contact_left_cb, this, _1));
 
 
         robot_joints_pub_ = this->create_publisher<trajectory_msgs::msg::JointTrajectory>("joint_trajectory", 10);
@@ -44,7 +42,7 @@ public:
 private:
 
 
-    void contact_right_callback(biped_bringup::msg::StampedBool::SharedPtr msg)
+    void contact_right_cb(biped_bringup::msg::StampedBool::SharedPtr msg)
     {
         auto now = this->get_clock()->now();
         double dt = (now - rclcpp::Time(msg->header.stamp)).seconds();
@@ -56,7 +54,7 @@ private:
         foot_right_contact_ = msg->data;
     }
 
-    void contact_left_callback(biped_bringup::msg::StampedBool::SharedPtr msg)
+    void contact_left_cb(biped_bringup::msg::StampedBool::SharedPtr msg)
     {
         auto now = this->get_clock()->now();
         double dt = (now - rclcpp::Time(msg->header.stamp)).seconds();

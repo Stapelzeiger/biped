@@ -8,7 +8,6 @@ windows:
   - rviz2 -d src/biped/biped_bringup/rviz/biped.rviz
   - ros2 run joy joy_node
   - clear
-  # - ros2 launch image_transport
-  - ros2 bag record /joy /imu /odometry /joint_states /foot_positions /poll_L_FOOT/gpio /poll_R_FOOT/gpio /joint_trajectory /tf /tf_static /markers_next_footstep /markers_next_safe_footstep /markers_dcm /markers_desired_dcm /blackfly_0/image_raw --output=/home/sorina/Documents/code/biped_hardware/bags/$(date +%+4Y%m%d-%H-%M-%S)_$TESTNAME \
+  - ros2 launch src/biped/biped_bringup/launch/rosbag_record.py \
   - ros2 launch capture_point cp.launch.yml \
   - ros2 launch flir_spinnaker_ros2 blackfly_s.launch.py camera_name:=blackfly_0 serial:="'20538718'"

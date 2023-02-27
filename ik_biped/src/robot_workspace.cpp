@@ -23,10 +23,8 @@ IKRobot::IKRobot()
 
 void IKRobot::build_model(const std::string urdf_xml_string)
 {
-    // TODO clear previous model
     pinocchio::urdf::buildModelFromXML(urdf_xml_string, pinocchio::JointModelFreeFlyer(), model_);
     q_ = pinocchio::neutral(model_);
-    // q_ += Eigen::VectorXd::Random(model_.nq) * 0.01;
 
     std::cout << "model nq:" << model_.nq << std::endl;
     std::cout << "model nv:" << model_.nv << std::endl;
@@ -50,10 +48,6 @@ void IKRobot::build_model(const std::string urdf_xml_string)
         std::cout << "" << std::endl;
     }
 
-    // build actuation matrix
-    auto joints_actuators = model_.nv - 6;
-    B_matrix_ = Eigen::MatrixXd::Zero(model_.nv, joints_actuators);
-    B_matrix_.block(6, 0, joints_actuators, joints_actuators) = Eigen::MatrixXd::Identity(joints_actuators, joints_actuators);
 }
 
 bool IKRobot::has_model() const
@@ -63,7 +57,7 @@ bool IKRobot::has_model() const
 
 
 
-std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyState>& body_states, std::vector<Eigen::Vector3d> &body_positions_solution)
+void compute_robot_workspace(const std::vector<IKRobot::BodyState>& body_states, std::vector<Eigen::Vector3d> &body_positions_solution)
 {
     auto base_link = std::find_if(body_states.begin(), body_states.end(), [](const BodyState& bs) {
         return bs.name == "base_link";
@@ -107,97 +101,9 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
     q_[base_link_joint.idx_q() + 5] = base_link->orientation.z();
     q_[base_link_joint.idx_q() + 6] = base_link->orientation.w();
 
-    // solve IK
     Eigen::VectorXd q = q_;
-    // std::cout << "initial q:" << q.transpose() << std::endl;
     pinocchio::Data data(model_);
 
-    int nb_constraints = 0;
-    for (const auto &body: body_states) {
-        if (body.type == BodyState::ContraintType::FULL_6DOF) {
-            nb_constraints += 6;
-        } else if (body.type == BodyState::ContraintType::POS_ONLY) {
-            nb_constraints += 3;
-        } else if (body.type == BodyState::ContraintType::POS_AXIS) {
-            nb_constraints += 5;
-        }
-    }
-
-    Eigen::MatrixXd J_stacked(nb_constraints, model_.nv);
-    Eigen::MatrixXd err_stacked(nb_constraints, 1);
-
-    unsigned int i = 0;
-    for (i = 0; i < IT_MAX; i++) {
-        pinocchio::computeJointJacobians(model_, data, q); // also computes forward kinematics
-        pinocchio::updateFramePlacements(model_, data);
-        Eigen::VectorXd v = Eigen::VectorXd::Zero(model_.nv);
-        int cur_constraint = 0;
-        for (const auto &body: body_states) {
-
-            auto frame_id = model_.getFrameId(body.name);
-
-            const auto &cur_to_world = data.oMf[frame_id];
-            pinocchio::SE3 des_to_world = pinocchio::SE3(body.orientation, body.position);
-            Eigen::MatrixXd J(6, model_.nv);
-            J.setZero();
-            pinocchio::getFrameJacobian(model_, data, frame_id, pinocchio::LOCAL, J);
-
-            Eigen::MatrixXd err;
-            err.setZero();
-            Eigen::MatrixXd J_block;
-            J_block.setZero();
-
-            if (body.type == BodyState::ContraintType::FULL_6DOF) {
-                pinocchio::SE3 cur_to_des = des_to_world.actInv(cur_to_world);
-                err = pinocchio::log6(cur_to_des).toVector();
-                // J v = -err
-                // v = - JT (J JT + damp I)^-1 err
-                J_block = J.block(0, 0, 6, model_.nv);
-                J_stacked.block(cur_constraint, 0, 6, model_.nv) = J_block;
-                err_stacked.block(cur_constraint, 0, 6, 1) = err;
-                cur_constraint += 6;
-
-            } else if (body.type == BodyState::ContraintType::POS_ONLY) {
-                pinocchio::SE3 des_to_cur = cur_to_world.actInv(des_to_world);
-                err = - des_to_cur.translation();
-                J_block = J.block(0, 0, 3, model_.nv);
-                J_stacked.block(cur_constraint, 0, 3, model_.nv) = J_block;
-                err_stacked.block(cur_constraint, 0, 3, 1) = err;
-                cur_constraint += 3;
-
-            } else if (body.type == BodyState::ContraintType::POS_AXIS) {
-                pinocchio::SE3 des_to_cur = cur_to_world.actInv(des_to_world);
-                Eigen::Vector3d a_des_in_cur = des_to_cur.rotation() * body.align_axis;
-                Eigen::Matrix<double, 3, 2> a_normal_basis;
-                a_normal_basis << 0, 0, // TODO compute from a
-                           1, 0,
-                            0, 1;
-                auto a_proj = a_normal_basis.transpose() * a_des_in_cur;
-                auto a_err = -a_proj;
-                auto p_err = -des_to_cur.translation();
-                auto J_w = J.block(3, 0, 3, model_.nv);
-                auto partial_a_partial_q = J_w.colwise().cross(body.align_axis);
-                auto partial_a_proj_partial_q = a_normal_basis.transpose() * partial_a_partial_q;
-                J_block.resize(5, model_.nv);
-                J_block << J.block(0, 0, 3, model_.nv),
-                           partial_a_proj_partial_q;
-                err.resize(5, 1);
-
-                err << p_err, a_err;
-                J_stacked.block(cur_constraint, 0, 5, model_.nv) = J_block;
-                err_stacked.block(cur_constraint, 0, 5, 1) = err;
-                cur_constraint += 5;
-
-            }
-        }
-
-        Eigen::MatrixXd identity_mat;
-        identity_mat = Eigen::MatrixXd::Identity(nb_constraints, nb_constraints);
-
-        v = -J_stacked.transpose() * (J_stacked * J_stacked.transpose() + damp * identity_mat).ldlt().solve(err_stacked);
-
-        q = pinocchio::integrate(model_, q, v * DT);
-    }
 
     std::vector<JointState> joint_states;
     for (int joint_idx = 0; joint_idx < model_.njoints; joint_idx++) {

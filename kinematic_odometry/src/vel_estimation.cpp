@@ -530,7 +530,7 @@ private:
         Eigen::Matrix3d _h_cov;
         ekf_.zero_contact_vel_measurement_update(p_contact_IMU, v_contact_IMU, contact_vel_covariance_, _h, _h_cov);
         last_contact_velocity_update_ = rclcpp::Time(msg->header.stamp);
-        std::cout << "contact velocity update " << contact_joint_names_[i] << " v = " << v_contact_IMU.transpose() << std::endl;
+        // std::cout << "contact velocity update " << contact_joint_names_[i] << " v = " << v_contact_IMU.transpose() << std::endl;
 
         // markers
         Eigen::Vector3d posIMU_I, velIMU_I, omegaIMU_IMU;

@@ -271,9 +271,7 @@ private:
             swing_foot_contact = foot_left_contact_;
             swing_foot_name = l_foot_frame_id_;
             stance_foot_name = r_foot_frame_id_;
-        }
-        else
-        {
+        } else {
             swing_foot_contact = foot_right_contact_;
             swing_foot_name = r_foot_frame_id_;
             stance_foot_name = l_foot_frame_id_;
@@ -319,7 +317,6 @@ private:
         T_STF_to_BLF.translation() = stance_foot_BLF;
         broadcast_transform("BLF", "STF", T_STF_to_BLF.translation(), Eigen::Quaterniond(T_STF_to_BLF.rotation()));
 
-
         int type_of_marker = visualization_msgs::msg::Marker::SPHERE;
         publish_marker(type_of_marker, swing_foot_BF, "swing_foot", base_link_frame_id_, 5, Eigen::Vector3d(1.0, 1.0, 0.0), pub_marker_swing_foot_BF_);
         publish_marker(type_of_marker, stance_foot_BF, "stance_foot", base_link_frame_id_, 6, Eigen::Vector3d(1.0, 1.0, 0.0), pub_marker_stance_foot_BF_);
@@ -329,9 +326,7 @@ private:
         if (swing_foot_is_left_)
         {
             dcm_desired_STF(1) = -0.04 + vel_d_[1];
-        }
-        else
-        {
+        }else{
             dcm_desired_STF(1) = 0.04 + vel_d_[1];
         }
         // publish_marker(type_of_marker, dcm_desired_STF, "DCM_desired", "STF", 2, Eigen::Vector3d(1.0, 0.0, 0.0), pub_marker_desired_dcm_);
@@ -383,6 +378,7 @@ private:
             swing_foot_position_beginning_of_step_STF_,
             des_pos_foot_STF);
 
+
         for (int i = 0; i < 3; i++)
         {
             computed_swing_foot_pos_STF_(i) = desired_swing_foot_pos_vel_acc_STF_.vel(i) * robot_params.dt_ctrl + desired_swing_foot_pos_vel_acc_STF_.pos(i);
@@ -390,7 +386,6 @@ private:
         }
 
         foot_traj_list_STF_.push_back(desired_swing_foot_pos_vel_acc_STF_.pos);
-
         publish_line_traj_markers(foot_traj_list_STF_, "foot_trajectory", "STF", 3, Eigen::Vector3d(1.0, 0.0, 1.0), pub_markers_foot_traj_);
 
         remaining_time_in_step_ = robot_params.t_step - time_since_last_step_;
@@ -402,18 +397,7 @@ private:
         Eigen::Vector3d desired_swing_foot_vel_BF_wrt_IF = T_BLF_to_BF.rotation() * T_STF_to_BLF.rotation() * desired_swing_foot_pos_vel_acc_STF_.vel;
         Eigen::Vector3d desired_swing_foot_vel_BF_wrt_BF = desired_swing_foot_vel_BF_wrt_IF - base_link_vel_BF;
 
-
-
         const double foot_separation = 0.01;
-
-        // if (stance_foot_contact == true)
-        // {
-        //     previous_desired_stance_foot_BLF_ = desired_stance_foot_BLF;
-        // }
-        // else
-        // {
-        //     desired_stance_foot_BLF = previous_desired_stance_foot_BLF_;
-        // }
 
         if (swing_foot_name == r_foot_frame_id_)
         {
