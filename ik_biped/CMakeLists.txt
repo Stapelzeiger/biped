@@ -34,7 +34,7 @@ message(STATUS "PINOCCHIO_INCLUDE_DIRS ${PINOCCHIO_INCLUDE_DIRS}")
 message(STATUS "PINOCCHIO_FOUND ${PINOCCHIO_FOUND}")
 message(STATUS "pinocchio_FOUND ${pinocchio_FOUND}")
 
-# set_source_files_properties(ik_class_pin.cpp CMAKE_CXX_FLAGS "-O3")
+
 add_executable(ik src/ik_interface.cpp src/ik_class_pin.cpp)
 target_include_directories(ik PRIVATE ${PINOCCHIO_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIR})
 ament_target_dependencies(ik
@@ -48,8 +48,23 @@ ament_target_dependencies(ik
                           visualization_msgs)
 target_link_libraries(ik ${PINOCCHIO_LIBRARIES})
 
+
+add_executable(robot_workspace src/robot_workspace.cpp)
+target_include_directories(robot_workspace PRIVATE 
+                          ${PINOCCHIO_INCLUDE_DIRS}
+                          ${EIGEN3_INCLUDE_DIR})
+
+ament_target_dependencies(robot_workspace
+                          rclcpp
+                          std_msgs
+                          visualization_msgs)
+target_link_libraries(robot_workspace ${PINOCCHIO_LIBRARIES})
+
+
+
 install(TARGETS
   ik
+  robot_workspace
   DESTINATION lib/${PROJECT_NAME}
 )
 
