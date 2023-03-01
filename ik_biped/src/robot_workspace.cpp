@@ -48,7 +48,9 @@ void Robot::build_model(const std::string urdf_xml_string)
 {
     pinocchio::urdf::buildModelFromXML(urdf_xml_string, pinocchio::JointModelFreeFlyer(), model_);
     q_ = pinocchio::neutral(model_);
-
+    pinocchio::Data data(model_);
+    pinocchio::forwardKinematics(model_, data, q_);
+    pinocchio::updateFramePlacements(model_, data);
     std::cout << "model nq:" << model_.nq << std::endl;
     std::cout << "model nv:" << model_.nv << std::endl;
     std::cout << "model njoints:" << model_.njoints << std::endl;
@@ -56,10 +58,12 @@ void Robot::build_model(const std::string urdf_xml_string)
     std::cout << "model frames:" << std::endl;
     for (auto f : model_.frames) {
         std::cout << "  frame name:" << f.name << std::endl;
-        std::cout << "  parent joint:" << model_.names[f.parent] << std::endl;
-        std::cout << "  frame placement:" << f.placement << std::endl;
-        std::cout << "  frame type" << f.type << std::endl;
-        std::cout << "" << std::endl;
+        // std::cout << "  parent joint:" << model_.names[f.parent] << std::endl;
+        // std::cout << "  frame placement:" << f.placement << std::endl;
+        // std::cout << "  frame type" << f.type << std::endl;
+        // std::cout << "" << std::endl;
+        std::cout << data.oMf[model_.getFrameId(f.name )].translation() << std::endl;
+
     }
     for (auto j : model_.joints) {
         std::cout << "joint idx_q:" << j.idx_q() << std::endl;
@@ -67,7 +71,6 @@ void Robot::build_model(const std::string urdf_xml_string)
         std::cout << "joint nq:" << j.nq() << std::endl;
         std::cout << "joint nv:" << j.nv() << std::endl;
         std::cout << "joint shortname:" << j.shortname() << std::endl;
-        // std::cout << "joint type:" << j.type() << std::endl;
         std::cout << "" << std::endl;
     }
 
@@ -95,52 +98,108 @@ std::vector<Eigen::Vector3d> Robot::compute_robot_workspace()
     Eigen::VectorXd q = q_;
     pinocchio::Data data(model_);
 
+    std::vector<std::string> end_effector_names;
+    std::vector<int> end_effector_joint_ids;
+    for (const auto &joint_subtree : model_.subtrees) {
+        if (joint_subtree.size() == 1) { // is leaf joint
+            end_effector_names.push_back(model_.names[joint_subtree[0]]);
+            end_effector_joint_ids.push_back(joint_subtree[0]);
+        }
+    }
 
-    const auto &joint_0 = model_.joints[0];
-    double q_0_min = model_.lowerPositionLimit[joint_0.idx_q()];
-    double q_0_max = model_.upperPositionLimit[joint_0.idx_q()];
+    std::cout << "end_effector_names:" << std::endl;
+    for (const auto &end_effector_name : end_effector_names) {
+        std::cout << "  " << end_effector_name << std::endl;
+    }
 
-    const auto &joint_1 = model_.joints[1];
-    double q_1_min = model_.lowerPositionLimit[joint_1.idx_q()];
-    double q_1_max = model_.upperPositionLimit[joint_1.idx_q()];
+    
+    std::vector<Eigen::VectorXd> joints_con_to_eff;
+    std::vector<Eigen::VectorXd> q_min_list;
+    std::vector<Eigen::VectorXd> q_max_list;
 
-    const auto &joint_2 = model_.joints[2];
-    double q_2_min = model_.lowerPositionLimit[joint_2.idx_q()];
-    double q_2_max = model_.upperPositionLimit[joint_2.idx_q()];
+    for (const auto &end_effector_name : end_effector_names) {
+        auto end_effector_joint_id = model_.getJointId(end_effector_name);
+        Eigen::VectorXd connected_joints(5);
+        
+        connected_joints << end_effector_joint_id - 4, end_effector_joint_id - 3, end_effector_joint_id - 2, end_effector_joint_id - 1, end_effector_joint_id;
+        joints_con_to_eff.push_back(connected_joints);
 
-    const auto &joint_3 = model_.joints[3];
-    double q_3_min = model_.lowerPositionLimit[joint_3.idx_q()];
-    double q_3_max = model_.upperPositionLimit[joint_3.idx_q()];
+        Eigen::VectorXd q_min_per_foot(5), q_max_per_foot(5);
+        int i = 0;
+        for (auto j_idx : connected_joints) {
+        
+            auto &joint = model_.joints[j_idx];
+            q_min_per_foot[i] = model_.lowerPositionLimit[joint.idx_q()];
+            q_max_per_foot[i] = model_.upperPositionLimit[joint.idx_q()];
+            i ++; 
 
-    const auto &joint_4 = model_.joints[4];
-    double q_4_min = model_.lowerPositionLimit[joint_4.idx_q()];
-    double q_4_max = model_.upperPositionLimit[joint_4.idx_q()];
+        }
+        q_min_list.push_back(q_min_per_foot);
+        q_max_list.push_back(q_max_per_foot);
 
-    std::vector<Eigen::Vector3d> p_left_foot;
+    }
 
-    for (double q_0 = q_0_min; q_0 < q_0_max; q_0 += 0.1) {
-        for (double q_1 = q_1_min; q_1 < q_1_max; q_1 += 0.1) {
-            for (double q_2 = q_2_min; q_2 < q_2_max; q_2 += 0.1) {
-                for (double q_3 = q_3_min; q_3 < q_3_max; q_3 += 0.1) {
-                    for (double q_4 = q_4_min; q_4 < q_4_max; q_4 += 0.1) {
-                        q[joint_0.idx_q()] = q_0;
-                        q[joint_1.idx_q()] = q_1;
-                        q[joint_2.idx_q()] = q_2;
-                        q[joint_3.idx_q()] = q_3;
-                        q[joint_4.idx_q()] = q_4;
-                        pinocchio::forwardKinematics(model_, data, q);
-                        pinocchio::updateFramePlacements(model_, data);
-                        auto frame_id = model_.getFrameId("L_ANKLE");
-                        const auto &cur_to_world = data.oMf[frame_id];
-                        p_left_foot.push_back(cur_to_world.translation());
-                        std::cout << "frame placement:" << cur_to_world.translation() << std::endl;
+    for (auto joint_list : joints_con_to_eff) {
+        std::cout << joint_list.transpose() << std::endl;
+    }
+
+    int i = 0;
+    for (auto q_min_item : q_min_list) {
+        std::cout << "for joint = " << joints_con_to_eff[i].transpose() << " limits are " << q_min_item.transpose()<< std::endl;
+        i++;
+    }
+    i = 0;
+    for (auto q_max_item : q_max_list) {
+        std::cout << "for joint = " << joints_con_to_eff[i].transpose() << " limits are " << q_max_item.transpose()<< std::endl;
+        i++;
+    }
+
+
+
+    pinocchio::forwardKinematics(model_, data, q);
+    pinocchio::updateFramePlacements(model_, data);
+
+    std::vector<Eigen::Vector3d> eff_positions_list;
+
+    // save the locations of the links as well
+
+    std::cout << "model frames:" << std::endl;
+    std::cout << model_.frames.size() << std::endl;
+    for (auto f : model_.frames) {
+        std::cout << "  frame name:" << f.name << std::endl;
+        auto positions_frames =  data.oMf[model_.getFrameId(f.name )].translation();
+        eff_positions_list.push_back(positions_frames);
+    }
+
+    int counter_eff = 0;
+    for (const auto &end_effector_name : end_effector_names) {
+
+        for (double q_0 = q_min_list[counter_eff][0]; q_0 < q_max_list[counter_eff][0]; q_0 += 0.1) { // YAW
+            for (double q_1 = q_min_list[counter_eff][1]; q_1 < q_max_list[counter_eff][1]; q_1 += 0.1) { // HAA
+                for (double q_2 = q_min_list[counter_eff][2]; q_2 < q_max_list[counter_eff][2]; q_2 += 0.1) { // HFE
+                    for (double q_3 = q_min_list[counter_eff][3]; q_3 < q_max_list[counter_eff][3]; q_3 += 0.01) { // KFE
+                            // std::cout << "q_0 = " << q_0 << "q_1 = " << q_1 << "q_2 = " << q_2 << "q_3 = " << q_3 << "q_4 =" << q_4 << std::endl;
+                            std::cout << q_3 << std::endl;
+                            auto &joint = model_.joints[end_effector_joint_ids[counter_eff]];
+                            q = q_;
+                            // std::cout << joint.idx_q() << std::endl;
+                            q[joint.idx_q() - 4] = q_0; // YAW
+                            q[joint.idx_q() - 3] = q_1; // HAA
+                            q[joint.idx_q() - 2] = q_2; // HFE
+                            q[joint.idx_q() - 1] = q_3; // KFE
+                            q[joint.idx_q()] = 0.0;
+                            pinocchio::forwardKinematics(model_, data, q);
+                            pinocchio::updateFramePlacements(model_, data);
+                            eff_positions_list.push_back(data.oMf[model_.getFrameId(end_effector_name)].translation());
                     }
                 }
             }
         }
+        
+        counter_eff ++;
     }
 
-    return p_left_foot;
+    return eff_positions_list;
 
 }
 
@@ -160,17 +219,21 @@ public:
 
     void timer_callback()
     {
+        std::vector<Eigen::Vector3d> p_left_foot;
         if (robot_.has_model()){
             file_foot_locations_.open ("data.csv");
-            file_foot_locations_ << "x,y,z,\n";
-            robot_.compute_robot_workspace();
+            file_foot_locations_ << "x,y,z\n";
+            p_left_foot = robot_.compute_robot_workspace();
+            for (auto &p : p_left_foot){
+                file_foot_locations_ << p[0] << "," << p[1] << "," << p[2] << "\n";
+            }
             file_foot_locations_.close();
         }
 
         std::ifstream file("data.csv");
-        if (file.peek() == std::ifstream::traits_type::eof())
+        if (file.peek() != std::ifstream::traits_type::eof())
         {
-            std::cout << "File is empty" << std::endl;
+            std::cout << "File is not empty!" << std::endl;
             rclcpp::shutdown();
         }
     }
@@ -186,8 +249,6 @@ public:
     rclcpp::TimerBase::SharedPtr timer_;
     std::ofstream file_foot_locations_;
 };
-
-
 
 
 int main(int argc, char *argv[])
