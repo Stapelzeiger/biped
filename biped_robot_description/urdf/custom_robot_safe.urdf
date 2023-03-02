@@ -1,0 +1,680 @@
+<?xml version="1.0" encoding="utf-8"?>
+<robot
+  name="biped">
+
+  <mujoco>
+        <compiler 
+        meshdir="../meshes/" 
+        balanceinertia="true" 
+        discardvisual="false" />
+  </mujoco>
+
+  <!-- Imu -->
+  <link name="imu">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+      <box size="0.03 0.03 0.01"/>
+      </geometry>
+      <material name="red"/>
+    </visual>
+
+    <inertial>
+      <mass value="0.01" />
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <inertia ixx="1e-5" ixy="0" ixz="0" iyy="1e-5" iyz="0" izz="1e-5" />
+    </inertial>
+  </link>
+
+  <joint name="imu_joint" type="fixed">
+      <origin xyz="0 0 0" rpy="-3.141592 0 0"/>
+      <parent link="base_link"/>
+      <child link="imu"/>
+  </joint>
+
+  <link
+    name="base_link">
+    <inertial>
+      <origin
+        xyz="-0.0448709592682471 -0.00330083392235171 0.0716121411080205"
+        rpy="0 0 0" />
+      <mass
+        value="3.213" />
+      <inertia
+        ixx="0.00628451938896954"
+        ixy="9.03731456394116E-06"
+        ixz="3.74558764975459E-05"
+        iyy="0.00292007116050446"
+        iyz="2.33861350302106E-09"
+        izz="0.00751646623969033" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://biped_robot_description/meshes/base_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.752941176470588 0.752941176470588 0.752941176470588 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://biped_robot_description/meshes/base_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <link
+    name="R_HIP">
+    <inertial>
+      <origin
+        xyz="0.0219446414797471 2.88517182367443E-09 -0.03039168184157"
+        rpy="0 0 0" />
+      <mass
+        value="0.0629568480892821" />
+      <inertia
+        ixx="5.16473545517217E-05"
+        ixy="-3.57588662688557E-11"
+        ixz="4.61970829805285E-05"
+        iyy="0.000152966439888968"
+        iyz="6.07063380526832E-12"
+        izz="0.000116288804420767" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://biped_robot_description/meshes/R_HIP.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.698039215686274 0.698039215686274 0.698039215686274 0.25" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://biped_robot_description/meshes/R_HIP.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="R_YAW"
+    type="revolute">
+    <origin
+      xyz="0 -0.07 -0.005"
+      rpy="0 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="R_HIP" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-0.3"
+      upper="0.3"
+      effort="1000"
+      velocity="1000" />
+  </joint>
+  <link
+    name="R_SHOULDER">
+    <inertial>
+      <origin
+        xyz="-0.0382844310441067 0.0118964401352487 0.00123886924581125"
+        rpy="0 0 0" />
+      <mass
+        value="1.009" />
+      <inertia
+        ixx="0.000521980550813748"
+        ixy="-9.2608882286471E-07"
+        ixz="4.06359835642879E-06"
+        iyy="0.000511051697800316"
+        iyz="4.33469818121015E-06"
+        izz="0.000392251171822902" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://biped_robot_description/meshes/R_SHOULDER.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.698039215686274 0.698039215686274 0.698039215686274 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://biped_robot_description/meshes/R_SHOULDER.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="R_HAA"
+    type="revolute">
+    <origin
+      xyz="0.0069 0 -0.081"
+      rpy="0 0 0" />
+    <parent
+      link="R_HIP" />
+    <child
+      link="R_SHOULDER" />
+    <axis
+      xyz="1 0 0" />
+    <limit
+      lower="-0.25"
+      upper="0.25"
+      effort="1000"
+      velocity="1000" />
+  </joint>
+  <link
+    name="R_UPPER_LEG">
+    <inertial>
+      <origin
+        xyz="0.000620534060432716 -0.0534946435046088 -0.0454640558620235"
+        rpy="0 0 0" />
+      <mass
+        value="0.868" />
+      <inertia
+        ixx="0.00152517707561619"
+        ixy="7.61908484564392E-07"
+        ixz="-7.58552183552755E-07"
+        iyy="0.00177977903535468"
+        iyz="-1.40084073294317E-05"
+        izz="0.00034816857217676" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://biped_robot_description/meshes/R_UPPER_LEG.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.698039215686274 0.698039215686274 0.698039215686274 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://biped_robot_description/meshes/R_UPPER_LEG.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="R_HFE"
+    type="revolute">
+    <origin
+      xyz="0 0 0"
+      rpy="0 0 0" />
+    <parent
+      link="R_SHOULDER" />
+    <child
+      link="R_UPPER_LEG" />
+    <axis
+      xyz="0 1 0" />
+    <limit
+      lower="-1.5"
+      upper="1.5"
+      effort="1000"
+      velocity="1000" />
+  </joint>
+  <link
+    name="R_LOWER_LEG">
+    <inertial>
+      <origin
+        xyz="8.90943035473588E-06 0.0171035437362773 -0.111753901368554"
+        rpy="0 0 0" />
+      <mass
+        value="0.0923618682215971" />
+      <inertia
+        ixx="0.000437183481260274"
+        ixy="-1.07399882823237E-08"
+        ixz="1.2919531348441E-08"
+        iyy="0.000437218894302395"
+        iyz="1.30274858435484E-06"
+        izz="1.55764253409593E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://biped_robot_description/meshes/R_LOWER_LEG.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://biped_robot_description/meshes/R_LOWER_LEG.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="R_KFE"
+    type="revolute">
+    <origin
+      xyz="0 -0.0584 -0.23405"
+      rpy="0 0 0" />
+    <parent
+      link="R_UPPER_LEG" />
+    <child
+      link="R_LOWER_LEG" />
+    <axis
+      xyz="0 1 0" />
+    <limit
+      lower="-2.2"
+      upper="2.2"
+      effort="1000"
+      velocity="1000" />
+  </joint>
+  <link
+    name="R_FOOT">
+    <inertial>
+      <origin
+        xyz="-3.02321900789403E-05 2.36197425507179E-08 -0.0242542849058649"
+        rpy="0 0 0" />
+      <mass
+        value="0.0313407448211579" />
+      <inertia
+        ixx="1.53505900340827E-06"
+        ixy="3.21655852895147E-11"
+        ixz="3.87851927561161E-09"
+        iyy="3.35525061902405E-05"
+        iyz="-1.30436886653959E-12"
+        izz="3.3989583673629E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://biped_robot_description/meshes/R_FOOT.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.698039215686274 0.698039215686274 0.698039215686274 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://biped_robot_description/meshes/R_FOOT.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="R_ANKLE"
+    type="revolute">
+    <origin
+      xyz="0 0.0173 -0.30826"
+      rpy="0 0 0" />
+    <parent
+      link="R_LOWER_LEG" />
+    <child
+      link="R_FOOT" />
+    <axis
+      xyz="0 1 0" />
+    <limit
+      lower="-0.6"
+      upper="0.6"
+      effort="1000"
+      velocity="1000" />
+  </joint>
+
+  <link name="R_FOOT_CONTACT"></link>
+  <joint
+    name="R_FOOT_CONTACT_JOINT"
+    type="fixed">
+    <origin
+      xyz="0.0 0.0173 -0.30826"
+      rpy="0 0 0" />
+    <parent link="R_LOWER_LEG" />
+    <child link="R_FOOT_CONTACT" />
+  </joint>
+
+
+  <link
+    name="L_HIP">
+    <inertial>
+      <origin
+        xyz="0.0219446414797471 2.88517175428549E-09 -0.0303916818415699"
+        rpy="0 0 0" />
+      <mass
+        value="0.0629568480892822" />
+      <inertia
+        ixx="5.16473545517216E-05"
+        ixy="-3.57588662405679E-11"
+        ixz="4.61970829805285E-05"
+        iyy="0.000152966439888968"
+        iyz="6.07063377437121E-12"
+        izz="0.000116288804420767" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://biped_robot_description/meshes/L_HIP.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.698039215686274 0.698039215686274 0.698039215686274 0.25" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://biped_robot_description/meshes/L_HIP.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="L_YAW"
+    type="revolute">
+    <origin
+      xyz="0 0.07 -0.005"
+      rpy="0 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="L_HIP" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-0.3"
+      upper="0.3"
+      effort="1000"
+      velocity="1000" />
+  </joint>
+  <link
+    name="L_SHOULDER">
+    <inertial>
+      <origin
+        xyz="-0.0382844310532301 -0.0118964398242502 0.00204771986272136"
+        rpy="0 0 0" />
+      <mass
+        value="1.009" />
+      <inertia
+        ixx="0.000521980547134007"
+        ixy="9.26094596161881E-07"
+        ixz="4.0636070608477E-06"
+        iyy="0.000511051694581175"
+        iyz="4.33470011300503E-06"
+        izz="0.000392251170952583" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://biped_robot_description/meshes/L_SHOULDER.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.698039215686274 0.698039215686274 0.698039215686274 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://biped_robot_description/meshes/L_SHOULDER.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="L_HAA"
+    type="revolute">
+    <origin
+      xyz="0.0069 0 -0.081"
+      rpy="0 0 0" />
+    <parent
+      link="L_HIP" />
+    <child
+      link="L_SHOULDER" />
+    <axis
+      xyz="1 0 0" />
+    <limit
+      lower="-0.25"
+      upper="0.25"
+      effort="1000"
+      velocity="1000" />
+  </joint>
+  <link
+    name="L_UPPER_LEG">
+    <inertial>
+      <origin
+        xyz="-0.000328851371267098 0.0508506776100633 -0.0528923575613315"
+        rpy="0 0 0" />
+      <mass
+        value="0.8684" />
+      <inertia
+        ixx="0.00110960756931559"
+        ixy="7.62193303280927E-07"
+        ixz="7.86366765052434E-07"
+        iyy="0.00134742538778517"
+        iyz="1.40083657004109E-05"
+        izz="0.000337097363318948" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://biped_robot_description/meshes/L_UPPER_LEG.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.898039215686275 0.917647058823529 0.929411764705882 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://biped_robot_description/meshes/L_UPPER_LEG.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="L_HFE"
+    type="revolute">
+    <origin
+      xyz="0 0 0"
+      rpy="0 0 0" />
+    <parent
+      link="L_SHOULDER" />
+    <child
+      link="L_UPPER_LEG" />
+    <axis
+      xyz="0 1 0" />
+    <limit
+      lower="-1.5"
+      upper="1.5"
+      effort="1000"
+      velocity="1000" />
+  </joint>
+  <link
+    name="L_LOWER_LEG">
+    <inertial>
+      <origin
+        xyz="-8.90943035471766E-06 -0.0176035437362774 -0.111753901368554"
+        rpy="0 0 0" />
+      <mass
+        value="0.0923618682215969" />
+      <inertia
+        ixx="0.000437183481260274"
+        ixy="-1.07399882823296E-08"
+        ixz="-1.29195313484862E-08"
+        iyy="0.000437218894302394"
+        iyz="-1.30274858435487E-06"
+        izz="1.55764253409593E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://biped_robot_description/meshes/L_LOWER_LEG.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://biped_robot_description/meshes/L_LOWER_LEG.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="L_KFE"
+    type="revolute">
+    <origin
+      xyz="0 0.0589 -0.23405"
+      rpy="0 0 0" />
+    <parent
+      link="L_UPPER_LEG" />
+    <child
+      link="L_LOWER_LEG" />
+    <axis
+      xyz="0 1 0" />
+    <limit
+      lower="-2.2"
+      upper="2.2"
+      effort="1000"
+      velocity="1000" />
+  </joint>
+  <link
+    name="L_FOOT">
+    <inertial>
+      <origin
+        xyz="3.02321900789151E-05 -2.36197425507179E-08 -0.0242542849058648"
+        rpy="0 0 0" />
+      <mass
+        value="0.0313407448211584" />
+      <inertia
+        ixx="1.53505900340824E-06"
+        ixy="3.21655852743254E-11"
+        ixz="-3.8785192756099E-09"
+        iyy="3.35525061902412E-05"
+        iyz="1.30436886701902E-12"
+        izz="3.39895836736297E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://biped_robot_description/meshes/L_FOOT.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.698039215686274 0.698039215686274 0.698039215686274 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://biped_robot_description/meshes/L_FOOT.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="L_ANKLE"
+    type="revolute">
+    <origin
+      xyz="0 -0.0173 -0.30826"
+      rpy="0 0 0" />
+    <parent
+      link="L_LOWER_LEG" />
+    <child
+      link="L_FOOT" />
+    <axis
+      xyz="0 1 0" />
+    <limit
+      lower="-0.6"
+      upper="0.6"
+      effort="1000"
+      velocity="1000" />
+  </joint>
+
+  <link name="L_FOOT_CONTACT"></link>
+  <joint
+    name="L_FOOT_CONTACT_JOINT"
+    type="fixed">
+    <origin
+      xyz="0.0 -0.0173 -0.30826"
+      rpy="0 0 0" />
+    <parent link="L_LOWER_LEG" />
+    <child link="L_FOOT_CONTACT" />
+  </joint>
+
+</robot>
