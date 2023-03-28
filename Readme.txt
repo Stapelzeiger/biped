@@ -10,6 +10,11 @@ TODO install script
 ros-humble-desktop
 ros-humble-robot-state-publisher
 ros-humble-compressed-image-transport
+ros-humble-xacro
+
+optional
+ros-humble-joint-state-publisher-gui
+ros-humble-plotjuggler-ros
 
 ## Pinocchio
 ```
