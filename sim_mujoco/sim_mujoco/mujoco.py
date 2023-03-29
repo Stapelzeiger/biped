@@ -8,7 +8,7 @@ from geometry_msgs.msg import TransformStamped, Vector3, PoseStamped, PoseWithCo
 
 from rosgraph_msgs.msg import Clock
 from biped_bringup.msg import StampedBool
-from std_msgs.msg import Bool, Float64, Empty, Float32
+from std_msgs.msg import Bool, Float64, Empty, Float32, String
 from tf2_ros import TransformBroadcaster, TransformException
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
@@ -116,13 +116,12 @@ class MujocoNode(Node):
         self.joint_traj_msg = None
         self.initial_pose_sub = self.create_subscription(PoseWithCovarianceStamped, 'initialpose', self.init_cb, 10)
         self.reset_sub = self.create_subscription(Empty, '~/reset', self.reset_cb, 10)
+        self.operations_mode_sub = self.create_subscription(String, '/operation_mode', self.operations_mode_cb, 10)
+        self.operations_mode = 'WALKING'
 
         self.paused = True
         self.step_sim_sub = self.create_subscription(Float64, "~/step", self.step_cb, 1)
         self.pause_sim_sub = self.create_subscription(Bool, "~/pause", self.pause_cb, 1)
-
-        self.P_gain_safety_scaling = 1.0
-        self.P_gain_safety_scaling_sub = self.create_subscription(Float32, "~/P_gain_safety_scaling", self.P_gain_safety_scaling_cb, 1)
 
         self.timer = self.create_timer(self.dt, self.timer_cb)
 
@@ -175,12 +174,13 @@ class MujocoNode(Node):
         with self.lock:
             self.paused = msg.data
 
-    def P_gain_safety_scaling_cb(self, msg):
-        self.P_gain_safety_scaling = msg.data
+    def operations_mode_cb(self, msg):
+        self.operations_mode = msg.data
 
     def step(self):
-        if not self.initialization_done:
+        if not self.initialization_done and self.operations_mode != "CALIBRATION":
             self.model.eq_data[0][2] += 0.5 * self.dt
+            # pass
 
         if self.contact_states['R_FOOT'] or self.contact_states['L_FOOT']:
             if not self.initialization_done:
