@@ -19,6 +19,7 @@ import mujoco_viewer
 import numpy as np
 import sys
 import json
+import time
 from sim_mujoco.submodules.pid import pid as pid_ctrl
 
 from threading import Lock
@@ -34,10 +35,10 @@ def setup_pid(control_rate, kp, ki, kd):
 class MujocoNode(Node):
     def __init__(self):
         super().__init__('mujoco_sim')
-        self.declare_parameter("mujoco_xml_path")
-        self.declare_parameter("sim_time_sec")
-        self.declare_parameter("visualization_rate")
-        self.declare_parameter("visualize_mujoco")
+        self.declare_parameter("mujoco_xml_path", rclpy.parameter.Parameter.Type.STRING)
+        self.declare_parameter("sim_time_sec", rclpy.parameter.Parameter.Type.DOUBLE)
+        self.declare_parameter("visualization_rate", rclpy.parameter.Parameter.Type.DOUBLE)
+        self.declare_parameter("visualize_mujoco", rclpy.parameter.Parameter.Type.BOOL)
         self.visualize_mujoco = self.get_parameter("visualize_mujoco").get_parameter_value().bool_value
         mujoco_xml_path = self.get_parameter("mujoco_xml_path").get_parameter_value().string_value
         self.sim_time_sec = self.get_parameter("sim_time_sec").get_parameter_value().double_value
@@ -52,7 +53,7 @@ class MujocoNode(Node):
         self.data = mj.MjData(self.model)
         self.lock = Lock()
 
-        self.time = 0
+        self.time = time.time()
         self.model.opt.timestep = self.sim_time_sec
         self.dt = self.model.opt.timestep
 
@@ -136,9 +137,9 @@ class MujocoNode(Node):
             self.init([p.x, p.y, p.z], q=[q.w, q.x, q.y, q.z])
 
     def init(self, p, q=[1.0, 0.0, 0.0, 0.0]):
-        self.model.eq_data[0][0] = -p[0]
-        self.model.eq_data[0][1] = -p[1]
-        self.model.eq_data[0][2] = -1.5 # one meter above gnd
+        self.model.eq_data[0][0] = p[0]
+        self.model.eq_data[0][1] = p[1]
+        self.model.eq_data[0][2] = 1.5 # one meter above gnd
 
         self.data.qpos = [0.0] * self.model.nq
         self.data.qpos[3] = q[0]
@@ -150,10 +151,12 @@ class MujocoNode(Node):
 
         self.data.qpos[0] = p[0]
         self.data.qpos[1] = p[1]
-        self.data.qpos[2] = -self.model.eq_data[0][2]
+        self.data.qpos[2] = self.model.eq_data[0][2]
 
-        self.model.eq_active = 1
+        self.model.eq_active[0] = 1
+        mj.mj_step(self.model, self.data)
         self.initialization_done = False
+        self.get_logger().info("initialize")
 
     def timer_cb(self):
         with self.lock:
@@ -178,15 +181,17 @@ class MujocoNode(Node):
         self.operations_mode = msg.data
 
     def step(self):
-        if not self.initialization_done and self.operations_mode != "CALIBRATION":
-            self.model.eq_data[0][2] += 0.5 * self.dt
-            # pass
 
+        if not self.initialization_done:
+            self.model.eq_data[0][2] -= 0.5 * self.dt
+
+        self.read_contact_states()
         if self.contact_states['R_FOOT'] or self.contact_states['L_FOOT']:
             if not self.initialization_done:
+                self.get_logger().info("init done")
                 self.initialization_done = True
                 self.data.qvel = [0.0]* self.model.nv
-                self.model.eq_active = 0 # let go of the robot
+                self.model.eq_active[0] = 0 # let go of the robot
         
         if self.visualize_mujoco is True:
             vis_update_downsampling = int(round(1.0/self.visualization_rate/self.sim_time_sec/10))
