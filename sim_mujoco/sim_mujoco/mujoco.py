@@ -34,10 +34,10 @@ def setup_pid(control_rate, kp, ki, kd):
 class MujocoNode(Node):
     def __init__(self):
         super().__init__('mujoco_sim')
-        self.declare_parameter("mujoco_xml_path")
-        self.declare_parameter("sim_time_sec")
-        self.declare_parameter("visualization_rate")
-        self.declare_parameter("visualize_mujoco")
+        self.declare_parameter("mujoco_xml_path", rclpy.parameter.Parameter.Type.STRING)
+        self.declare_parameter("sim_time_sec", rclpy.parameter.Parameter.Type.DOUBLE)
+        self.declare_parameter("visualization_rate", rclpy.parameter.Parameter.Type.DOUBLE)
+        self.declare_parameter("visualize_mujoco", rclpy.parameter.Parameter.Type.BOOL)
         self.visualize_mujoco = self.get_parameter("visualize_mujoco").get_parameter_value().bool_value
         mujoco_xml_path = self.get_parameter("mujoco_xml_path").get_parameter_value().string_value
         self.sim_time_sec = self.get_parameter("sim_time_sec").get_parameter_value().double_value
