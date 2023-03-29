@@ -13,9 +13,34 @@
 #include <iomanip>
 
 const double eps = 1e-3;
-const int IT_MAX = 50;
+const int IT_MAX = 100;
 const double DT = 0.1;
-const double damp = 1e-8;
+const double damp = 1e-5;
+
+
+void get_singular_values(const Eigen::MatrixXd &A, Eigen::VectorXd &S)
+{
+    Eigen::JacobiSVD<Eigen::MatrixXd> svd(A, Eigen::ComputeThinU | Eigen::ComputeThinV);
+    S = svd.singularValues();
+}
+
+void clamp_error_per_step(Eigen::VectorXd &e, double max_magnitude)
+{
+    if (e.size() < 3) {
+        throw std::runtime_error("e must have size > 3");
+    }
+    Eigen::Vector3d e_translation(e(0), e(1), e(2));
+    Eigen::Vector3d e_translation_clamped;
+    double magnitude = e_translation.norm();
+    if (magnitude > max_magnitude) {
+        e_translation_clamped = max_magnitude * e_translation / magnitude;
+    } else {
+        e_translation_clamped = e_translation;
+    }
+    for (int i = 0; i < 3; i++) {
+        e(i) = e_translation_clamped(i);
+    }
+}
 
 IKRobot::IKRobot()
 {
@@ -60,8 +85,6 @@ bool IKRobot::has_model() const
 {
     return model_.njoints > 1;
 }
-
-
 
 std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyState>& body_states, std::vector<Eigen::Vector3d> &body_positions_solution)
 {
@@ -142,14 +165,17 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
             J.setZero();
             pinocchio::getFrameJacobian(model_, data, frame_id, pinocchio::LOCAL, J);
 
-            Eigen::MatrixXd err;
+            Eigen::VectorXd err;
             err.setZero();
             Eigen::MatrixXd J_block;
             J_block.setZero();
+            Eigen::VectorXd sing_val_vector;
+            const double clamped_error_mag_constant = 0.002;
 
             if (body.type == BodyState::ContraintType::FULL_6DOF) {
                 pinocchio::SE3 cur_to_des = des_to_world.actInv(cur_to_world);
                 err = pinocchio::log6(cur_to_des).toVector();
+                clamp_error_per_step(err, clamped_error_mag_constant);
                 // J v = -err
                 // v = - JT (J JT + damp I)^-1 err
                 J_block = J.block(0, 0, 6, model_.nv);
@@ -160,6 +186,7 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
             } else if (body.type == BodyState::ContraintType::POS_ONLY) {
                 pinocchio::SE3 des_to_cur = cur_to_world.actInv(des_to_world);
                 err = - des_to_cur.translation();
+                clamp_error_per_step(err, clamped_error_mag_constant);
                 J_block = J.block(0, 0, 3, model_.nv);
                 J_stacked.block(cur_constraint, 0, 3, model_.nv) = J_block;
                 err_stacked.block(cur_constraint, 0, 3, 1) = err;
@@ -174,7 +201,9 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
                             0, 1;
                 auto a_proj = a_normal_basis.transpose() * a_des_in_cur;
                 auto a_err = -a_proj;
-                auto p_err = -des_to_cur.translation();
+                Eigen::VectorXd p_err = -des_to_cur.translation();
+                clamp_error_per_step(p_err, clamped_error_mag_constant);
+
                 auto J_w = J.block(3, 0, 3, model_.nv);
                 auto partial_a_partial_q = J_w.colwise().cross(body.align_axis);
                 auto partial_a_proj_partial_q = a_normal_basis.transpose() * partial_a_partial_q;
@@ -189,13 +218,12 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
                 cur_constraint += 5;
 
             }
+            // get_singular_values(J_block.transpose(), sing_val_vector);
+            // double min_sing_value = sing_val_vector.minCoeff();
         }
-
         Eigen::MatrixXd identity_mat;
         identity_mat = Eigen::MatrixXd::Identity(nb_constraints, nb_constraints);
-
         v = -J_stacked.transpose() * (J_stacked * J_stacked.transpose() + damp * identity_mat).ldlt().solve(err_stacked);
-
         q = pinocchio::integrate(model_, q, v * DT);
     }
 
@@ -217,6 +245,7 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
             joint_states.push_back(joint_state);
         }
     }
+
     q_ = q;
     pinocchio::forwardKinematics(model_, data, q_);
     for (const auto &body: body_states) {
