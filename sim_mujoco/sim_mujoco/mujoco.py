@@ -19,6 +19,7 @@ import mujoco_viewer
 import numpy as np
 import sys
 import json
+import time
 from sim_mujoco.submodules.pid import pid as pid_ctrl
 
 from threading import Lock
@@ -52,7 +53,7 @@ class MujocoNode(Node):
         self.data = mj.MjData(self.model)
         self.lock = Lock()
 
-        self.time = 0
+        self.time = time.time()
         self.model.opt.timestep = self.sim_time_sec
         self.dt = self.model.opt.timestep
 
