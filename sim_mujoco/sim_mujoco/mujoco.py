@@ -313,10 +313,6 @@ class MujocoNode(Node):
 
         kp_moteus = 600
         Kp = (kp_moteus/(2*math.pi)) * np.ones(self.model.njnt - 1) # exclude root
-        # Kp = 2.5*15.0*np.ones(self.model.njnt - 1) # exclude root
-
-        # Kp[1] *= 4
-        # Kp[6] *= 4
 
         i = 0
         for key, value in self.q_joints.items():
