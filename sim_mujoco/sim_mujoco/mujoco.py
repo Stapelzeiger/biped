@@ -137,9 +137,9 @@ class MujocoNode(Node):
             self.init([p.x, p.y, p.z], q=[q.w, q.x, q.y, q.z])
 
     def init(self, p, q=[1.0, 0.0, 0.0, 0.0]):
-        self.model.eq_data[0][0] = -p[0]
-        self.model.eq_data[0][1] = -p[1]
-        self.model.eq_data[0][2] = -1.5 # one meter above gnd
+        self.model.eq_data[0][0] = p[0]
+        self.model.eq_data[0][1] = p[1]
+        self.model.eq_data[0][2] = 1.5 # one meter above gnd
 
         self.data.qpos = [0.0] * self.model.nq
         self.data.qpos[3] = q[0]
@@ -151,10 +151,12 @@ class MujocoNode(Node):
 
         self.data.qpos[0] = p[0]
         self.data.qpos[1] = p[1]
-        self.data.qpos[2] = -self.model.eq_data[0][2]
+        self.data.qpos[2] = self.model.eq_data[0][2]
 
-        self.model.eq_active = 1
+        self.model.eq_active[0] = 1
+        mj.mj_step(self.model, self.data)
         self.initialization_done = False
+        self.get_logger().info("initialize")
 
     def timer_cb(self):
         with self.lock:
@@ -180,13 +182,15 @@ class MujocoNode(Node):
 
     def step(self):
         if not self.initialization_done:
-            self.model.eq_data[0][2] += 0.5 * self.dt
+            self.model.eq_data[0][2] -= 0.5 * self.dt
 
+        self.read_contact_states()
         if self.contact_states['R_FOOT'] or self.contact_states['L_FOOT']:
             if not self.initialization_done:
+                self.get_logger().info("init done")
                 self.initialization_done = True
                 self.data.qvel = [0.0]* self.model.nv
-                self.model.eq_active = 0 # let go of the robot
+                self.model.eq_active[0] = 0 # let go of the robot
         
         if self.visualize_mujoco is True:
             vis_update_downsampling = int(round(1.0/self.visualization_rate/self.sim_time_sec/10))
