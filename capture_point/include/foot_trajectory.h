@@ -4,24 +4,42 @@
 #include <iostream>
 #include "eigen3/Eigen/Dense"
 
-struct foot_pos_vel_acc_struct { 
-    Eigen::Vector3d pos;
-    Eigen::Vector3d vel;
-    Eigen::Vector3d acc;
-}; 
+class FootTrajectory
+{
 
-double get_q(Eigen::Vector<double, 4> coeff, double t);
-double get_q_dot(Eigen::Vector<double, 4> coeff, double t);
-double get_q_ddot(Eigen::Vector<double, 4> coeff, double t);
-Eigen::Vector<double, 4> get_spline_coef(double T, double q0, double q_dot0, 
-                                                   double qf, double q_dotf);
+public:
+    Eigen::Vector3d desired_end_position_;
+    Eigen::Vector3d initial_position_;
+    Eigen::Vector3d computed_foot_pos_;
+    Eigen::Vector3d computed_foot_vel_;
+    double T_step_;
+    double dt_;
+    Eigen::Vector<double, 4> coeff_x_spline_;
+    Eigen::Vector<double, 4> coeff_y_spline_;
+    Eigen::Vector<double, 4> coeff_z_spline_lift_;
+    Eigen::Vector<double, 4> coeff_z_spline_lower_;
+    bool coeff_lift_computed_ = false;
+    double coeff_lift_timestamp_ = 0.0;
+    bool coeff_lower_computed_ = false;
+    double coeff_lower_timestamp_ = 0.0;
+    bool coeff_xy_computed_ = false;
+    double coeff_xy_timestamp_ = 0.0;
+    int state_in_traj_;
 
+public:
+    FootTrajectory();
+    FootTrajectory(double T_step, double dt);
+    ~FootTrajectory();
 
-foot_pos_vel_acc_struct get_traj_foot_pos_vel(double T_since_begin_step, 
-                            double T_step,
-                            Eigen::Vector3d current_pos, 
-                            Eigen::Vector3d current_vel, 
-                            Eigen::Vector3d initial_pos, 
-                            Eigen::Vector3d des_pos);
+    void set_desired_end_position(Eigen::Vector3d desired_end_position);
+    void set_initial_position(Eigen::Vector3d initial_position);
+    void integrate_trajectory_forward(Eigen::Vector3d foot_position, Eigen::Vector3d foot_velocity, Eigen::Vector3d foot_acceleration);
+    void get_traj_foot_pos_vel(double T_since_begin_step, Eigen::Vector3d &foot_pos, Eigen::Vector3d &foot_vel, Eigen::Vector3d &foot_acc);
+    Eigen::Vector<double, 4> get_spline_coef(double tf, double qi, double qi_dot, double qf, double qf_dot);
+    double get_q(Eigen::Vector<double, 4> coeff, double t);
+    double get_q_dot(Eigen::Vector<double, 4> coeff, double t);
+    double get_q_ddot(Eigen::Vector<double, 4> coeff, double t);
+};
+
 
 #endif
