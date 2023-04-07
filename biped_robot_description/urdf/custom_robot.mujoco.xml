@@ -122,10 +122,10 @@
             <velocity gear="1" joint="L_YAW" name="L_YAW_VEL" kv="0.5" />
 
         <motor gear="1"  joint="L_HAA" name="L_HAA"/>
-            <velocity gear="1" joint="L_HAA" name="L_HAA_VEL" kv="3.18" />
+            <velocity gear="1" joint="L_HAA" name="L_HAA_VEL" kv="0.95" />
 
         <motor gear="1"  joint="L_HFE" name="L_HFE"/>
-            <velocity gear="1" joint="L_HFE" name="L_HFE_VEL" kv="3.18" />
+            <velocity gear="1" joint="L_HFE" name="L_HFE_VEL" kv="0.95" />
 
         <motor gear="1"  joint="L_KFE" name="L_KFE"/>
             <velocity gear="1" joint="L_KFE" name="L_KFE_VEL" kv="0.95" />
@@ -137,10 +137,10 @@
             <velocity gear="1" joint="R_YAW" name="R_YAW_VEL" kv="0.5" />
 
         <motor gear="1"  joint="R_HAA" name="R_HAA"/>
-            <velocity gear="1" joint="R_HAA" name="R_HAA_VEL" kv="3.18" />
+            <velocity gear="1" joint="R_HAA" name="R_HAA_VEL" kv="0.95" />
 
         <motor gear="1"  joint="R_HFE" name="R_HFE"/>
-            <velocity gear="1" joint="R_HFE" name="R_HFE_VEL" kv="3.18" />
+            <velocity gear="1" joint="R_HFE" name="R_HFE_VEL" kv="0.95" />
 
         <motor gear="1"  joint="R_KFE" name="R_KFE"/>
             <velocity gear="1" joint="R_KFE" name="R_KFE_VEL" kv="0.95" />
