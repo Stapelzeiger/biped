@@ -33,15 +33,11 @@ public:
 
         contact_left_sub_ = this->create_subscription<biped_bringup::msg::StampedBool>(
             "~/contact_foot_left", 10, std::bind(&IKNode::contact_left_cb, this, _1));
-
-
         robot_joints_pub_ = this->create_publisher<trajectory_msgs::msg::JointTrajectory>("joint_trajectory", 10);
         markers_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("~/markers", 10);
     }
 
 private:
-
-
     void contact_right_cb(biped_bringup::msg::StampedBool::SharedPtr msg)
     {
         auto now = this->get_clock()->now();
