@@ -151,10 +151,10 @@ private:
                 out_pt.positions[i] = joint_states[i].position;
             }
 
-            // out_pt.velocities.resize(joint_states.size());
-            // for (size_t i = 0; i < joint_states.size(); i++) {
-            //     out_pt.velocities[i] = joint_states[i].velocity;
-            // }
+            out_pt.velocities.resize(joint_states.size());
+            for (size_t i = 0; i < joint_states.size(); i++) {
+                out_pt.velocities[i] = joint_states[i].velocity;
+            }
 
             out_pt.effort.resize(joint_states.size());
             for (size_t i = 0; i < joint_states.size(); i++) {
