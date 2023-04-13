@@ -203,8 +203,6 @@ public:
 };
 
 
-
-
 class KinematicOdometry : public rclcpp::Node
 {
 public:
