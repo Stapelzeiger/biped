@@ -48,7 +48,6 @@ public:
         robot_params.safety_radius_CP = this->declare_parameter<double>("safety_radius_CP", 1.0);
         robot_params.T_contact_ignore = this->declare_parameter<double>("T_contact_ignore", 0.1);
         robot_params.omega = sqrt(9.81 / robot_params.robot_height);
-        operation_mode_ = this->declare_parameter<std::string>("operation_mode", "CALIBRATION");
         counter_calib_traj_ = 0;
 
         state_ = "INIT";
@@ -67,7 +66,6 @@ public:
         tf_broadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(this);
 
         pub_feet_trajectory_ = this->create_publisher<trajectory_msgs::msg::MultiDOFJointTrajectory>("/foot_positions", 10);
-        pub_state_in_traj_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("/state_in_traj", 10);
 
         pub_markers_foot_traj_ = this->create_publisher<visualization_msgs::msg::Marker>("~/markers_traj_feet", 10);
         pub_markers_safety_circle_ = this->create_publisher<visualization_msgs::msg::Marker>("~/markers_safety_circle", 10);
@@ -82,7 +80,7 @@ public:
         pub_desired_left_contact_ = this->create_publisher<biped_bringup::msg::StampedBool>("~/desired_left_contact", 10);
         pub_desired_right_contact_ = this->create_publisher<biped_bringup::msg::StampedBool>("~/desired_right_contact", 10);
 
-        pub_operation_mode_ = this->create_publisher<std_msgs::msg::String>("/operation_mode", 10);
+        pub_state_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("~/state", 10);
 
         odometry_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
             "/odometry", 10, std::bind(&CapturePoint::odometry_callback, this, _1));
@@ -181,144 +179,96 @@ private:
         stance_foot_setpt_list_BF.push_back(Eigen::Vector3d(0.0, -0.10, -robot_params.robot_height + 0.1));
         stance_foot_setpt_list_BF.push_back(Eigen::Vector3d(0.0, -0.10, -robot_params.robot_height));
 
-        int nb_pts_init_traj = stance_foot_setpt_list_BF.size();
 
-        // publish a string
-        auto msg_op_mode = std_msgs::msg::String();
-        msg_op_mode.data = operation_mode_;
-        pub_operation_mode_->publish(msg_op_mode);
-
-        if (operation_mode_ == "CALIBRATION")
+        if (foot_left_contact_ == false && foot_right_contact_ == false)
         {
-            std::cout << nb_pts_init_traj << std::endl;
-            if (state_ == "INIT"){
+            timeout_for_no_feet_in_contact_ -= robot_params.dt_ctrl;
+            std::cout << "lost contact of the feet" << std::endl;
+        }
+        else
+        {
+            timeout_for_no_feet_in_contact_ = 0.2;
+            state_ = "FOOT_IN_CONTACT";
+        }
 
-                if (counter_calib_traj_ == nb_pts_init_traj - 1)
-                    {
-                        counter_calib_traj_ = 0;
-                    }
-
-                Eigen::Vector3d start_stance_foot_BF, start_swing_foot_BF;
-                Eigen::Vector3d end_stance_foot_BF, end_swing_foot_BF;
-                end_stance_foot_BF = stance_foot_setpt_list_BF[counter_calib_traj_ + 1];
-                end_swing_foot_BF = swing_foot_setpt_list_BF[counter_calib_traj_ + 1];
-
-                start_stance_foot_BF = stance_foot_setpt_list_BF[counter_calib_traj_];
-                start_swing_foot_BF = swing_foot_setpt_list_BF[counter_calib_traj_];
-
-                for (int i = 0; i < 3; i++)
-                {
-                    auto coeff = foot_trajectory_.get_spline_coef(robot_params.duration_init_traj,
-                                                                start_stance_foot_BF(i), 0.0,
-                                                                end_stance_foot_BF(i), 0.0);
-                    coeffs_stance_foot_init_traj_.push_back(coeff);
-
-                    coeff = foot_trajectory_.get_spline_coef(robot_params.duration_init_traj,
-                                                                start_swing_foot_BF(i), 0.0,
-                                                                end_swing_foot_BF(i), 0.0);
-                    coeffs_swing_foot_init_traj_.push_back(coeff);
-                }
-                state_ = "START_CALIB_TRAJ";
-            }
-
-            if (state_ == "START_CALIB_TRAJ"){
-
-                if (t_init_traj_ > robot_params.duration_init_traj)
-                {
-                    t_init_traj_ = 0.0;
-                    state_ = "INIT";
-                    counter_calib_traj_++;
-                }
-                else
-                {
-                    Eigen::Vector3d setpt_stance_foot_pos_BF, setpt_swing_foot_pos_BF;
-                    Eigen::Vector3d setpt_stance_foot_vel_BF, setpt_swing_foot_vel_BF;
-
-                    get_foot_setpt(coeffs_swing_foot_init_traj_, t_init_traj_, setpt_swing_foot_pos_BF, setpt_swing_foot_vel_BF);
-                    get_foot_setpt(coeffs_stance_foot_init_traj_, t_init_traj_, setpt_stance_foot_pos_BF, setpt_stance_foot_vel_BF);
-                    publish_foot_trajectories(setpt_stance_foot_pos_BF, Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0), Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero(),
-                                            setpt_swing_foot_pos_BF, Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0), Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero());
-                    t_init_traj_ += robot_params.dt_ctrl;
-                }
-            }
-        }else{
-            if (foot_left_contact_ == false && foot_right_contact_ == false)
+        if (timeout_for_no_feet_in_contact_ < 0)
+        {
+            if (state_ == "FOOT_IN_CONTACT")
             {
-                timeout_for_no_feet_in_contact_ -= robot_params.dt_ctrl;
+                state_ = "INIT";
+                initialization_done_ = false;
+                t_init_traj_ = 0;
             }
-            else
+        }
+
+        geometry_msgs::msg::Vector3Stamped state_msg;
+        state_msg.header.stamp = this->get_clock()->now();
+        if (state_ == "INIT")
+            state_msg.vector.x = 0;
+        else if (state_ == "RAMP_TO_STARTING_POS")
+            state_msg.vector.x = 1;
+        else if (state_ == "FOOT_IN_CONTACT")
+            state_msg.vector.x = 2;
+        pub_state_->publish(state_msg);
+
+        if (state_ == "INIT")
+        {
+            Eigen::Vector3d init_stance_foot_pos_BF, init_swing_foot_pos_BF;
+            Eigen::Vector3d fin_stance_foot_pos_BF, fin_swing_foot_pos_BF;
+
+            fin_stance_foot_pos_BF = Eigen::Vector3d(0.0, -0.05, -robot_params.robot_height);
+            previous_desired_stance_foot_BLF_ = fin_stance_foot_pos_BF;
+            fin_swing_foot_pos_BF = Eigen::Vector3d(0.0, 0.15, -robot_params.robot_height + 0.1);
+
+            init_stance_foot_pos_BF = get_eigen_transform(r_foot_frame_id_, base_link_frame_id_).translation();
+            init_swing_foot_pos_BF = get_eigen_transform(l_foot_frame_id_, base_link_frame_id_).translation();
+
+            for (int i = 0; i < 3; i++)
             {
-                timeout_for_no_feet_in_contact_ = 0.3;
-                state_ = "FOOT_IN_CONTACT";
-            }
+                auto coeff = foot_trajectory_.get_spline_coef(robot_params.duration_init_traj,
+                                                            init_stance_foot_pos_BF(i), 0.0,
+                                                            fin_stance_foot_pos_BF(i), 0.0);
+                coeffs_stance_foot_init_traj_.push_back(coeff);
 
-            if (timeout_for_no_feet_in_contact_ < 0)
+                coeff = foot_trajectory_.get_spline_coef(robot_params.duration_init_traj,
+                                                            init_swing_foot_pos_BF(i), 0.0,
+                                                            fin_swing_foot_pos_BF(i), 0.0);
+                coeffs_swing_foot_init_traj_.push_back(coeff);
+            }
+            state_ = "RAMP_TO_STARTING_POS";
+            foot_trajectory_.set_initial_position(init_swing_foot_pos_BF);
+        }
+
+        if (state_ == "RAMP_TO_STARTING_POS")
+        {
+            Eigen::Vector3d setpt_stance_foot_pos_BF, setpt_swing_foot_pos_BF;
+            Eigen::Vector3d setpt_stance_foot_vel_BF, setpt_swing_foot_vel_BF;
+
+            get_foot_setpt(coeffs_stance_foot_init_traj_, t_init_traj_, setpt_stance_foot_pos_BF, setpt_stance_foot_vel_BF);
+            get_foot_setpt(coeffs_swing_foot_init_traj_, t_init_traj_, setpt_swing_foot_pos_BF, setpt_swing_foot_vel_BF);
+
+            publish_foot_trajectories(setpt_stance_foot_pos_BF, Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0), Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero(),
+                                    setpt_swing_foot_pos_BF, Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0), Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero());
+
+            biped_bringup::msg::StampedBool des_contact_msg;
+            des_contact_msg.header.stamp = this->get_clock()->now();
+            des_contact_msg.data = false;
+            pub_desired_left_contact_->publish(des_contact_msg);
+            des_contact_msg.data = false;
+            pub_desired_right_contact_->publish(des_contact_msg);
+
+            t_init_traj_ += robot_params.dt_ctrl;
+            if (t_init_traj_ > robot_params.duration_init_traj)
             {
-                if (state_ == "FOOT_IN_CONTACT")
-                {
-                    state_ = "INIT";
-                    initialization_done_ = false;
-                    t_init_traj_ = 0;
-                }
+                initialization_done_ = true;
+                set_starting_to_walk_params(setpt_swing_foot_pos_BF, setpt_stance_foot_pos_BF);
+                t_init_traj_ = robot_params.duration_init_traj;
+                std::cout << "Starting to walk! RESET!" << std::endl;
             }
-
-            if (state_ == "INIT")
-            {
-                Eigen::Vector3d init_stance_foot_pos_BF, init_swing_foot_pos_BF;
-                Eigen::Vector3d fin_stance_foot_pos_BF, fin_swing_foot_pos_BF;
-
-                fin_stance_foot_pos_BF = Eigen::Vector3d(0.0, 0.0, -robot_params.robot_height);
-                previous_desired_stance_foot_BLF_ = fin_stance_foot_pos_BF;
-                fin_swing_foot_pos_BF = Eigen::Vector3d(0.0, 0.15, -robot_params.robot_height + 0.1);
-
-                init_stance_foot_pos_BF = get_eigen_transform(r_foot_frame_id_, base_link_frame_id_).translation();
-                init_swing_foot_pos_BF = get_eigen_transform(l_foot_frame_id_, base_link_frame_id_).translation();
-
-                for (int i = 0; i < 3; i++)
-                {
-                    auto coeff = foot_trajectory_.get_spline_coef(robot_params.duration_init_traj,
-                                                                init_stance_foot_pos_BF(i), 0.0,
-                                                                fin_stance_foot_pos_BF(i), 0.0);
-                    coeffs_stance_foot_init_traj_.push_back(coeff);
-
-                    coeff = foot_trajectory_.get_spline_coef(robot_params.duration_init_traj,
-                                                                init_swing_foot_pos_BF(i), 0.0,
-                                                                fin_swing_foot_pos_BF(i), 0.0);
-                    coeffs_swing_foot_init_traj_.push_back(coeff);
-                }
-                state_ = "RAMP_TO_STARTING_POS";
-            }
-
-            if (state_ == "RAMP_TO_STARTING_POS")
-            {
-                Eigen::Vector3d setpt_stance_foot_pos_BF, setpt_swing_foot_pos_BF;
-                Eigen::Vector3d setpt_stance_foot_vel_BF, setpt_swing_foot_vel_BF;
-
-                get_foot_setpt(coeffs_stance_foot_init_traj_, t_init_traj_, setpt_stance_foot_pos_BF, setpt_stance_foot_vel_BF);
-                get_foot_setpt(coeffs_swing_foot_init_traj_, t_init_traj_, setpt_swing_foot_pos_BF, setpt_swing_foot_vel_BF);
-
-                publish_foot_trajectories(setpt_stance_foot_pos_BF, Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0), Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero(),
-                                        setpt_swing_foot_pos_BF, Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0), Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero());
-
-                biped_bringup::msg::StampedBool des_contact_msg;
-                des_contact_msg.header.stamp = this->get_clock()->now();
-                des_contact_msg.data = false;
-                pub_desired_left_contact_->publish(des_contact_msg);
-                des_contact_msg.data = false;
-                pub_desired_right_contact_->publish(des_contact_msg);
-
-                t_init_traj_ += robot_params.dt_ctrl;
-                if (t_init_traj_ > robot_params.duration_init_traj)
-                {
-                    initialization_done_ = true;
-                    set_starting_to_walk_params(setpt_swing_foot_pos_BF, setpt_stance_foot_pos_BF);
-                    t_init_traj_ = robot_params.duration_init_traj;
-                }
-            }
-            if (state_ == "FOOT_IN_CONTACT" && initialization_done_ == true)
-            {
-                run_capture_point_controller();
-            }
+        }
+        if (state_ == "FOOT_IN_CONTACT" && initialization_done_ == true)
+        {
+            run_capture_point_controller();
         }
     }
 
@@ -341,7 +291,7 @@ private:
         auto T_BLF_to_BF = get_BLF_to_BF();
         broadcast_transform(base_link_frame_id_, "BLF", T_BLF_to_BF.translation(), Eigen::Quaterniond(T_BLF_to_BF.rotation()));
         auto T_BF_to_BLF = T_BLF_to_BF.inverse();
-
+        std::cout << "time_since_last_step_" << time_since_last_step_ << std::endl;
         if (time_since_last_step_ > robot_params.T_contact_ignore && swing_foot_contact == true)
         {
             swing_foot_is_left_ = !swing_foot_is_left_;
@@ -376,9 +326,9 @@ private:
         dcm_desired_STF << vel_d_[0], 0.0, 0.0;
         if (swing_foot_is_left_)
         {
-            dcm_desired_STF(1) = -0.04 + vel_d_[1];
+            dcm_desired_STF(1) = -0.036 + vel_d_[1];
         }else{
-            dcm_desired_STF(1) = 0.04 + vel_d_[1];
+            dcm_desired_STF(1) = 0.036 + vel_d_[1];
         }
 
         Eigen::Vector3d base_link_vel_BF;
@@ -411,8 +361,15 @@ private:
 
         foot_trajectory_.get_traj_foot_pos_vel(time_since_last_step_, des_swing_foot_pos_STF, des_swing_foot_vel_STF, des_swing_foot_acc_STF);
 
+        double dt = robot_params.dt_ctrl;
+        // if (foot_left_contact_ == false && foot_right_contact_ == false) // todo verify if this sol is good
+        // {
+        //     dt = 0.0;
+        // } else {
+        //     dt = robot_params.dt_ctrl;
+        // }
         remaining_time_in_step_ = robot_params.t_step - time_since_last_step_;
-        time_since_last_step_ = time_since_last_step_ + robot_params.dt_ctrl;
+        time_since_last_step_ = time_since_last_step_ + dt;
 
         // publish desired trajectories
         Eigen::Vector3d desired_stance_foot_BLF = T_BF_to_BLF * stance_foot_BF;
@@ -425,7 +382,7 @@ private:
         Eigen::Vector3d desired_swing_foot_acc_BF_wrt_BF = desired_swing_foot_acc_BF_wrt_IF - base_link_acc_BF;
         previous_base_link_vel_BF_ = base_link_vel_BF;
 
-        const double foot_separation = 0.01;
+        const double foot_separation = 0.04;
         if (swing_foot_name == r_foot_frame_id_)
         {
             biped_bringup::msg::StampedBool des_contact_msg;
@@ -490,10 +447,6 @@ private:
         foot_traj_list_STF_.push_back(des_swing_foot_pos_STF);
         publish_line_traj_markers(foot_traj_list_STF_, "foot_trajectory", "STF", 3, Eigen::Vector3d(1.0, 0.0, 1.0), pub_markers_foot_traj_);
 
-        geometry_msgs::msg::Vector3Stamped state_in_traj_msg;
-        state_in_traj_msg.header.stamp = this->get_clock()->now();
-        state_in_traj_msg.vector.x = foot_trajectory_.state_in_traj_;
-        pub_state_in_traj_->publish(state_in_traj_msg);
     }
 
     void contact_right_callback(biped_bringup::msg::StampedBool::SharedPtr msg)
@@ -756,12 +709,11 @@ private:
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_markers_foot_traj_;
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_markers_safety_circle_;
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_marker_vel_BF_;
-    rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pub_state_in_traj_;
 
     rclcpp::Publisher<biped_bringup::msg::StampedBool>::SharedPtr pub_desired_left_contact_;
     rclcpp::Publisher<biped_bringup::msg::StampedBool>::SharedPtr pub_desired_right_contact_;
 
-    rclcpp::Publisher<std_msgs::msg::String>::SharedPtr pub_operation_mode_;
+    rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pub_state_;
 
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odometry_sub_;
     rclcpp::Subscription<biped_bringup::msg::StampedBool>::SharedPtr contact_right_sub_;
@@ -814,7 +766,6 @@ private:
 
     Eigen::Vector3d vel_d_;
 
-    std::string operation_mode_;
     std::string state_;
 
     double timeout_for_no_feet_in_contact_;
@@ -832,6 +783,8 @@ private:
 
     Eigen::Vector3d previous_base_link_vel_BF_;
     FootTrajectory foot_trajectory_;
+    FootTrajectory foot_stance_trajectory_;
+
 
 };
 
