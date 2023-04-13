@@ -13,4 +13,3 @@
     l_foot_frame_id: L_FOOT_CONTACT
     l_foot_urdf_frame_id: L_ANKLE
     base_link_frame_id: base_link
-    operation_mode: "WALKING"
