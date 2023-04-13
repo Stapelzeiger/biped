@@ -117,8 +117,6 @@ class MujocoNode(Node):
         self.joint_traj_msg = None
         self.initial_pose_sub = self.create_subscription(PoseWithCovarianceStamped, 'initialpose', self.init_cb, 10)
         self.reset_sub = self.create_subscription(Empty, '~/reset', self.reset_cb, 10)
-        self.operations_mode_sub = self.create_subscription(String, '/operation_mode', self.operations_mode_cb, 10)
-        self.operations_mode = 'WALKING'
 
         self.paused = True
         self.step_sim_sub = self.create_subscription(Float64, "~/step", self.step_cb, 1)
@@ -177,11 +175,7 @@ class MujocoNode(Node):
         with self.lock:
             self.paused = msg.data
 
-    def operations_mode_cb(self, msg):
-        self.operations_mode = msg.data
-
     def step(self):
-
         if not self.initialization_done:
             self.model.eq_data[0][2] -= 0.5 * self.dt
 
@@ -192,6 +186,7 @@ class MujocoNode(Node):
                 self.initialization_done = True
                 self.data.qvel = [0.0]* self.model.nv
                 self.model.eq_active[0] = 0 # let go of the robot
+
         
         if self.visualize_mujoco is True:
             vis_update_downsampling = int(round(1.0/self.visualization_rate/self.sim_time_sec/10))
@@ -316,7 +311,7 @@ class MujocoNode(Node):
                     else:
                         value['feedforward_torque'] = 0.0
 
-        kp_moteus = 600
+        kp_moteus = 500.0
         Kp = (kp_moteus/(2*math.pi)) * np.ones(self.model.njnt - 1) # exclude root
 
         i = 0
@@ -391,10 +386,6 @@ class MujocoNode(Node):
 
         self.data.ctrl[idx_act] = pitch_torque_setpt
         self.data.ctrl[idx_vel_act] = 0.0
-
-
-
-
 
 def main(args=None):
     rclpy.init(args=args)
