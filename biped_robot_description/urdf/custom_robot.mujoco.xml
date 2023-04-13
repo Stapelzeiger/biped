@@ -61,7 +61,7 @@
           <geom name="L_SHOULDER" type="mesh" contype="2" rgba="1 0 0 1" mesh="L_SHOULDER"/>
 
           <body name="L_UPPER_LEG" pos="0 0 0">
-            <inertial pos="-0.000328851 0.0508507 -0.0528924" quat="1. 0. 0. 0." mass="0.868" diaginertia="0.00134762 0.00110961 0.000336902"/>
+            <inertial pos="-0.000328851 0.0508507 -0.0528924" quat="1. 0. 0. 0." mass="0.800" diaginertia="0.00134762 0.00110961 0.000336902"/>
             <joint name="L_HFE" pos="0 0 0" axis="0 1 0" limited="true" range="-1.5 1.5"/>
             <geom name="L_UPPER_LEG" type="mesh" contype="2"  rgba="1 0 0 1" mesh="L_UPPER_LEG"/>
             
@@ -71,7 +71,7 @@
               <geom name="L_LOWER_LEG" type="mesh" contype="2" rgba="0.792157 0.819608 0.933333 1" mesh="L_LOWER_LEG"/>
               
               <body name="L_FOOT" pos="0 -0.0168 -0.30826">
-                <inertial pos="3.02322e-05 -2.36197e-08 -0.0242543" quat="0.710914 0 0.703279 0" mass="0.0313407" diaginertia="3.39896e-05 3.35525e-05 1.53506e-06"/>
+                <inertial pos="3.02322e-05 -2.36197e-08 -0.0242543" quat="0.710914 0 0.703279 0" mass="0.045" diaginertia="3.39896e-05 3.35525e-05 1.53506e-06"/>
                 <joint name="L_ANKLE" pos="0 0 0" axis="0 1 0" limited="true" range="-0.7 0.7"/>
                 <geom name="L_FOOT" friction="1. 0.3 0.3" size="0.015 0.05" pos="0 0 -0.01" quat="0.710914 0 0.703279 0"  type="capsule" rgba="0.8 0.8 0.8 1"/>
 
@@ -93,7 +93,7 @@
           <geom name="R_SHOULDER" type="mesh" contype="2" rgba="1 0 0 1" mesh="R_SHOULDER"/>
           
           <body name="R_UPPER_LEG" pos="0 0 0">
-            <inertial pos="0.000674123 -0.0518216 -0.040538" quat="1. 0. 0. 0." mass="0.868" diaginertia="0.00132251 0.00110712 0.000298067"/>
+            <inertial pos="0.000674123 -0.0518216 -0.040538" quat="1. 0. 0. 0." mass="0.800" diaginertia="0.00132251 0.00110712 0.000298067"/>
             <joint name="R_HFE" pos="0 0 0" axis="0 1 0" limited="true" range="-1.5 1.5"/>
             <geom name="R_UPPER_LEG" type="mesh" contype="2" rgba="1 0 0 1" mesh="R_UPPER_LEG"/>
             
@@ -103,7 +103,7 @@
               <geom name="R_LOWER_LEG" type="mesh" contype="2" rgba="0.792157 0.819608 0.933333 1" mesh="R_LOWER_LEG"/>
               
               <body name="R_FOOT" pos="0 0.0168 -0.30826">
-                <inertial pos="-3.02322e-05 2.36197e-08 -0.0242543" quat="0.710914 0 0.703279 0" mass="0.0313407" diaginertia="3.39896e-05 3.35525e-05 1.53506e-06"/>
+                <inertial pos="-3.02322e-05 2.36197e-08 -0.0242543" quat="0.710914 0 0.703279 0" mass="0.045" diaginertia="3.39896e-05 3.35525e-05 1.53506e-06"/>
                 <joint name="R_ANKLE" pos="0 0 0" axis="0 1 0" limited="true" range="-0.7 0.7"/>
                 <geom name="R_FOOT" friction="1. 0.3 0.3" size="0.015 0.05" pos="0 0 -0.01" quat="0.710914 0 0.703279 0"  type="capsule" rgba="0.8 0.8 0.8 1"/>
               </body>
