@@ -257,40 +257,67 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
 
     Eigen::MatrixXd J_for_ff_stacked(nb_constraints, model_.nv);
     J_for_ff_stacked.setZero();
+    Eigen::MatrixXd J_dot_for_ff_stacked(nb_constraints, model_.nv);
+    J_dot_for_ff_stacked.setZero();
+
     Eigen::MatrixXd body_vels_stacked(nb_constraints, 1);
+    Eigen::MatrixXd body_accs_stacked(nb_constraints, 1);
     body_vels_stacked.setZero();
+    body_accs_stacked.setZero();
 
     int cur_constraint_ff = 0;
     for (const auto &body: body_states) {
         Eigen::Vector3d body_vel = body.linear_velocity;
+        Eigen::Vector3d body_acc = body.linear_acceleration;
         if (body_vel.hasNaN()) {
             body_vel.setZero();
         }
+        if (body_acc.hasNaN()){
+            body_acc.setZero();
+        }
+
         auto frame_id = model_.getFrameId(body.name);
         Eigen::MatrixXd J(6, model_.nv);
         J.setZero();
         pinocchio::getFrameJacobian(model_, data, frame_id, pinocchio::LOCAL_WORLD_ALIGNED, J);
+        Eigen::MatrixXd J_dot(6, model_.nv);
+        J_dot.setZero();
+        pinocchio::getFrameJacobianTimeVariation(model_, data, frame_id, pinocchio::LOCAL_WORLD_ALIGNED, J_dot);
+
         if (body.type == BodyState::ContraintType::FULL_6DOF) {
             J_for_ff_stacked.block(cur_constraint_ff, 0, 6, model_.nv) = J;
             body_vels_stacked.block(cur_constraint_ff, 0, 3, 1) = body_vel;
-            body_vels_stacked.block(cur_constraint_ff+3, 0, 3, 1).setZero();
+            body_vels_stacked.block(cur_constraint_ff + 3, 0, 3, 1).setZero();
+            J_dot_for_ff_stacked.block(cur_constraint_ff, 0, 6, model_.nv) = J_dot;
+            body_accs_stacked.block(cur_constraint_ff, 0, 6, 1) = body_acc;
+            body_accs_stacked.block(cur_constraint_ff + 3, 0, 3, 1).setZero();
+
             cur_constraint_ff += 6;
         } else if (body.type == BodyState::ContraintType::POS_ONLY) {
-            J_for_ff_stacked.block(cur_constraint_ff, 0, 3, model_.nv) = J;
+            J_for_ff_stacked.block(cur_constraint_ff, 0, 3, model_.nv) = J.block(0, 0, 3, model_.nv);
             body_vels_stacked.block(cur_constraint_ff, 0, 3, 1) = body_vel;
+            J_dot_for_ff_stacked.block(cur_constraint_ff, 0, 3, model_.nv) = J_dot.block(0, 0, 3, model_.nv);
+            body_accs_stacked.block(cur_constraint_ff, 0, 3, 1) = body_acc;
             cur_constraint_ff += 3;
         } else if (body.type == BodyState::ContraintType::POS_AXIS) {
-            J_for_ff_stacked.block(cur_constraint_ff, 0, 5, model_.nv) = J;
+            pinocchio::getFrameJacobian(model_, data, frame_id, pinocchio::LOCAL, J);
+            J_for_ff_stacked.block(cur_constraint_ff, 0, 3, model_.nv) = J.block(0, 0, 3, model_.nv);
+            J_for_ff_stacked.block(cur_constraint_ff + 3, 0, 2, model_.nv) = J.block(4, 0, 2, model_.nv); // TODO compute from a
             body_vels_stacked.block(cur_constraint_ff, 0, 3, 1) = body_vel;
-            body_vels_stacked.block(cur_constraint_ff+3, 0, 2, 1).setZero();
+            body_vels_stacked.block(cur_constraint_ff + 3, 0, 2, 1).setZero();
+
+            J_dot_for_ff_stacked.block(cur_constraint_ff, 0, 3, model_.nv) = J_dot.block(0, 0, 3, model_.nv);
+            J_dot_for_ff_stacked.block(cur_constraint_ff + 3, 0, 2, model_.nv) = J_dot.block(4, 0, 2, model_.nv); // TODO compute from a
+            body_accs_stacked.block(cur_constraint_ff, 0, 3, 1) = body_acc;
+            body_accs_stacked.block(cur_constraint_ff + 3, 0, 2, 1).setZero();
+
             cur_constraint_ff += 5;
         }
     }
     Eigen::HouseholderQR<Eigen::MatrixXd> QR_ff(J_for_ff_stacked);
     Eigen::VectorXd q_vel(QR_ff.solve(body_vels_stacked));
+    Eigen::VectorXd q_acc(QR_ff.solve(body_accs_stacked - J_dot_for_ff_stacked * q_vel));
 
-    // std::cout << "q_vel: " << q_vel.transpose() << std::endl;
-    // std::cout << "body vels: " << body_vels_stacked.transpose() << std::endl;
     for (auto &joint_state: joint_states)
     {
         auto joint_id = model_.getJointId(joint_state.name);
@@ -301,12 +328,9 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
     int nb_contacts = 0;
     for (const auto &body: body_states)
     {
-        if (body.name != "base_link")
+        if (body.in_contact == true)
         {
-            if (body.in_contact == true)
-            {
-                nb_contacts++;
-            }
+            nb_contacts++;
         }
     }
 
@@ -318,18 +342,15 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
 
         for (const auto &body: body_states)
         {
-            if (body.name != "base_link")
+            if (body.in_contact == true)
             {
-                if (body.in_contact == true)
-                {
-                    auto frame_id = model_.getFrameId(body.name);
-                    Eigen::MatrixXd J(6, model_.nv);
-                    J.setZero();
-                    pinocchio::getFrameJacobian(model_, data, frame_id, pinocchio::WORLD, J);
-                    Eigen::MatrixXd J_block(5, model_.nv);
-                    J_block << J.block(0, 0, 3, model_.nv), J.block(4, 0, 2, model_.nv);
-                    J_contacts.block(0, 0, 5, model_.nv) = J_block;
-                }
+                auto frame_id = model_.getFrameId(body.name);
+                Eigen::MatrixXd J(6, model_.nv);
+                J.setZero();
+                pinocchio::getFrameJacobian(model_, data, frame_id, pinocchio::WORLD, J);
+                Eigen::MatrixXd J_block(5, model_.nv);
+                J_block << J.block(0, 0, 3, model_.nv), J.block(4, 0, 2, model_.nv);
+                J_contacts.block(0, 0, 5, model_.nv) = J_block;
             }
         }
 
@@ -342,9 +363,12 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
         P = I_nv - J_contacts_pinv * J_contacts;
         auto PB = P * B_matrix_;
         pinocchio::computeGeneralizedGravity(model_, data, q_); // data.g
+        pinocchio::computeCoriolisMatrix(model_, data, q_, q_vel); // data.C
+        pinocchio::crba(model_, data, q_); // data.M
 
         Eigen::HouseholderQR<Eigen::MatrixXd> QR(PB);
-        auto y = P * data.g;
+        // std::cout << "extra terms:" << (P * data.C * q_vel + P * data.M * q_acc).transpose() << std::endl;
+        auto y = P * data.g + P * data.C * q_vel + P * data.M * q_acc; // question about q_vel
         Eigen::VectorXd feedforward_torque(QR.solve(y));
 
         for (auto &joint_state: joint_states)
@@ -362,12 +386,6 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
 
         }
     }
-
-    // for (auto joint : joint_states)
-    // {
-    //     std::cout << joint.name << " " << joint.position << " " << joint.effort << std::endl;
-    // }
-
 
     return joint_states;
 }
