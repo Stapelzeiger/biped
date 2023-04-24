@@ -132,7 +132,6 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
 
     // solve IK
     Eigen::VectorXd q = q_;
-    // std::cout << "initial q:" << q.transpose() << std::endl;
     pinocchio::Data data(model_);
 
     int nb_constraints = 0;
