@@ -12,7 +12,7 @@ class JoyNode(Node):
     def __init__(self):
         super().__init__('JoyFootDesiredPos')
         self.lock = threading.Lock()
-        self.foot_position_BL_pub = self.create_publisher(MultiDOFJointTrajectory, "/foot_positions", 1)
+        self.foot_position_BL_pub = self.create_publisher(MultiDOFJointTrajectory, "/body_trajectories", 1)
         self.subscription = self.create_subscription(
             Joy,
             '/joy',
