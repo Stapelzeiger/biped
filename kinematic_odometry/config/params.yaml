@@ -2,7 +2,7 @@
   ros__parameters:
     base_link_frame_id: "base_link"
     odom_frame_id: "odom"
-    publish_tf: true
+    publish_tf: false
     contact_joint_names:
       - L_FOOT_CONTACT
       - R_FOOT_CONTACT
