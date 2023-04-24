@@ -311,7 +311,7 @@ class MujocoNode(Node):
                     else:
                         value['feedforward_torque'] = 0.0
 
-        kp_moteus = 500.0
+        kp_moteus = 600.0
         Kp = (kp_moteus/(2*math.pi)) * np.ones(self.model.njnt - 1) # exclude root
 
         i = 0
