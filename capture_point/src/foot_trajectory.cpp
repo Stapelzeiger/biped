@@ -114,7 +114,6 @@ void FootTrajectory::get_traj_foot_pos_vel(double T_since_begin_step, Eigen::Vec
         // keep foot
         double a = 1 - T_keep_remaining/T_keep;
         pos(2) = initial_position_(2) + lift_foot_hgt + a * delta_h_step;
-        std::cout << pos(2) << std::endl;
         vel(2) = delta_h_step / T_keep;
         acc(2) = 0;
         state_in_traj_ = 1;
