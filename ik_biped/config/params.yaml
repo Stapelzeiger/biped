@@ -1,5 +1,7 @@
 /ik_interface:
   ros__parameters:
+    base_link:
+      joint_type: 'FULL_6DOF'
     L_ANKLE:
       joint_type: 'POS_AXIS'
       axis: [1.0, 0.0, 0.0]
