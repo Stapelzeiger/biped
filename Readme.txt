@@ -12,6 +12,9 @@ ros-humble-robot-state-publisher
 ros-humble-compressed-image-transport
 ros-humble-xacro
 
+GPIOD:
+sudo apt-get install libgpiod-dev
+
 optional
 ros-humble-joint-state-publisher-gui
 ros-humble-plotjuggler-ros
