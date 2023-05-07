@@ -1,0 +1,195 @@
+%\NeedsTeXFormat{LaTeX2e}     % Not really necessary
+\ProvidesPackage{sjmacros}
+
+%which ever package(s) you need
+\RequirePackage{amsmath,graphicx,xcolor,amssymb,mathrsfs,mathtools,stackengine} 
+%amsthm,
+
+\DeclarePairedDelimiter\abs{\lvert}{\rvert}
+\newcommand{\norm}[1]{\left\lVert#1\right\rVert}
+% \newcommand{\ceil}[1]{\left\lceil{#1}\right\rceil}
+\DeclarePairedDelimiter{\ceil}{\lceil}{\rceil}
+% \newcommand{\ceil}[1]{\left\lfloor{#1}\right\rfloor}
+\DeclarePairedDelimiter{\floor}{\lfloor}{\rfloor}
+
+\def\Rsf{{\text{\sffamily R}}}
+
+\def\Abf{{\bf A}}  \def\abf{{\bf a}}
+\def\Bbf{{\bf B}}  \def\bbf{{\bf b}}
+\def\Cbf{{\bf C}}  \def\cbf{{\bf c}}
+\def\Dbf{{\bf D}}  \def\dbf{{\bf d}}
+\def\Ebf{{\bf E}}  \def\ebf{{\bf e}}
+\def\Fbf{{\bf F}}  \def\fbf{{\bf f}}
+\def\Gbf{{\bf G}}  \def\gbf{{\bf g}}
+\def\Hbf{{\bf H}}  \def\hbf{{\bf h}}
+\def\Ibf{{\bf I}}  \def\ibf{{\bf i}}
+\def\Jbf{{\bf J}}  \def\jbf{{\bf j}}
+\def\Kbf{{\bf K}}  \def\kbf{{\bf k}}
+\def\Lbf{{\bf L}}  \def\lbf{{\bf l}}
+\def\Mbf{{\bf M}}  \def\mbf{{\bf m}}
+\def\Nbf{{\bf N}}  \def\nbf{{\bf n}}
+\def\Obf{{\bf O}}  \def\obf{{\bf o}}
+\def\Pbf{{\bf P}}  \def\pbf{{\bf p}}
+\def\Qbf{{\bf Q}}  \def\qbf{{\bf q}}
+\def\Rbf{{\bf R}}  \def\rbf{{\bf r}}
+\def\Sbf{{\bf S}}  \def\sbf{{\bf s}}
+\def\Tbf{{\bf T}}  \def\tbf{{\bf t}}
+\def\Ubf{{\bf U}}  \def\ubf{{\bf u}}
+\def\Vbf{{\bf V}}  \def\vbf{{\bf v}}
+\def\Wbf{{\bf W}}  \def\wbf{{\bf w}}
+\def\Xbf{{\bf X}}  \def\xbf{{\bf x}}
+\def\Ybf{{\bf Y}}  \def\ybf{{\bf y}}
+\def\Zbf{{\bf Z}}  \def\zbf{{\bf z}}
+
+\def\Abb{\mathbb{A}}  \def\abb{\mathbb{a}}
+\def\Bbb{\mathbb{B}}  \def\bbb{\mathbb{b}}
+\def\Cbb{\mathbb{C}}  \def\cbb{\mathbb{c}}
+\def\Dbb{\mathbb{D}}  \def\dbb{\mathbb{d}}
+\def\Ebb{\mathbb{E}}  \def\ebb{\mathbb{e}}
+\def\Fbb{\mathbb{F}}  \def\fbb{\mathbb{f}}
+\def\Gbb{\mathbb{G}}  \def\gbb{\mathbb{g}}
+\def\Hbb{\mathbb{H}}  \def\hbb{\mathbb{h}}
+\def\Ibb{\mathbb{I}}  \def\ibb{\mathbb{i}}
+\def\Jbb{\mathbb{J}}  \def\jbb{\mathbb{j}}
+\def\Kbb{\mathbb{K}}  \def\kbb{\mathbb{k}}
+\def\Lbb{\mathbb{L}}  \def\lbb{\mathbb{l}}
+\def\Mbb{\mathbb{M}}  \def\mbb{\mathbb{m}}
+\def\Nbb{\mathbb{N}}  \def\nbb{\mathbb{n}}
+\def\Obb{\mathbb{O}}  \def\obb{\mathbb{o}}
+\def\Pbb{\mathbb{P}}  \def\pbb{\mathbb{p}}
+\def\Qbb{\mathbb{Q}}  \def\qbb{\mathbb{q}}
+\def\Rbb{\mathbb{R}}  \def\rbb{\mathbb{r}}
+\def\Sbb{\mathbb{S}}  \def\sbb{\mathbb{s}}
+\def\Tbb{\mathbb{T}}  \def\tbb{\mathbb{t}}
+\def\Ubb{\mathbb{U}}  \def\ubb{\mathbb{u}}
+\def\Vbb{\mathbb{V}}  \def\vbb{\mathbb{v}}
+\def\Wbb{\mathbb{W}}  \def\wbb{\mathbb{w}}
+\def\Xbb{\mathbb{X}}  \def\xbb{\mathbb{x}}
+\def\Ybb{\mathbb{Y}}  \def\ybb{\mathbb{y}}
+\def\Zbb{\mathbb{Z}}  \def\zbb{\mathbb{z}}
+
+\def\Acal{\mathcal{A}}  \def\acal{\mathcal{a}}
+\def\Bcal{\mathcal{B}}  \def\bcal{\mathcal{b}}
+\def\Ccal{\mathcal{C}}  \def\ccal{\mathcal{c}}
+\def\Dcal{\mathcal{D}}  \def\dcal{\mathcal{d}}
+\def\Ecal{\mathcal{E}}  \def\ecal{\mathcal{e}}
+\def\Fcal{\mathcal{F}}  \def\fcal{\mathcal{f}}
+\def\Gcal{\mathcal{G}}  \def\gcal{\mathcal{g}}
+\def\Hcal{\mathcal{H}}  \def\hcal{\mathcal{h}}
+\def\Ical{\mathcal{I}}  \def\ical{\mathcal{i}}
+\def\Jcal{\mathcal{J}}  \def\jcal{\mathcal{j}}
+\def\Kcal{\mathcal{K}}  \def\kcal{\mathcal{k}}
+\def\Lcal{\mathcal{L}}  \def\lcal{\mathcal{l}}
+\def\Mcal{\mathcal{M}}  \def\mcal{\mathcal{m}}
+\def\Ncal{\mathcal{N}}  \def\ncal{\mathcal{n}}
+\def\Ocal{\mathcal{O}}  \def\ocal{\mathcal{o}}
+\def\Pcal{\mathcal{P}}  \def\pcal{\mathcal{p}}
+\def\Qcal{\mathcal{Q}}  \def\qcal{\mathcal{q}}
+\def\Rcal{\mathcal{R}}  \def\rcal{\mathcal{r}}
+\def\Scal{\mathcal{S}}  \def\scal{\mathcal{s}}
+\def\Tcal{\mathcal{T}}  \def\tcal{\mathcal{t}}
+\def\Ucal{\mathcal{U}}  \def\ucal{\mathcal{u}}
+\def\Vcal{\mathcal{V}}  \def\vcal{\mathcal{v}}
+\def\Wcal{\mathcal{W}}  \def\wcal{\mathcal{w}}
+\def\Xcal{\mathcal{X}}  \def\xcal{\mathcal{x}}
+\def\Ycal{\mathcal{Y}}  \def\ycal{\mathcal{y}}
+\def\Zcal{\mathcal{Z}}  \def\zcal{\mathcal{z}}
+
+\def\Ascr{\mathscr{A}}  \def\ascr{\mathscr{a}}
+\def\Bscr{\mathscr{B}}  \def\bscr{\mathscr{b}}
+\def\Cscr{\mathscr{C}}  \def\cscr{\mathscr{c}}
+\def\Dscr{\mathscr{D}}  \def\dscr{\mathscr{d}}
+\def\Escr{\mathscr{E}}  \def\escr{\mathscr{e}}
+\def\Fscr{\mathscr{F}}  \def\fscr{\mathscr{f}}
+\def\Gscr{\mathscr{G}}  \def\gscr{\mathscr{g}}
+\def\Hscr{\mathscr{H}}  \def\hscr{\mathscr{h}}
+\def\Iscr{\mathscr{I}}  \def\iscr{\mathscr{i}}
+\def\Jscr{\mathscr{J}}  \def\jscr{\mathscr{j}}
+\def\Kscr{\mathscr{K}}  \def\kscr{\mathscr{k}}
+\def\Lscr{\mathscr{L}}  \def\lscr{\mathscr{l}}
+\def\Mscr{\mathscr{M}}  \def\mscr{\mathscr{m}}
+\def\Nscr{\mathscr{N}}  \def\nscr{\mathscr{n}}
+\def\Oscr{\mathscr{O}}  \def\oscr{\mathscr{o}}
+\def\Pscr{\mathscr{P}}  \def\pscr{\mathscr{p}}
+\def\Qscr{\mathscr{Q}}  \def\qscr{\mathscr{q}}
+\def\Rscr{\mathscr{R}}  \def\rscr{\mathscr{r}}
+\def\Sscr{\mathscr{S}}  \def\sscr{\mathscr{s}}
+\def\Tscr{\mathscr{T}}  \def\tscr{\mathscr{t}}
+\def\Uscr{\mathscr{U}}  \def\uscr{\mathscr{u}}
+\def\Vscr{\mathscr{V}}  \def\vscr{\mathscr{v}}
+\def\Wscr{\mathscr{W}}  \def\wscr{\mathscr{w}}
+\def\Xscr{\mathscr{X}}  \def\xscr{\mathscr{x}}
+\def\Yscr{\mathscr{Y}}  \def\yscr{\mathscr{y}}
+\def\Zscr{\mathscr{Z}}  \def\zscr{\mathscr{z}}
+
+% colored text
+\newcommand{\blue}[1]{{\color{blue}#1}}
+\newcommand{\red}[1]{{\color{red}#1}}
+\newcommand{\olive}[1]{{\color{olive}#1}}
+\newcommand{\gray}[1]{{\color{gray}#1}}
+\newcommand{\magenta}[1]{{\color{magenta}#1}}
+\newcommand{\violet}[1]{{\color{violet}#1}}
+% \newcommand{\gray}[1]{{\color{gray}#1}}
+
+%% referencing existing environments
+\def\alg#1{Algorithm~\ref{alg:#1}}
+\def\cor#1{Corollary~\ref{coro:#1}}
+\def\propo#1{Proposition~\ref{prop:#1}}
+\def\exa#1{Example~\ref{ex:#1}}
+\def\remk#1{Remark~\ref{rmk:#1}}
+\def\eqn#1{(\ref{eq:#1})}
+\def\fig#1{Fig.~\ref{fig:#1}}
+\def\subfig#1#2{Fig.~\ref{fig:#1}\subref{subfig:#1-#2}}
+\def\lem#1{Lemma~\ref{lem:#1}}
+\def\sec#1{Sec.~\ref{sec:#1}}
+\def\subsec#1{Subsection~\ref{subsec:#1}}
+\def\tab#1{Table~\ref{tab:#1}}
+\def\assum#1{Assumption~\ref{assum:#1}}
+\def\setu#1{Setting~\ref{set:#1}}
+\def\nota#1{Notation~\ref{nota:#1}}
+\def\prob#1{Problem~\ref{prob:#1}}
+\def\thm#1{Theorem~\ref{thm:#1}}
+\def\defin#1{Definition~\ref{def:#1}}
+\def\chapt#1{Chapter~\ref{chpt:#1}}
+
+% misc
+\DeclareMathOperator*{\argmin}{argmin}
+\DeclareMathOperator*{\argmax}{argmax}
+\def\st{{\rm s.t.}}
+
+\def\avect{{\bf a}}
+\def\bvect{{\bf b}}
+\def\cvect{{\bf c}}
+\def\dvect{{\bf d}}
+\def\evect{{\bf e}}
+\def\fvect{{\bf f}}
+\def\gvect{{\bf g}}
+\def\hvect{{\bf h}}
+\def\mvect{{\bf m}}
+\def\nvect{{\bf n}}
+\def\ovect{{\bf o}}
+\def\pvect{{\bf p}}
+\def\qvect{{\bf q}}
+\def\rvect{{\bf r}}
+\def\svect{{\bf s}}
+\def\uvect{{\bf u}}
+\def\vvect{{\bf v}}
+\def\wvect{{\bf w}}
+\def\xvect{{\bf x}}
+\def\yvect{{\bf y}}
+\def\zvect{{\bf z}}
+
+\def\mod{\hskip.1cm\text{mod}\hskip.1cm}
+\def\cond{\text{cond}}
+\def\sinc{\text{sinc}}
+\def\disteq{\stackrel{d}{=}}
+\def\distapprox{\stackrel{d}{\approx}}
+\def\Qto{{\to}_{\Qbb}}
+
+\newcommand*\samethanks[1][\value{footnote}]{\footnotemark[#1]}
+\newcommand\oast{\stackMath\mathbin{\stackinset{c}{0ex}{c}{0ex}{\ast}{\bigcirc}}}
+
+\newcommand{\extend}[1]{{\color{violet} (\textbf{Extension Idea}: #1)}}
+\newcommand{\incomplete}[2]{{\color{violet} [\textbf{Incomplete}: \textit{(#1)} #2]}}
+
+\endinput

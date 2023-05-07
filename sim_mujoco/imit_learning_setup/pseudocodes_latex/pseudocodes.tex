@@ -1,0 +1,106 @@
+\documentclass[letterpaper, 10 pt, conference]{ieeeconf}
+\IEEEoverridecommandlockouts
+\overrideIEEEmargins 
+\usepackage{times}
+\usepackage{fancyhdr}
+\usepackage{float}
+\usepackage{cite}
+\usepackage{listings}
+\usepackage{booktabs}
+\usepackage{subfig, bm}
+\let\proof\relax
+\let\endproof\relax
+\usepackage{amsthm}
+\usepackage{tikz}
+\usepackage{amssymb}
+\usepackage{mdwlist}
+\usepackage{hyperref}
+\hypersetup{colorlinks,linkcolor={blue},citecolor={blue}} 
+\usepackage{amsmath,graphicx,xcolor}
+\usepackage{subfiles}
+\usepackage{import}
+\usepackage{dsfont}
+\usepackage[font=small,labelfont=bf]{caption}
+\usepackage{mathtools}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{sjmacros}
+\usepackage{stfloats}
+\usepackage{cuted}
+\setlength\stripsep{3pt plus 1pt minus 1pt}
+\pagenumbering{gobble}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% TITLE MATERIAL, AUTHOR INFORMATION
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\title{Title}
+
+\author{}
+% \date{}
+
+\begin{document}
+% \maketitle
+\setcounter{section}{0}
+\thispagestyle{empty}
+\allowdisplaybreaks
+
+\begin{algorithm}[H]
+    \centering
+    \caption{\small{\texttt{Main: Training.}}}
+    \begin{algorithmic}[1]\label{alg:main_train}
+        \STATE{\small{Initialize environment (OpenAI Gym format).}}
+        \STATE{\small{Initialize Learner policy $\pi^{(0)}$.}}
+        \STATE{\small{Initialize Expert policy $\pi^{(E)}$.}}
+        \STATE{\small{Initialize probabilities $[\beta^{(n)}]_{n=1}^{N}$.}}
+        \STATE{\small{Initialize $i=0$.}}
+        \WHILE{\small{not done}}
+            \STATE{\small{\textbf{\#Imitation Learning Loop.}}}
+            \STATE{Rollout \small{$\Tcal\leftarrow\texttt{Rollout}(\pi^{(i)}, \pi^{(E)}, [\beta^{(n)}]_{n=1}^{N}, \cdots)$.}}
+            \STATE{\small{$\pi^{(i+1)}\leftarrow\texttt{Learn}(\pi^{(i)}, \pi^{(E)}, \Tcal, \cdots)$, where \texttt{Learn} is replaced with \texttt{PPO}, standard backpropagation, etc.}}
+            \STATE{\small{$i\leftarrow i+1$.}}
+        \ENDWHILE
+        \STATE{\textbf{Return} $\pi^{(i)}$.}
+    \end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+    \centering
+    \caption{\small{\texttt{Main: Evaluation.}}}
+    \begin{algorithmic}[1]\label{alg:main_eval}
+        \STATE{\small{Initialize environment (OpenAI Gym format).}}
+        \STATE{\small{Initialize environment state $\svect_0$.}}
+        \STATE{\small{Get $\pi^{(i)}$ from \texttt{Main: Training}.}}
+        \STATE{\small{Initialize $j=0$.}}
+        \WHILE{\small{not done}}
+            \STATE{\small{Sample $\avect_j \sim \pi^{(i)}(\cdot|\svect_j)$.}}
+            \STATE{\small{Update $\svect_{j+1} = \texttt{step}(\svect_j, \avect_j)$}}
+            \STATE{\small{$j\leftarrow j+1$.}}
+        \ENDWHILE
+        \STATE{\textbf{Return} trajectory $\{(\svect_j,\avect_j)\}$.}
+    \end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+    \centering
+    \caption{\small{\texttt{Rollout.}}}
+    \begin{algorithmic}[1]\label{alg:rollout}
+        \STATE{\textbf{Main Inputs}: Learner policy $\pi^{(i)}$, Expert policy $\pi^{(E)}$, $[\beta^{(n)}]_{n=1}^{N}$.}
+        \FOR{\small{$n = 1,\cdots,N$ num. trajectories}}
+            \STATE{\small{Initialize trajectory $\svect_0^{(n)}$.}}
+            \STATE{\small{Initialize $j=0$, empty set $\Tcal=\{\}$.}}
+            \WHILE{\small{trajectory not done}}
+                \STATE{\small{Get Learner action $\avect_j^{(n,i)}\sim \pi^{(i)}(\cdot|\svect_j^{(n)})$}.}
+                \STATE{\small{Get Expert action $\avect_j^{(n,E)}\sim \pi^{(E)}(\cdot|\svect_j^{(n)})$}.}
+                \STATE{\small{\textbf{\#Case 1}}}
+                \STATE{\small{Set $\avect_j^{(n)}=\avect_j^{(n,E)}$ w.p. $\beta^{(n)}$, else $\avect_j^{(n)}=\avect_j^{(n,i)}$.}}
+                \STATE{\small{\textbf{\#Case 2}}}
+                \STATE{\small{Set $\avect_j^{(n)}=\beta^{(n)}\avect_j^{(n,E)}+(1-\beta^{(n)})\avect_j^{(n,i)}$.}}
+            \ENDWHILE
+        \STATE{\small{Save rollout $\Tcal\leftarrow\{(\svect_j^{(n)},\avect_j^{(n)})\}_j$.}}
+        \ENDFOR
+        \STATE{\textbf{Return} rollouts $\Tcal\triangleq\{(\svect_j^{(n)},\avect_j^{(n)})\}_{j,n}$.}
+    \end{algorithmic}
+\end{algorithm}
+
+\end{document}
