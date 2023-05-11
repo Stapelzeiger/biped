@@ -19,6 +19,12 @@ launch:
         to: "/poll_L_FOOT/gpio"
       - from: /mujoco_sim/imu
         to: /imu
+      - from: /mujoco_sim/swing_foot_BF
+        to: /capture_point/swing_foot_BF
+      - from: /mujoco_sim/stance_foot_BF
+        to: /capture_point/stance_foot_BF
+      - from: /mujoco_sim/dcm_desired_BF
+        to: /capture_point/dcm_desired_BF
     output: screen
     # print GDB backtrace:
     # launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args
