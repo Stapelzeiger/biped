@@ -80,6 +80,10 @@ public:
         pub_desired_left_contact_ = this->create_publisher<biped_bringup::msg::StampedBool>("~/desired_left_contact", 10);
         pub_desired_right_contact_ = this->create_publisher<biped_bringup::msg::StampedBool>("~/desired_right_contact", 10);
 
+        pub_swing_foot_BF_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("~/swing_foot_BF", 10);
+        pub_stance_foot_BF_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("~/stance_foot_BF", 10);
+        pub_dcm_desired_BF_ = this->create_publisher<geometry_msgs::msg::TwistStamped>("~/dcm_desired_BF", 10);
+
         pub_state_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("~/state", 10);
 
         odometry_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
@@ -331,11 +335,25 @@ private:
 
         Eigen::Vector3d swing_foot_BF = get_eigen_transform(swing_foot_name, base_link_frame_id_).translation();
         Eigen::Vector3d stance_foot_BF = get_eigen_transform(stance_foot_name, base_link_frame_id_).translation();
+
+        geometry_msgs::msg::Vector3Stamped swing_foot_msg;
+        swing_foot_msg.header.stamp = this->get_clock()->now();
+        swing_foot_msg.vector.x = swing_foot_BF(0);
+        swing_foot_msg.vector.y = swing_foot_BF(1);
+        swing_foot_msg.vector.z = swing_foot_BF(2);
+        pub_swing_foot_BF_->publish(swing_foot_msg);
+
+        geometry_msgs::msg::Vector3Stamped stance_foot_msg;
+        stance_foot_msg.header.stamp = this->get_clock()->now();
+        stance_foot_msg.vector.x = stance_foot_BF(0);
+        stance_foot_msg.vector.y = stance_foot_BF(1);
+        stance_foot_msg.vector.z = stance_foot_BF(2);
+        pub_stance_foot_BF_->publish(stance_foot_msg);
+
         Eigen::Vector3d stance_foot_BLF = T_BF_to_BLF * stance_foot_BF;
         T_STF_to_BLF_.linear() = Eigen::Matrix3d::Identity();
         T_STF_to_BLF_.translation() = stance_foot_BLF; // todo figure out if i update TSTF
         broadcast_transform("BLF", "STF", T_STF_to_BLF_.translation(), Eigen::Quaterniond(T_STF_to_BLF_.rotation()));
-
 
         // Desired DCM Trajectory
         Eigen::Vector3d dcm_desired_STF;
@@ -346,6 +364,14 @@ private:
         }else{
             dcm_desired_STF(1) = 0.036 + vel_d_[1];
         }
+        Eigen::Vector3d dcm_desired_BLF = T_STF_to_BLF_.rotation() * dcm_desired_STF;
+        Eigen::Vector3d dcm_desired_BF = T_BLF_to_BF.rotation() * dcm_desired_BLF;
+        geometry_msgs::msg::TwistStamped dcm_desired_BF_msg;
+        dcm_desired_BF_msg.header.stamp = this->get_clock()->now();
+        dcm_desired_BF_msg.twist.linear.x = dcm_desired_BF(0);
+        dcm_desired_BF_msg.twist.linear.y = dcm_desired_BF(1);
+        dcm_desired_BF_msg.twist.linear.z = dcm_desired_BF(2);
+        pub_dcm_desired_BF_->publish(dcm_desired_BF_msg);
 
         Eigen::Vector3d base_link_vel_BF;
         base_link_vel_BF << base_link_odom_.linear_velocity(0), base_link_odom_.linear_velocity(1), base_link_odom_.linear_velocity(2);
@@ -754,6 +780,10 @@ private:
     rclcpp::Subscription<biped_bringup::msg::StampedBool>::SharedPtr contact_right_sub_;
     rclcpp::Subscription<biped_bringup::msg::StampedBool>::SharedPtr contact_left_sub_;
     rclcpp::Subscription<geometry_msgs::msg::TwistStamped>::SharedPtr vel_cmd_sub_;
+
+    rclcpp::Subscription<geometry_msgs::msg::Vector3Stamped> pub_swing_foot_BF_;
+    rclcpp::Subscription<geometry_msgs::msg::Vector3Stamped> pub_stance_foot_BF_;
+    rclcpp::Subscription<geometry_msgs::msg::TwistStamped> pub_dcm_desired_BF_;
 
     rclcpp::Subscription<rosgraph_msgs::msg::Clock>::SharedPtr clock_sub_;
 
