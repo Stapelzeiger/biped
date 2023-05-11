@@ -13,7 +13,6 @@ from tf2_ros import TransformBroadcaster, TransformException
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
 from scipy.spatial.transform import Rotation as R
-
 import mujoco as mj
 import mujoco_viewer
 import numpy as np
@@ -25,12 +24,14 @@ from sim_mujoco.submodules.pid import pid as pid_ctrl
 from threading import Lock
 import math 
 
+import csv
+import os
+
 def setup_pid(control_rate, kp, ki, kd):
     pid = pid_ctrl()
     pid.pid_set_frequency(control_rate)
     pid.pid_set_gains(kp, ki, kd)
     return pid
-
 
 class MujocoNode(Node):
     def __init__(self):
@@ -56,6 +57,8 @@ class MujocoNode(Node):
         self.time = time.time()
         self.model.opt.timestep = self.sim_time_sec
         self.dt = self.model.opt.timestep
+        self.R_b_to_I = None
+        self.v_b = None
 
         self.accel_noise_density = 0.14 * 9.81/1000 # [m/s2 * sqrt(s)]
         self.accel_bias_random_walk = 0.0004 # [m/s2 / sqrt(s)]
@@ -122,7 +125,17 @@ class MujocoNode(Node):
         self.step_sim_sub = self.create_subscription(Float64, "~/step", self.step_cb, 1)
         self.pause_sim_sub = self.create_subscription(Bool, "~/pause", self.pause_cb, 1)
 
+
+        folder_name = 'src/biped/sim_mujoco/sim_mujoco/data'
+        if not os.path.exists(folder_name):
+            os.makedirs(folder_name)
+
+        self.file = open(folder_name + '/dataset.csv', 'w', newline='')
+        self.writer = csv.writer(self.file)
+        self.write_controller_dataset_header()
+
         self.timer = self.create_timer(self.dt, self.timer_cb)
+
 
     def reset_cb(self, msg):
         with self.lock:
@@ -217,11 +230,11 @@ class MujocoNode(Node):
         msg_odom.pose.pose.orientation.z = self.data.qpos[6]
         q = msg_odom.pose.pose.orientation
 
-        R_b_to_I = R.from_quat([q.x, q.y, q.z, q.w]).as_matrix()
-        v_b = R_b_to_I.T @ self.data.qvel[0:3] # linear vel is in inertial frame
-        msg_odom.twist.twist.linear.x = v_b[0]
-        msg_odom.twist.twist.linear.y = v_b[1]
-        msg_odom.twist.twist.linear.z = v_b[2]
+        self.R_b_to_I = R.from_quat([q.x, q.y, q.z, q.w]).as_matrix()
+        self.v_b = self.R_b_to_I.T @ self.data.qvel[0:3] # linear vel is in inertial frame
+        msg_odom.twist.twist.linear.x = self.v_b[0]
+        msg_odom.twist.twist.linear.y = self.v_b[1]
+        msg_odom.twist.twist.linear.z = self.v_b[2]
         msg_odom.twist.twist.angular.x = self.data.qvel[3] # angular vel is in body frame
         msg_odom.twist.twist.angular.y = self.data.qvel[4]
         msg_odom.twist.twist.angular.z = self.data.qvel[5]
@@ -326,6 +339,52 @@ class MujocoNode(Node):
                 id_joint_mj = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_JOINT, key)
                 self.data.qfrc_applied[self.model.jnt_dofadr[id_joint_mj]] = feedforward_torque
             i = i + 1
+
+    def write_controller_dataset_header(self):
+        # joint states
+        # baselink vel BF
+        # goal vx_des_BF, vy_des BF
+        # right foot: t since contact, t since no contact, pos BF
+        # left foot: t since contact, t since no contact, pos BF
+        # tau_ff
+        # q_j_des
+        # q_j_vel_des
+
+        header_for_joint_states = [name + '_pos' for name in self.name_joints]
+        header_for_joint_states += [name + '_vel' for name in self.name_joints]
+        header_for_baselink = ['vel_x_BF', 'vel_y_BF', 'vel_z_BF', 'normal_vec_x_BF', 'normal_vec_y_BF', 'normal_vec_z_BF', 'omega_x', 'omega_y', 'omega_z']
+        header_for_goal = ['vx_des_BF', 'vy_des_BF']
+        header_for_right_foot = ['right_foot_t_since_contact', 'right_foot_t_since_no_contact', 'right_foot_pos_x_BF', 'right_foot_pos_y_BF', 'right_foot_pos_z_BF']
+        header_for_left_foot = ['left_foot_t_since_contact', 'left_foot_t_since_no_contact', 'left_foot_pos_x_BF', 'left_foot_pos_y_BF', 'left_foot_pos_z_BF']
+        header_for_tau_ff = [name + '_tau_ff' for name in self.name_joints]
+        header_for_q_j_des =  [name + '_q_des' for name in self.name_joints]
+        header_for_q_j_vel_des = [name + '_q_vel des' for name in self.name_joints]
+        header = ['time', *header_for_joint_states,
+                          *header_for_baselink,
+                          *header_for_goal, 
+                          *header_for_right_foot,
+                          *header_for_left_foot,
+                          *header_for_tau_ff, *header_for_q_j_des, *header_for_q_j_vel_des]
+        print(header)
+        self.writer.writerow(header)
+        self.file.close()
+
+
+    def write_controller_dataset_entry(self):
+
+        data_for_joint_states = [self.q_joints[name]['actual_pos'] for name in self.name_joints]
+        data_for_joint_states += [self.q_joints[name]['actual_vel'] for name in self.name_joints]
+        normal_vector_I = np.array([0.0, 0.0, 1.0])
+        normal_vector_BF = self.R_b_to_I.T@normal_vector_I
+        data_for_baselink = [self.v_b[0], self.v_b[1], self.v_b[2], normal_vector_BF, normal_vector_BF, normal_vector_BF, 
+                            self.data.qvel[3], self.data.qvel[4], self.data.qvel[5]]
+        data_for_goal = [self.vx_des_BF, self.vy_des_BF]
+
+
+
+
+        pass
+
 
     # def stop_controller(self, actuator_name):
     #     idx_act = mj.mj_name2id(
