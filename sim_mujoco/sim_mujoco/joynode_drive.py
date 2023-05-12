@@ -33,8 +33,7 @@ class JoyNode(Node):
 
         self.list_desired_vel = [
             np.array([0.0, 0.0]),
-            np.array([0.02, 0.0]),
-            np.array([0.03, 0.0]),
+            np.array([0.02, 0.0])
         ]
         print(self.list_desired_vel)
         self.current_des_vel = self.list_desired_vel[0]
@@ -54,7 +53,7 @@ class JoyNode(Node):
             return
 
         if self.use_joystick == False:
-            duration_traj = 40.0 # should be higher than 15, cause initialization takes some time
+            duration_traj = 60.0 # should be higher than 15, cause initialization takes some time
             N = duration_traj/self.dt
             print(self.counter)
             if self.counter % int(N) == 0:
