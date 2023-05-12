@@ -28,6 +28,7 @@
 #include "rosgraph_msgs/msg/clock.hpp"
 #include "visualization_msgs/msg/marker_array.hpp"
 #include "visualization_msgs/msg/marker.hpp"
+
 #include "eigen3/Eigen/Dense"
 
 #include "foot_trajectory.h"
@@ -781,9 +782,9 @@ private:
     rclcpp::Subscription<biped_bringup::msg::StampedBool>::SharedPtr contact_left_sub_;
     rclcpp::Subscription<geometry_msgs::msg::TwistStamped>::SharedPtr vel_cmd_sub_;
 
-    rclcpp::Subscription<geometry_msgs::msg::Vector3Stamped> pub_swing_foot_BF_;
-    rclcpp::Subscription<geometry_msgs::msg::Vector3Stamped> pub_stance_foot_BF_;
-    rclcpp::Subscription<geometry_msgs::msg::TwistStamped> pub_dcm_desired_BF_;
+    rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pub_swing_foot_BF_;
+    rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pub_stance_foot_BF_;
+    rclcpp::Publisher<geometry_msgs::msg::TwistStamped>::SharedPtr pub_dcm_desired_BF_;
 
     rclcpp::Subscription<rosgraph_msgs::msg::Clock>::SharedPtr clock_sub_;
 
