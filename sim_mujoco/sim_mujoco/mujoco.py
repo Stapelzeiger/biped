@@ -62,10 +62,10 @@ class MujocoNode(Node):
         self.swing_foot_BF_pos = None
         self.stance_foot_BF_pos = None
         self.dcm_desired_BF = None
-        self.T_since_contact_right = None
-        self.T_since_contact_left = None
-        self.T_since_no_contact_right = None
-        self.T_since_no_contact_left = None
+        self.T_since_contact_right = 0.0
+        self.T_since_contact_left = 0.0
+        self.T_since_no_contact_right = 0.0
+        self.T_since_no_contact_left = 0.0
 
         self.accel_noise_density = 0.14 * 9.81/1000 # [m/s2 * sqrt(s)]
         self.accel_bias_random_walk = 0.0004 # [m/s2 / sqrt(s)]
@@ -137,15 +137,17 @@ class MujocoNode(Node):
         self.step_sim_sub = self.create_subscription(Float64, "~/step", self.step_cb, 1)
         self.pause_sim_sub = self.create_subscription(Bool, "~/pause", self.pause_cb, 1)
 
-        folder_name = 'src/biped/sim_mujoco/sim_mujoco/data'
-        if not os.path.exists(folder_name):
-            os.makedirs(folder_name)
+        self.folder_name = 'src/biped/sim_mujoco/sim_mujoco/data'
+        if not os.path.exists(self.folder_name):
+            os.makedirs(self.folder_name)
 
-        self.file = open(folder_name + '/dataset.csv', 'w', newline='')
+        self.file = open(f'{self.folder_name}/dataset.csv', 'w', newline='')
         self.writer = csv.writer(self.file)
         self.write_controller_dataset_header()
 
         self.timer = self.create_timer(self.dt, self.timer_cb)
+
+
 
     def swing_foot_BF_cb(self, msg):
         self.swing_foot_BF_pos = np.array([msg.vector.x, msg.vector.y, msg.vector.z])
@@ -155,6 +157,7 @@ class MujocoNode(Node):
 
     def dcm_desired_BF_cb(self, msg):
         self.dcm_desired_BF = np.array([msg.twist.linear.x, msg.twist.linear.y])
+
 
     def reset_cb(self, msg):
         with self.lock:
@@ -294,10 +297,8 @@ class MujocoNode(Node):
             msg_joint_states.effort.append(value['actual_acc'])
         self.joint_states_pub.publish(msg_joint_states)
 
-        
         self.ankle_foot_spring('L_ANKLE')
         self.ankle_foot_spring('R_ANKLE')
-
 
         gyro_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_SENSOR, "gyro")
         accel_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_SENSOR, "accelerometer")
@@ -322,6 +323,8 @@ class MujocoNode(Node):
         msg_imu.angular_velocity.z = gyro[2]
         msg_imu.orientation_covariance[0] = -1 # no orientation
         self.imu_pub.publish(msg_imu)
+
+        self.write_controller_dataset_entry()
 
 
     def run_joint_controllers(self):
@@ -386,10 +389,9 @@ class MujocoNode(Node):
                           *header_for_tau_ff, *header_for_q_j_des, *header_for_q_j_vel_des]
         print(header)
         self.writer.writerow(header)
-        self.file.close()
 
     def write_controller_dataset_entry(self):
-        if self.initialization_done:
+        if self.initialization_done and self.dcm_desired_BF is not None:
             data_for_joint_states = [self.q_joints[name]['actual_pos'] for name in self.name_joints]
             data_for_joint_states += [self.q_joints[name]['actual_vel'] for name in self.name_joints]
             normal_vector_I = np.array([0.0, 0.0, 1.0])
@@ -420,8 +422,8 @@ class MujocoNode(Node):
             row_entry = [self.time, *data_for_joint_states,
                                     *data_for_baselink,
                                     *data_for_goal,
-                                    *data_for_right_foot
-    ,                               *data_for_left_foot,
+                                    *data_for_right_foot,
+                                    *data_for_left_foot,
                                     *data_for_tau_ff,
                                     *data_for_q_j_des,
                                     *data_for_q_j_vel_des]
@@ -466,11 +468,11 @@ class MujocoNode(Node):
             self.T_since_contact_right = 0.0
             self.T_since_no_contact_right = self.T_since_no_contact_right + self.dt
 
-        if self.contact_states['L_LEFT'] == True:
+        if self.contact_states['L_FOOT'] == True:
             self.T_since_contact_left = self.T_since_contact_left + self.dt
             self.T_since_no_contact_right = 0.0
 
-        if self.contact_states['L_LEFT'] == False:
+        if self.contact_states['L_FOOT'] == False:
             self.T_since_contact_left = 0.0
             self.T_since_no_contact_left = self.T_since_no_contact_left + self.dt
 
