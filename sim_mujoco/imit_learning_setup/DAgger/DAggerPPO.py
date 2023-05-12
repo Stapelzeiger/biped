@@ -39,6 +39,8 @@ class DAggerPPO:
             traj_steps = 0
             traj_over = False
             obs = self.env.reset() # Reset environment to random IC at beginning
+            obs = obs[0] # SJ: IDK what gym version we should use, but under 0.26.2, obs looks like 
+            #    (array([cosT , sinT,  omega ], dtype=float32), {}), so it throws index-out-of-range error without obs = obs[0].
             while not traj_over and traj_steps < self.Tmax:
                 # Get the expert action at the current state
                 expert_action = self.expert(obs)
@@ -52,7 +54,7 @@ class DAggerPPO:
                     result = self.env.step(expert_action)
                 else:
                     policy_action = self.policy.predict(obs)
-                    result = self.env.step(policy_action.detach().numpy())
+                    result = self.env.step(policy_action[0]) # another difference in PPO: type of obj policy_action is returned as
                 # Grab the observation returned from the step
                 obs = result[0]
 
@@ -86,15 +88,18 @@ class DAggerPPO:
             train_states = np.vstack((train_states, states))
             train_actions = np.vstack((train_actions, actions))
 
-        # Train the model (implementation detail: in contrast to DAgger + NNPolicy, 
-        # DAgger + PPO collects all rollouts together and trains at once, not loop-by-loop)
-        rollout_buffer = RolloutBufferMod(
-            buffer_size=self.Tmax, 
-            train_states=train_states, 
-            train_actions=train_actions
-            )
+            print("train_states shape: ", train_states.shape)
+            print("train_actions shape: ", train_actions.shape)
+            
+            # Train the model (implementation detail: in contrast to DAgger + NNPolicy, 
+            # DAgger + PPO collects all rollouts together and trains at once, not loop-by-loop)
+            rollout_buffer = RolloutBufferMod(
+                buffer_size=self.Tmax, 
+                observations=train_states, 
+                actions=train_actions
+                )
 
-        self.policy.train(rollout_buffer)
+            self.policy.train(rollout_buffer)
 
 
 #######################################################################################

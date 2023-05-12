@@ -10,9 +10,6 @@ Kd = 2
 
 """Note, modified pendulum environment, won't work off default gym env. Dynamics are wierd. """
 def pendulum_expert(obs):
-    obs = obs[0] # SJ: IDK what gym version we should use, but under 0.26.2, obs looks like 
-    #    (array([cosT , sinT,  omega ], dtype=float32), {}), so it throws index-out-of-range error without obs = obs[0].
-    # print("obs: ", obs)
     cosT = obs[0]
     sinT = obs[1]
     omega = obs[2]
@@ -30,6 +27,8 @@ def pendulum_expert(obs):
 def test_expert():
     env = gym.make("Pendulum-v1")
     obs = env.reset()
+    obs = obs[0] # SJ: IDK what gym version we should use, but under 0.26.2, obs looks like 
+    #    (array([cosT , sinT,  omega ], dtype=float32), {}), so it throws index-out-of-range error without obs = obs[0].
     done = False
     while not done:
         u = pendulum_expert(obs)

@@ -37,6 +37,8 @@ class DAgger:
             traj_steps = 0
             traj_over = False
             obs = self.env.reset() # Reset environment to random IC at beginning
+            obs = obs[0] # SJ: IDK what gym version we should use, but under 0.26.2, obs looks like 
+            #    (array([cosT , sinT,  omega ], dtype=float32), {}), so it throws index-out-of-range error without obs = obs[0].
             while not traj_over and traj_steps < self.Tmax:
                 # Get the expert action at the current state
                 expert_action = self.expert(obs)
@@ -50,6 +52,7 @@ class DAgger:
                     result = self.env.step(expert_action)
                 else:
                     policy_action = self.policy.predict(obs)
+                    print("policy_action: ", policy_action)
                     result = self.env.step(policy_action.detach().numpy())
                 # Grab the observation returned from the step
                 obs = result[0]
