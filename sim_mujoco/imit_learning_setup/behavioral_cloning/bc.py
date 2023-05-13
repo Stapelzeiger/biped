@@ -1,0 +1,170 @@
+import copy
+import numpy as np
+
+import tqdm
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.tensorboard import SummaryWriter
+from sklearn.model_selection import train_test_split
+
+"""Behavioral Cloning
+This class implements behavioral cloning in the most naive way. 
+Expert rollouts are passed to the algorithm, as well as a policy network.
+The policy network is trained directly on the expert rollouts to predict the
+action taken by the expert.
+"""
+class bc:
+    
+    def __init__(self, states, actions, policy_arch, batch_size=32, lr=0.0001, val_split=0.2, logging_path=None):
+        """Initializes a behavioral cloning algorithm
+
+        Args:
+            states (array-like): Set of states visited by the expert
+            actions (array-like): Set of actions taken by expert in 'states'
+            policy_arch (list-like): Network architecture for behavioral cloning policy
+                Elements are dictionaries containing keys 'Layer' ('Linear', 'ReLU', 'Tanh', ...)
+                and 'Input' and 'Output' dimension where relevant.
+            batch_size (int, optional): Batch size for learning. Defaults to 32.
+            lr (float, optional): Learning rate for Adam optimizer. Defaults to 0.0001.
+            val_split (float, optional): Percentage of data to use for validation. Defaults to 0.2.
+            logging_path (_type_, optional): Path to save learning results to. Defaults to None.
+        """
+        # Check to make sure dimensions of everything lines up
+        assert policy_arch[0]['Input'] == states.shape[1], "Network input does not match size of states"
+        assert policy_arch[-1]['Output'] == actions.shape[1], "Network output does not match size of actions"
+
+        # Initialize class variables
+        self.exp_states = states
+        self.exp_actions = actions
+        self.policy = bc._gen_policy(policy_arch)
+        self.logging_path = logging_path
+        self.loss_fcn = nn.MSELoss()
+        self.optimizer = optim.Adam(self.policy.parameters(), lr=lr)
+        self.batch_size = batch_size
+
+        # Split data for validation
+        X_train, X_test, y_train, y_test = train_test_split(self.exp_states, self.exp_actions, train_size=1-val_split, shuffle=True)
+        self.X_train = torch.tensor(X_train, dtype=torch.float32)
+        self.y_train = torch.tensor(y_train, dtype=torch.float32)
+        self.X_test = torch.tensor(X_test, dtype=torch.float32)
+        self.y_test = torch.tensor(y_test, dtype=torch.float32)
+
+        # Get the device for training
+        self.set_device()
+
+    def train(self, epochs, use_best_weights=True):
+        """Trains the policy for a set number of epochs. 
+
+        Args:
+            epochs (int): number of epochs to train
+            use_best_weights (bool, optional): Whether to use validation loss to save best iteration. Defaults to True
+        """
+        writer = SummaryWriter()
+        
+        # training parameters
+        batch_start = torch.arange(0, len(self.X_train), self.batch_size)
+        
+        # Hold the best model
+        best_mse = np.inf   # init to infinity
+        best_weights = None
+        history = []
+        
+        # training loop
+        for epoch in range(epochs):
+            print(f"Epoch {epoch}")
+            self.policy.train()
+            with tqdm.tqdm(batch_start, unit="batch", mininterval=0, disable=True) as bar:
+                bar.set_description(f"Epoch {epoch}")
+                for start in bar:
+                    # take a batch
+                    X_batch = self.X_train[start:start+self.batch_size]
+                    y_batch = self.y_train[start:start+self.batch_size]
+                    # forward pass
+                    y_pred = self.policy(X_batch)
+                    loss = self.loss_fcn(y_pred, y_batch)
+                    # backward pass
+                    self.optimizer.zero_grad()
+                    loss.backward()
+                    # update weights
+                    self.optimizer.step()
+                    # print progress
+                    bar.set_postfix(mse=float(loss))
+            # evaluate accuracy at end of each epoch
+            self.policy.eval()
+            y_pred = self.policy(self.X_test)
+            mse = self.loss_fcn(y_pred, self.y_test)
+            mse = float(mse)
+            history.append(mse)
+            if mse < best_mse:
+                best_mse = mse
+                best_weights = copy.deepcopy(self.policy.state_dict())
+            writer.add_scalar('Loss/eval_MSE', mse, epoch)
+            print(f"\tLoss: {mse}")
+        # restore model and return best accuracy
+        if use_best_weights:
+            self.policy.load_state_dict(best_weights)
+            print(f"Final Loss: {best_mse}")
+        else:
+            print(f"Final Loss: {mse}")
+
+    def save_policy(self, path):
+        """Saves the current policy weights to a designated path
+
+        Args:
+            path (path-like): location to save the current policy weights
+        """
+        torch.save(self.policy.state_dict(), path)
+
+    def load_policy(self, path):
+        """Loads policy weights from the designated path
+
+        Args:
+            path (path-like): location to read policy weights
+        """
+        self.policy.load_state_dict(torch.load(path))
+
+    def set_states_actions(self, states, actions):
+        """Sets the set of states and actions taken by the expert
+
+        Args:
+            states (_type_): Set of states visited by the expert
+            actions (_type_): Set of actions taken by expert in 'states'
+        """
+        self.exp_states = states
+        self.exp_actions = actions
+
+    staticmethod
+    def _gen_policy(policy_architecture):
+        """Generates a torch.nn Sequential model from the policy architecture
+
+        Args:
+            policy_architecture (iterable): Iterable definiting policy architecture
+                with 'Layer', 'Input', 'Output', and other arguments for each layer
+        """
+        layers = []
+        for layer in policy_architecture:
+            if layer['Layer'] == 'Linear':
+                layers.append(nn.Linear(layer['Input'], layer['Output']))
+            elif layer['Layer'] == 'ReLU':
+                layers.append(nn.ReLU())
+            elif layer['Layer'] == 'Tanh':
+                layers.append(nn.Tanh())
+            else:
+                ValueError(f"Layer type not recognized: {layer}")
+        model = nn.Sequential(*layers)
+        return model
+
+    def set_device(self):
+        """Sets the device to be used for training
+        """
+        device = (
+            "cuda"
+            if torch.cuda.is_available()
+            else "mps"
+            if torch.backends.mps.is_available()
+            else "cpu"
+        )
+        self.policy.to(device)
+    
+
