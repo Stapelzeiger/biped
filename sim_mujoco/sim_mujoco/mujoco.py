@@ -397,7 +397,7 @@ class MujocoNode(Node):
             normal_vector_I = np.array([0.0, 0.0, 1.0])
             normal_vector_BF = self.R_b_to_I.T@normal_vector_I
             data_for_baselink = [self.v_b[0], self.v_b[1], self.v_b[2],
-                                normal_vector_BF, normal_vector_BF, normal_vector_BF,
+                                normal_vector_BF[0], normal_vector_BF[1], normal_vector_BF[2],
                                 self.data.qvel[3], self.data.qvel[4], self.data.qvel[5]]
             data_for_goal = [self.dcm_desired_BF[0], self.dcm_desired_BF[1]]
 
