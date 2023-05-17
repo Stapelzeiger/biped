@@ -9,6 +9,7 @@ data_rel_paths = [
 ]
 data_paths = [os.path.join(os.path.dirname(os.path.realpath(__file__)), pth) for pth in data_rel_paths]
 policy_name = "bc_policy_3"
+# Fraction of data to train on. If you are going to test the policy on the biped in sim, use 1. (no reason to leave any data out)
 train_frac = 0.9
 
 
@@ -24,6 +25,8 @@ train_frac = 0.9
 #     "left_foot_t_since_contact", "left_foot_t_since_no_contact",
 #     "left_foot_pos_x_BF", "left_foot_pos_y_BF", "left_foot_pos_z_BF"
 # ]
+
+# "right_foot_pos_z_BF" is removed right now since it is always zero in current data.
 state_columns = [
     "L_YAW_pos", "L_HAA_pos", "L_HFE_pos", "L_KFE_pos", "L_ANKLE_pos",
     "R_YAW_pos", "R_HAA_pos", "R_HFE_pos", "R_KFE_pos", "R_ANKLE_pos",
@@ -54,7 +57,7 @@ policy_arch = [
     {'Layer': 'ReLU'},
     {'Layer': 'Linear', 'Input': 256, 'Output': len(action_columns), 'SpectralNorm': True}
 ]
-train_epochs = 25
+train_epochs = 100
 
 
 def main():
@@ -71,6 +74,7 @@ def main():
     states = np.hstack([states[ii: states.shape[0] - (num_input_states - ii - 1), :] for ii in range(num_input_states)])
     actions = actions[num_input_states - 1:, :]
     
+    # Segment out some data for testing
     train_states = states[:int(num_steps * train_frac), :]
     train_actions = actions[:int(num_steps * train_frac), :]
 
