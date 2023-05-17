@@ -37,10 +37,10 @@ class bc:
         # Initialize class variables
         self.exp_states = states
         self.exp_actions = actions
-        self.policy = bc._gen_policy(policy_arch)
+        self.bc_agent = BC_Agent(policy_arch)
         self.logging_path = logging_path
         self.loss_fcn = nn.MSELoss()
-        self.optimizer = optim.Adam(self.policy.parameters(), lr=lr)
+        self.optimizer = optim.Adam(self.bc_agent.parameters(), lr=lr, eps=1e-5)
         self.batch_size = batch_size
 
         # Split data for validation
@@ -73,7 +73,7 @@ class bc:
         # training loop
         for epoch in range(epochs):
             print(f"Epoch {epoch}")
-            self.policy.train()
+            self.bc_agent.train()
             with tqdm.tqdm(batch_start, unit="batch", mininterval=0, disable=True) as bar:
                 bar.set_description(f"Epoch {epoch}")
                 for start in bar:
@@ -81,7 +81,7 @@ class bc:
                     X_batch = self.X_train[start:start+self.batch_size]
                     y_batch = self.y_train[start:start+self.batch_size]
                     # forward pass
-                    y_pred = self.policy(X_batch)
+                    y_pred = self.bc_agent.get_action(X_batch)
                     loss = self.loss_fcn(y_pred, y_batch)
                     # backward pass
                     self.optimizer.zero_grad()
@@ -91,19 +91,19 @@ class bc:
                     # print progress
                     bar.set_postfix(mse=float(loss))
             # evaluate accuracy at end of each epoch
-            self.policy.eval()
-            y_pred = self.policy(self.X_test)
+            self.bc_agent.eval()
+            y_pred = self.bc_agent.get_action(self.X_test)
             mse = self.loss_fcn(y_pred, self.y_test)
             mse = float(mse)
             history.append(mse)
             if mse < best_mse:
                 best_mse = mse
-                best_weights = copy.deepcopy(self.policy.state_dict())
-            writer.add_scalar('Loss/eval_MSE', mse, epoch)
+                best_weights = copy.deepcopy(self.bc_agent.state_dict())
+            writer.add_scalar('BC_Loss/eval_MSE', mse, epoch)
             print(f"\tLoss: {mse}")
         # restore model and return best accuracy
         if use_best_weights:
-            self.policy.load_state_dict(best_weights)
+            self.bc_agent.load_state_dict(best_weights)
             print(f"Final Loss: {best_mse}")
         else:
             print(f"Final Loss: {mse}")
@@ -114,7 +114,7 @@ class bc:
         Args:
             path (path-like): location to save the current policy weights
         """
-        torch.save(self.policy.state_dict(), path)
+        self.bc_agent.save_policy(path)
 
     def load_policy(self, path):
         """Loads policy weights from the designated path
@@ -122,7 +122,7 @@ class bc:
         Args:
             path (path-like): location to read policy weights
         """
-        self.policy.load_state_dict(torch.load(path))
+        self.bc_agent.load_policy(path)
 
     def set_states_actions(self, states, actions):
         """Sets the set of states and actions taken by the expert
@@ -165,6 +165,52 @@ class bc:
             if torch.backends.mps.is_available()
             else "cpu"
         )
-        self.policy.to(device)
+        self.bc_agent.to(device)
     
 
+class BC_Agent(nn.Module):
+
+    def __init__(self, policy_arch):
+        super(BC_Agent, self).__init__()
+        
+        self.policy = BC_Agent._gen_policy(policy_arch)
+
+    staticmethod
+    def _gen_policy(policy_arch):
+        """Generates a torch.nn Sequential model from the policy architecture
+
+        Args:
+            policy_architecture (iterable): Iterable definiting policy architecture
+                with 'Layer', 'Input', 'Output', and other arguments for each layer
+        """
+        layers = []
+        for layer in policy_arch:
+            if layer['Layer'] == 'Linear':
+                layers.append(nn.Linear(layer['Input'], layer['Output']))
+            elif layer['Layer'] == 'ReLU':
+                layers.append(nn.ReLU())
+            elif layer['Layer'] == 'Tanh':
+                layers.append(nn.Tanh())
+            else:
+                ValueError(f"Layer type not recognized: {layer}")
+        model = nn.Sequential(*layers)
+        return model
+    
+    def get_action(self, x):
+        return self.policy(x)
+
+    def save_policy(self, path):
+        """Saves the current policy weights to a designated path
+
+        Args:
+            path (path-like): location to save the current policy weights
+        """
+        torch.save(self.state_dict(), path)
+
+    def load_policy(self, path):
+        """Loads policy weights from the designated path
+
+        Args:
+            path (path-like): location to read policy weights
+        """
+        self.load_state_dict(torch.load(path))

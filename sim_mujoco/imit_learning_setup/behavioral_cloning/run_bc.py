@@ -48,7 +48,7 @@ policy_arch = [
     {'Layer': 'ReLU'},
     {'Layer': 'Linear', 'Input': 256, 'Output': len(action_columns)}
 ]
-train_epochs = 100
+train_epochs = 10
 
 
 def main():
