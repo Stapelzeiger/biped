@@ -28,7 +28,7 @@ def make_env(gym_id, seed, idx, capture_video, run_name):
     return thunk
 
 envs = gym.vector.SyncVectorEnv(
-    [make_env("HalfCheetahBulletEnv-v0", 12 + i, i, False, policy_name) for i in range(1)]
+    [make_env("HalfCheetahBulletEnv-v0", 1 + i, i, False, policy_name) for i in range(1)]
 )
 
 policy_arch = [
@@ -51,7 +51,7 @@ train_epochs = 1000
 def main():
 
     # Run vanilla behavior cloning
-    behavior_clone_ppo = PPO(envs, policy_arch, value_arch, num_rollouts=1, ent_coeff=0.0)
+    behavior_clone_ppo = PPO(envs, policy_arch, value_arch, rng_seed=1)
     behavior_clone_ppo.train(train_epochs)
 
     behavior_clone_ppo.save_policy(os.path.join(os.path.dirname(os.path.realpath(__file__)), f"policies/{policy_name}.pt"))
