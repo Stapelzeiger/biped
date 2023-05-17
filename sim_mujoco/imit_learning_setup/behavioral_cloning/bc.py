@@ -57,6 +57,13 @@ class bc:
         self.y_test = torch.tensor(y_test, dtype=torch.float32)
 
         # Get the device for training
+        self.device = (
+            "cuda"
+            if torch.cuda.is_available()
+            else "mps"
+            if torch.backends.mps.is_available()
+            else "cpu"
+        )
         self.set_device()
 
     def train(self, epochs, use_best_weights=True):
@@ -84,8 +91,8 @@ class bc:
                 bar.set_description(f"Epoch {epoch}")
                 for start in bar:
                     # take a batch
-                    X_batch = self.X_train[start:start+self.batch_size]
-                    y_batch = self.y_train[start:start+self.batch_size]
+                    X_batch = self.X_train[start:start+self.batch_size].to(self.device)
+                    y_batch = self.y_train[start:start+self.batch_size].to(self.device)
                     # forward pass
                     y_pred = self.bc_agent.get_action(X_batch)
                     loss = self.loss_fcn(y_pred, y_batch)
@@ -98,8 +105,8 @@ class bc:
                     bar.set_postfix(mse=float(loss))
             # evaluate accuracy at end of each epoch
             self.bc_agent.eval()
-            y_pred = self.bc_agent.get_action(self.X_test)
-            mse = self.loss_fcn(y_pred, self.y_test)
+            y_pred = self.bc_agent.get_action(self.X_test.to(self.device))
+            mse = self.loss_fcn(y_pred, self.y_test.to(self.device))
             mse = float(mse)
             history.append(mse)
             if mse < best_mse:
@@ -143,14 +150,14 @@ class bc:
     def set_device(self):
         """Sets the device to be used for training
         """
-        device = (
-            "cuda"
-            if torch.cuda.is_available()
-            else "mps"
-            if torch.backends.mps.is_available()
-            else "cpu"
-        )
-        self.bc_agent.to(device)
+        # device = (
+        #     "cuda"
+        #     if torch.cuda.is_available()
+        #     else "mps"
+        #     if torch.backends.mps.is_available()
+        #     else "cpu"
+        # )
+        self.bc_agent.to(self.device)
     
 
 class BC_Agent(nn.Module):
@@ -169,7 +176,7 @@ class BC_Agent(nn.Module):
         """
         super(BC_Agent, self).__init__()
         
-        device = (
+        self.device = (
             "cuda"
             if torch.cuda.is_available()
             else "mps"
@@ -181,10 +188,10 @@ class BC_Agent(nn.Module):
         # Include mean/std of states/actions as parameters in the model
         # requires_grad=False will prevent these parameters from being changed during training
         # this way when model is saved, means/stds will be saved, and likewise they will be loaded 
-        self.state_mean = nn.Parameter(torch.Tensor(exp_state_mean).to(device), requires_grad=False)
-        self.state_std = nn.Parameter(torch.Tensor(exp_state_std).to(device), requires_grad=False)
-        self.action_mean = nn.Parameter(torch.Tensor(exp_action_mean).to(device), requires_grad=False)
-        self.action_std = nn.Parameter(torch.Tensor(exp_action_std).to(device), requires_grad=False)
+        self.state_mean = nn.Parameter(torch.Tensor(exp_state_mean).to(self.device), requires_grad=False)
+        self.state_std = nn.Parameter(torch.Tensor(exp_state_std).to(self.device), requires_grad=False)
+        self.action_mean = nn.Parameter(torch.Tensor(exp_action_mean).to(self.device), requires_grad=False)
+        self.action_std = nn.Parameter(torch.Tensor(exp_action_std).to(self.device), requires_grad=False)
 
     staticmethod
     def _gen_policy(policy_arch):
@@ -225,7 +232,8 @@ class BC_Agent(nn.Module):
         Returns:
             array-like: actions(s) to be taken in the queried state(s)
         """
-        return self.policy((x - self.state_mean) / self.state_std) * self.action_std + self.action_mean
+        # print("self.device: ", self.device)
+        return self.policy((x.to(self.device) - self.state_mean) / self.state_std) * self.action_std + self.action_mean
 
     def save_policy(self, path):
         """Saves the current policy weights to a designated path

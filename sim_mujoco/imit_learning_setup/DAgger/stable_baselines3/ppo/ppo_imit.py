@@ -7,76 +7,62 @@ from gymnasium import spaces
 from torch.nn import functional as F
 
 from stable_baselines3.common.on_policy_algorithm import OnPolicyAlgorithm
-from stable_baselines3.common.policies import ActorCriticCnnPolicy, ActorCriticPolicy, BasePolicy, MultiInputActorCriticPolicy
-from stable_baselines3.common.type_aliases import GymEnv, MaybeCallback, Schedule
 from stable_baselines3.common.utils import explained_variance, get_schedule_fn
 
-SelfPPO = TypeVar("SelfPPO", bound="PPO")
 
+"""
+Proximal Policy Optimization algorithm (PPO) (clip version)
 
-class PPOImit(OnPolicyAlgorithm):
-    """
-    Proximal Policy Optimization algorithm (PPO) (clip version)
+Paper: https://arxiv.org/abs/1707.06347
+Code: This implementation borrows code from OpenAI Spinning Up (https://github.com/openai/spinningup/)
+https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail and
+Stable Baselines (PPO2 from https://github.com/hill-a/stable-baselines)
 
-    Paper: https://arxiv.org/abs/1707.06347
-    Code: This implementation borrows code from OpenAI Spinning Up (https://github.com/openai/spinningup/)
-    https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail and
-    Stable Baselines (PPO2 from https://github.com/hill-a/stable-baselines)
+Introduction to PPO: https://spinningup.openai.com/en/latest/algorithms/ppo.html
 
-    Introduction to PPO: https://spinningup.openai.com/en/latest/algorithms/ppo.html
+:param env: The environment to learn from (if registered in Gym, can be str)
+:param learning_rate: The learning rate, it can be a function
+    of the current progress remaining (from 1 to 0)
+:param n_steps: The number of steps to run for each environment per update
+    (i.e. rollout buffer size is n_steps * n_envs where n_envs is number of environment copies running in parallel)
+    NOTE: n_steps * n_envs must be greater than 1 (because of the advantage normalization)
+    See https://github.com/pytorch/pytorch/issues/29372
+:param batch_size: Minibatch size
+:param n_epochs: Number of epoch when optimizing the surrogate loss
+:param gamma: Discount factor
+:param gae_lambda: Factor for trade-off of bias vs variance for Generalized Advantage Estimator
+:param clip_range: Clipping parameter, it can be a function of the current progress
+    remaining (from 1 to 0).
+:param clip_range_vf: Clipping parameter for the value function,
+    it can be a function of the current progress remaining (from 1 to 0).
+    This is a parameter specific to the OpenAI implementation. If None is passed (default),
+    no clipping will be done on the value function.
+    IMPORTANT: this clipping depends on the reward scaling.
+:param normalize_advantage: Whether to normalize or not the advantage
+:param ent_coef: Entropy coefficient for the loss calculation
+:param vf_coef: Value function coefficient for the loss calculation
+:param max_grad_norm: The maximum value for the gradient clipping
+:param use_sde: Whether to use generalized State Dependent Exploration (gSDE)
+    instead of action noise exploration (default: False)
+:param sde_sample_freq: Sample a new noise matrix every n steps when using gSDE
+    Default: -1 (only sample at the beginning of the rollout)
+:param target_kl: Limit the KL divergence between updates,
+    because the clipping is not enough to prevent large update
+    see issue #213 (cf https://github.com/hill-a/stable-baselines/issues/213)
+    By default, there is no limit on the kl div.
+:param stats_window_size: Window size for the rollout logging, specifying the number of episodes to average
+    the reported success rate, mean episode length, and mean reward over
+:param verbose: Verbosity level: 0 for no output, 1 for info messages (such as device or wrappers used), 2 for
+    debug messages
+:param seed: Seed for the pseudo random generators
+:param device: Device (cpu, cuda, ...) on which the code should be run.
+    Setting it to auto, the code will be run on the GPU if possible.
+:param _init_setup_model: Whether or not to build the network at the creation of the instance
+"""
 
-    :param policy: The policy model to use (MlpPolicy, CnnPolicy, ...)
-    :param env: The environment to learn from (if registered in Gym, can be str)
-    :param learning_rate: The learning rate, it can be a function
-        of the current progress remaining (from 1 to 0)
-    :param n_steps: The number of steps to run for each environment per update
-        (i.e. rollout buffer size is n_steps * n_envs where n_envs is number of environment copies running in parallel)
-        NOTE: n_steps * n_envs must be greater than 1 (because of the advantage normalization)
-        See https://github.com/pytorch/pytorch/issues/29372
-    :param batch_size: Minibatch size
-    :param n_epochs: Number of epoch when optimizing the surrogate loss
-    :param gamma: Discount factor
-    :param gae_lambda: Factor for trade-off of bias vs variance for Generalized Advantage Estimator
-    :param clip_range: Clipping parameter, it can be a function of the current progress
-        remaining (from 1 to 0).
-    :param clip_range_vf: Clipping parameter for the value function,
-        it can be a function of the current progress remaining (from 1 to 0).
-        This is a parameter specific to the OpenAI implementation. If None is passed (default),
-        no clipping will be done on the value function.
-        IMPORTANT: this clipping depends on the reward scaling.
-    :param normalize_advantage: Whether to normalize or not the advantage
-    :param ent_coef: Entropy coefficient for the loss calculation
-    :param vf_coef: Value function coefficient for the loss calculation
-    :param max_grad_norm: The maximum value for the gradient clipping
-    :param use_sde: Whether to use generalized State Dependent Exploration (gSDE)
-        instead of action noise exploration (default: False)
-    :param sde_sample_freq: Sample a new noise matrix every n steps when using gSDE
-        Default: -1 (only sample at the beginning of the rollout)
-    :param target_kl: Limit the KL divergence between updates,
-        because the clipping is not enough to prevent large update
-        see issue #213 (cf https://github.com/hill-a/stable-baselines/issues/213)
-        By default, there is no limit on the kl div.
-    :param stats_window_size: Window size for the rollout logging, specifying the number of episodes to average
-        the reported success rate, mean episode length, and mean reward over
-    :param tensorboard_log: the log location for tensorboard (if None, no logging)
-    :param policy_kwargs: additional arguments to be passed to the policy on creation
-    :param verbose: Verbosity level: 0 for no output, 1 for info messages (such as device or wrappers used), 2 for
-        debug messages
-    :param seed: Seed for the pseudo random generators
-    :param device: Device (cpu, cuda, ...) on which the code should be run.
-        Setting it to auto, the code will be run on the GPU if possible.
-    :param _init_setup_model: Whether or not to build the network at the creation of the instance
-    """
-
-    policy_aliases: Dict[str, Type[BasePolicy]] = {
-        "MlpPolicy": ActorCriticPolicy,
-        "CnnPolicy": ActorCriticCnnPolicy,
-        "MultiInputPolicy": MultiInputActorCriticPolicy,
-    }
-
-    def __init__(
-        self,
-        policy: Union[str, Type[ActorCriticPolicy]],
+class PPOImit:
+    
+    def __init__(self,
         env: Union[GymEnv, str],
         learning_rate: Union[float, Schedule] = 3e-4,
         n_steps: int = 2048,
@@ -94,65 +80,40 @@ class PPOImit(OnPolicyAlgorithm):
         sde_sample_freq: int = -1,
         target_kl: Optional[float] = None,
         stats_window_size: int = 100,
-        tensorboard_log: Optional[str] = None,
-        policy_kwargs: Optional[Dict[str, Any]] = None,
         verbose: int = 0,
         seed: Optional[int] = None,
         device: Union[th.device, str] = "auto",
         _init_setup_model: bool = True,
     ):
-        super().__init__(
-            policy,
-            env,
-            learning_rate=learning_rate,
-            n_steps=n_steps,
-            gamma=gamma,
-            gae_lambda=gae_lambda,
-            ent_coef=ent_coef,
-            vf_coef=vf_coef,
-            max_grad_norm=max_grad_norm,
-            use_sde=use_sde,
-            sde_sample_freq=sde_sample_freq,
-            stats_window_size=stats_window_size,
-            tensorboard_log=tensorboard_log,
-            policy_kwargs=policy_kwargs,
-            verbose=verbose,
-            device=device,
-            seed=seed,
-            _init_setup_model=False,
-            supported_action_spaces=(
-                spaces.Box,
-                spaces.Discrete,
-                spaces.MultiDiscrete,
-                spaces.MultiBinary,
-            ),
-        )
+        self.env = env,
+        self.learning_rate = learning_rate,
+        self.n_steps = n_steps,
+        self.gamma = gamma,
+        self.gae_lambda = gae_lambda,
+        self.ent_coef = ent_coef,
+        self.vf_coef = vf_coef,
+        self.max_grad_norm = max_grad_norm,
+        self.use_sde = use_sde,
+        self.sde_sample_freq = sde_sample_freq,
+        self.stats_window_size = stats_window_size,
+        self.verbose = verbose,
+        self.device = device,
+        self.seed = seed,
+        self._init_setup_model = False,
 
-        # Sanity check, otherwise it will lead to noisy gradient and NaN
-        # because of the advantage normalization
+        # Sanity check, otherwise it will lead to noisy gradient and NaN because of the advantage normalization
         if normalize_advantage:
-            assert (
-                batch_size > 1
-            ), "`batch_size` must be greater than 1. See https://github.com/DLR-RM/stable-baselines3/issues/440"
+            assert (batch_size > 1), "`batch_size` must be greater than 1. See https://github.com/DLR-RM/stable-baselines3/issues/440"
 
         if self.env is not None:
-            # Check that `n_steps * n_envs > 1` to avoid NaN
-            # when doing advantage normalization
+            # Check that `n_steps * n_envs > 1` to avoid NaN when doing advantage normalization
             buffer_size = self.env.num_envs * self.n_steps
-            assert buffer_size > 1 or (
-                not normalize_advantage
-            ), f"`n_steps * n_envs` must be greater than 1. Currently n_steps={self.n_steps} and n_envs={self.env.num_envs}"
+            assert buffer_size > 1 or (not normalize_advantage), f"`n_steps * n_envs` must be greater than 1. Currently n_steps={self.n_steps} and n_envs={self.env.num_envs}"
+            
             # Check that the rollout buffer size is a multiple of the mini-batch size
-            untruncated_batches = buffer_size // batch_size
-            if buffer_size % batch_size > 0:
-                warnings.warn(
-                    f"You have specified a mini-batch size of {batch_size},"
-                    f" but because the `RolloutBuffer` is of size `n_steps * n_envs = {buffer_size}`,"
-                    f" after every {untruncated_batches} untruncated mini-batches,"
-                    f" there will be a truncated mini-batch of size {buffer_size % batch_size}\n"
-                    f"We recommend using a `batch_size` that is a factor of `n_steps * n_envs`.\n"
-                    f"Info: (n_steps={self.n_steps} and n_envs={self.env.num_envs})"
-                )
+            assert (buffer_size % batch_size == 0), "rollout buffer size must be a multiple of the minibatch size."
+            untruncated_batches = buffer_size // batch_size 
+
         self.batch_size = batch_size
         self.n_epochs = n_epochs
         self.clip_range = clip_range
@@ -164,7 +125,7 @@ class PPOImit(OnPolicyAlgorithm):
             self._setup_model()
 
     def _setup_model(self) -> None:
-        super()._setup_model()
+        # TODO: adaptive KL penalty scheduling the coefficient in front
 
         # Initialize schedules for policy/value clipping
         self.clip_range = get_schedule_fn(self.clip_range)
@@ -209,8 +170,10 @@ class PPOImit(OnPolicyAlgorithm):
 
                 values, log_prob, entropy = self.policy.evaluate_actions(rollout_data.observations, actions)
                 values = values.flatten()
+
                 # Normalize advantage
                 advantages = rollout_data.advantages
+
                 # Normalization does not make sense if mini batchsize == 1, see GH issue #325
                 if self.normalize_advantage and len(advantages) > 1:
                     advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
@@ -234,9 +197,8 @@ class PPOImit(OnPolicyAlgorithm):
                 else:
                     # Clip the difference between old and new value
                     # NOTE: this depends on the reward scaling
-                    values_pred = rollout_data.old_values + th.clamp(
-                        values - rollout_data.old_values, -clip_range_vf, clip_range_vf
-                    )
+                    values_pred = rollout_data.old_values + th.clamp(values - rollout_data.old_values, -clip_range_vf, clip_range_vf)
+
                 # Value loss using the TD(gae_lambda) target
                 value_loss = F.mse_loss(rollout_data.returns, values_pred)
                 value_losses.append(value_loss.item())
@@ -270,6 +232,7 @@ class PPOImit(OnPolicyAlgorithm):
                 # Optimization step
                 self.policy.optimizer.zero_grad()
                 loss.backward()
+
                 # Clip grad norm
                 th.nn.utils.clip_grad_norm_(self.policy.parameters(), self.max_grad_norm)
                 self.policy.optimizer.step()
@@ -280,36 +243,55 @@ class PPOImit(OnPolicyAlgorithm):
 
         explained_var = explained_variance(self.rollout_buffer.values.flatten(), self.rollout_buffer.returns.flatten())
 
-        # Logs
-        self.logger.record("train/entropy_loss", np.mean(entropy_losses))
-        self.logger.record("train/policy_gradient_loss", np.mean(pg_losses))
-        self.logger.record("train/value_loss", np.mean(value_losses))
-        self.logger.record("train/approx_kl", np.mean(approx_kl_divs))
-        self.logger.record("train/clip_fraction", np.mean(clip_fractions))
-        self.logger.record("train/loss", loss.item())
-        self.logger.record("train/explained_variance", explained_var)
-        if hasattr(self.policy, "log_std"):
-            self.logger.record("train/std", th.exp(self.policy.log_std).mean().item())
 
-        self.logger.record("train/n_updates", self._n_updates, exclude="tensorboard")
-        self.logger.record("train/clip_range", clip_range)
-        if self.clip_range_vf is not None:
-            self.logger.record("train/clip_range_vf", clip_range_vf)
 
-    def learn(
-        self: SelfPPO,
-        total_timesteps: int,
-        callback: MaybeCallback = None,
-        log_interval: int = 1,
-        tb_log_name: str = "PPO",
-        reset_num_timesteps: bool = True,
-        progress_bar: bool = False,
-    ) -> SelfPPO:
-        return super().learn(
-            total_timesteps=total_timesteps,
-            callback=callback,
-            log_interval=log_interval,
-            tb_log_name=tb_log_name,
-            reset_num_timesteps=reset_num_timesteps,
-            progress_bar=progress_bar,
-        )
+def explained_variance(y_pred: np.ndarray, y_true: np.ndarray) -> np.ndarray:
+    """
+    Computes fraction of variance that ypred explains about y.
+    Returns 1 - Var[y-ypred] / Var[y]
+
+    interpretation:
+        ev=0  =>  might as well have predicted zero
+        ev=1  =>  perfect prediction
+        ev<0  =>  worse than just predicting zero
+
+    :param y_pred: the prediction
+    :param y_true: the expected value
+    :return: explained variance of ypred and y
+    """
+    assert y_true.ndim == 1 and y_pred.ndim == 1
+    var_y = np.var(y_true)
+    return np.nan if var_y == 0 else 1 - np.var(y_true - y_pred) / var_y
+
+
+def get_schedule_fn(value_schedule: Union[Schedule, float]) -> Schedule:
+    """
+    Transform (if needed) learning rate and clip range (for PPO)
+    to callable.
+
+    :param value_schedule: Constant value of schedule function
+    :return: Schedule function (can return constant value)
+    """
+    # If the passed schedule is a float
+    # create a constant function
+    if isinstance(value_schedule, (float, int)):
+        # Cast to float to avoid errors
+        value_schedule = constant_fn(float(value_schedule))
+    else:
+        assert callable(value_schedule)
+    return value_schedule
+
+
+def constant_fn(val: float) -> Schedule:
+    """
+    Create a function that returns a constant
+    It is useful for learning rate schedule (to avoid code duplication)
+
+    :param val: constant value
+    :return: Constant schedule function.
+    """
+
+    def func(_):
+        return val
+
+    return func
