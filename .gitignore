@@ -3,4 +3,4 @@ __pycache__
 .~*
 runs
 videos
-sim_mujoco/imit_learning_setup/behavioral_cloning/data
+sim_mujoco/sim_mujoco/data
