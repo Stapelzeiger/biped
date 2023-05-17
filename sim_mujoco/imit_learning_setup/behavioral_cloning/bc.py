@@ -37,10 +37,16 @@ class bc:
         # Initialize class variables
         self.exp_states = states
         self.exp_actions = actions
-        self.policy = bc._gen_policy(policy_arch)
+        mean_state = np.mean(states, 0)
+        mean_action = np.mean(actions, 0)
+        std_state = np.std(states, 0)
+        std_action = np.std(actions, 0)
+        # Pass mean and std of states, actions to the agent, so that the agent can
+        # normalize inputs/outputs of the neural network
+        self.bc_agent = BC_Agent(policy_arch, mean_state, std_state, mean_action, std_action)
         self.logging_path = logging_path
         self.loss_fcn = nn.MSELoss()
-        self.optimizer = optim.Adam(self.policy.parameters(), lr=lr)
+        self.optimizer = optim.Adam(self.bc_agent.parameters(), lr=lr, eps=1e-5)
         self.batch_size = batch_size
 
         # Split data for validation
@@ -73,7 +79,7 @@ class bc:
         # training loop
         for epoch in range(epochs):
             print(f"Epoch {epoch}")
-            self.policy.train()
+            self.bc_agent.train()
             with tqdm.tqdm(batch_start, unit="batch", mininterval=0, disable=True) as bar:
                 bar.set_description(f"Epoch {epoch}")
                 for start in bar:
@@ -81,7 +87,7 @@ class bc:
                     X_batch = self.X_train[start:start+self.batch_size]
                     y_batch = self.y_train[start:start+self.batch_size]
                     # forward pass
-                    y_pred = self.policy(X_batch)
+                    y_pred = self.bc_agent.get_action(X_batch)
                     loss = self.loss_fcn(y_pred, y_batch)
                     # backward pass
                     self.optimizer.zero_grad()
@@ -91,19 +97,19 @@ class bc:
                     # print progress
                     bar.set_postfix(mse=float(loss))
             # evaluate accuracy at end of each epoch
-            self.policy.eval()
-            y_pred = self.policy(self.X_test)
+            self.bc_agent.eval()
+            y_pred = self.bc_agent.get_action(self.X_test)
             mse = self.loss_fcn(y_pred, self.y_test)
             mse = float(mse)
             history.append(mse)
             if mse < best_mse:
                 best_mse = mse
-                best_weights = copy.deepcopy(self.policy.state_dict())
-            writer.add_scalar('Loss/eval_MSE', mse, epoch)
+                best_weights = copy.deepcopy(self.bc_agent.state_dict())
+            writer.add_scalar('BC_Loss/eval_MSE', mse, epoch)
             print(f"\tLoss: {mse}")
         # restore model and return best accuracy
         if use_best_weights:
-            self.policy.load_state_dict(best_weights)
+            self.bc_agent.load_state_dict(best_weights)
             print(f"Final Loss: {best_mse}")
         else:
             print(f"Final Loss: {mse}")
@@ -114,7 +120,7 @@ class bc:
         Args:
             path (path-like): location to save the current policy weights
         """
-        torch.save(self.policy.state_dict(), path)
+        self.bc_agent.save_policy(path)
 
     def load_policy(self, path):
         """Loads policy weights from the designated path
@@ -122,7 +128,7 @@ class bc:
         Args:
             path (path-like): location to read policy weights
         """
-        self.policy.load_state_dict(torch.load(path))
+        self.bc_agent.load_policy(path)
 
     def set_states_actions(self, states, actions):
         """Sets the set of states and actions taken by the expert
@@ -134,27 +140,6 @@ class bc:
         self.exp_states = states
         self.exp_actions = actions
 
-    staticmethod
-    def _gen_policy(policy_architecture):
-        """Generates a torch.nn Sequential model from the policy architecture
-
-        Args:
-            policy_architecture (iterable): Iterable definiting policy architecture
-                with 'Layer', 'Input', 'Output', and other arguments for each layer
-        """
-        layers = []
-        for layer in policy_architecture:
-            if layer['Layer'] == 'Linear':
-                layers.append(nn.Linear(layer['Input'], layer['Output']))
-            elif layer['Layer'] == 'ReLU':
-                layers.append(nn.ReLU())
-            elif layer['Layer'] == 'Tanh':
-                layers.append(nn.Tanh())
-            else:
-                ValueError(f"Layer type not recognized: {layer}")
-        model = nn.Sequential(*layers)
-        return model
-
     def set_device(self):
         """Sets the device to be used for training
         """
@@ -165,6 +150,95 @@ class bc:
             if torch.backends.mps.is_available()
             else "cpu"
         )
-        self.policy.to(device)
+        self.bc_agent.to(device)
     
 
+class BC_Agent(nn.Module):
+
+    def __init__(self, policy_arch, exp_state_mean, exp_state_std, exp_action_mean, exp_action_std):
+        """Initialize a Behavioral Cloning Agent
+
+        Args:
+            policy_arch (iterable): Network architecture for behavioral cloning policy
+                Elements are dictionaries containing keys 'Layer' ('Linear', 'ReLU', 'Tanh', ...)
+                and 'Input' and 'Output' dimension where relevant.
+            exp_state_mean (array-like): Means of expert states in training data for normalization
+            exp_state_std (_type_): Standard Deviations of expert states in training data for normalization
+            exp_action_mean (_type_): Means of expert actions in training data for normalization
+            exp_action_std (_type_): Standard Deviations of expert actions in training data for normalization
+        """
+        super(BC_Agent, self).__init__()
+        
+        device = (
+            "cuda"
+            if torch.cuda.is_available()
+            else "mps"
+            if torch.backends.mps.is_available()
+            else "cpu"
+        )
+        self.policy = BC_Agent._gen_policy(policy_arch)
+
+        # Include mean/std of states/actions as parameters in the model
+        # requires_grad=False will prevent these parameters from being changed during training
+        # this way when model is saved, means/stds will be saved, and likewise they will be loaded 
+        self.state_mean = nn.Parameter(torch.Tensor(exp_state_mean).to(device), requires_grad=False)
+        self.state_std = nn.Parameter(torch.Tensor(exp_state_std).to(device), requires_grad=False)
+        self.action_mean = nn.Parameter(torch.Tensor(exp_action_mean).to(device), requires_grad=False)
+        self.action_std = nn.Parameter(torch.Tensor(exp_action_std).to(device), requires_grad=False)
+
+    staticmethod
+    def _gen_policy(policy_arch):
+        """Generates a torch.nn Sequential model from the policy architecture
+
+        Args:
+            policy_architecture (iterable): Iterable definiting policy architecture
+                with 'Layer', 'Input', 'Output', and other arguments for each layer
+        """
+        layers = []
+        # Loop through layers
+        for layer in policy_arch:
+            if layer['Layer'] == 'Linear':
+                if 'SpectralNorm' in layer.keys() and layer['SpectralNorm']:
+                    # Add a linear layer with spectral normalization
+                    layers.append(nn.utils.spectral_norm(nn.Linear(layer['Input'], layer['Output'])))
+                else:
+                    # Add a linear layer without spectral normalization
+                    layers.append(nn.Linear(layer['Input'], layer['Output']))
+            elif layer['Layer'] == 'ReLU':
+                # Add a ReLU layer
+                layers.append(nn.ReLU())
+            elif layer['Layer'] == 'Tanh':
+                # Add a Tanh layer
+                layers.append(nn.Tanh())
+            else:
+                ValueError(f"Layer type not recognized: {layer}")
+        # And create the model by unpacking the list of layers
+        model = nn.Sequential(*layers)
+        return model
+    
+    def get_action(self, x):
+        """Return the action taken by the agent in state x
+
+        Args:
+            x (array-like): The state(s) to query action(s) for.
+
+        Returns:
+            array-like: actions(s) to be taken in the queried state(s)
+        """
+        return self.policy((x - self.state_mean) / self.state_std) * self.action_std + self.action_mean
+
+    def save_policy(self, path):
+        """Saves the current policy weights to a designated path
+
+        Args:
+            path (path-like): location to save the current policy weights
+        """
+        torch.save(self.state_dict(), path)
+
+    def load_policy(self, path):
+        """Loads policy weights from the designated path
+
+        Args:
+            path (path-like): location to read policy weights
+        """
+        self.load_state_dict(torch.load(path))
