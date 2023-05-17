@@ -2,3 +2,5 @@ __pycache__
 .vscode
 .~*
 runs
+videos
+sim_mujoco/imit_learning_setup/behavioral_cloning/data
