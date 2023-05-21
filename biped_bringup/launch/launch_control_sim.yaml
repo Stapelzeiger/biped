@@ -6,7 +6,7 @@ launch:
 
 - arg:
     name: "sim_time_sec"
-    default: "0.001"
+    default: "0.002"
 
 - arg:
     name: "visualization_rate"
