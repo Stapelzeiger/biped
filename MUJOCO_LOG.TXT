@@ -1,0 +1,18 @@
+Sat May 20 17:06:09 2023
+WARNING: mju_openResource: unknown file 'install/biped_robot_description/share/biped_robot_description/urdf/custom_robot.mujoco.xml'
+
+Sun May 21 11:46:51 2023
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.0500.
+
+Sun May 21 11:47:20 2023
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.0500.
+
+Sun May 21 11:48:29 2023
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.0500.
+
+Sun May 21 14:13:59 2023
+WARNING: Nan, Inf or huge value in QACC at DOF 0. The simulation is unstable. Time = 0.0500.
+
+Sun May 21 14:21:26 2023
+WARNING: Nan, Inf or huge value in QVEL at DOF 4. The simulation is unstable. Time = 0.1280.
+

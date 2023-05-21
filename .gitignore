@@ -4,3 +4,4 @@ __pycache__
 runs
 videos
 sim_mujoco/sim_mujoco/data
+sim_mujoco/sim_mujoco_learning/data
