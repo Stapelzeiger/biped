@@ -35,9 +35,8 @@ class JoyNode(Node):
             np.array([0.0, 0.0]),
             np.array([0.02, 0.0])
         ]
-        print(self.list_desired_vel)
         self.current_des_vel = self.list_desired_vel[0]
-        self.use_joystick = False
+        self.use_joystick = True
         if self.use_joystick == False:
             msg = Empty()
             self.pub_reset_sim.publish(msg)
