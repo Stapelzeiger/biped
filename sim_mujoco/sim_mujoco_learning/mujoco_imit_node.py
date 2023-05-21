@@ -208,7 +208,7 @@ class MujocoImitNode:
 
         self.model.eq_active[0] = 0
         self.data.qpos = qpos
-        self.data.qpos[2] += 0.01
+        # self.data.qpos[2] += 0.01
         self.data.qvel = qvel
         self.read_contact_states()
         self.initialization_done = True
