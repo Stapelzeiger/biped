@@ -148,11 +148,14 @@ class MujocoNode(Node):
         self.write_controller_dataset_header()
 
         self.policy_NN = None
-        self.policy_input_size = len(self.name_joints) * 2 + 6 + 2 + 5 * 2
-        action_size = len(self.name_joints) * 3 # q_des, qdot_des, tau_ff
-        self.num_input_state = 3
-        self.policy_bc_NN = PolicyBC(self.policy_input_size, action_size, self.num_input_state)
-        self.list_policy_inputs = []
+        self.use_bc_policy = False
+
+        if self.use_bc_policy == True:
+            self.policy_input_size = len(self.name_joints) * 2 + 6 + 2 + 5 * 2
+            action_size = len(self.name_joints) * 3 # q_des, qdot_des, tau_ff
+            self.num_input_state = 3
+            self.policy_bc_NN = PolicyBC(self.policy_input_size, action_size, self.num_input_state)
+            self.list_policy_inputs = []
         self.timer = self.create_timer(self.dt, self.timer_cb)
 
     def swing_foot_BF_cb(self, msg):
@@ -232,23 +235,28 @@ class MujocoNode(Node):
             if self.counter % vis_update_downsampling == 0:
                 self.viewer.render()
 
-        if self.initialization_done and self.dcm_desired_BF is not None:
-            policy_input_one_instance = self.create_policy_input()
+        if self.use_bc_policy == True:
+            if self.initialization_done and self.dcm_desired_BF is not None:
+                policy_input_one_instance = self.create_policy_input()
 
-            while len(self.list_policy_inputs) < self.policy_input_size * self.num_input_state:
-                self.list_policy_inputs.extend(policy_input_one_instance)
+                while len(self.list_policy_inputs) < self.policy_input_size * self.num_input_state:
+                    self.list_policy_inputs.extend(policy_input_one_instance)
 
-            self.list_policy_inputs.extend(policy_input_one_instance) # add new one
-            for i in range(self.policy_input_size):
-                self.list_policy_inputs.pop(0) # pop the old state
-            policy_input = np.array(self.list_policy_inputs)
-            self.policy_NN = self.policy_bc_NN(policy_input)
+                self.list_policy_inputs.extend(policy_input_one_instance) # add new one
+                for i in range(self.policy_input_size):
+                    self.list_policy_inputs.pop(0) # pop the old state
+                policy_input = np.array(self.list_policy_inputs)
+                self.policy_NN = self.policy_bc_NN(policy_input)
 
         self.run_joint_controllers(self.policy_NN)
 
         mj.mj_step(self.model, self.data)
         self.time += self.dt
         self.counter += 1
+
+        self.read_contact_states()
+        self.ankle_foot_spring('L_ANKLE')
+        self.ankle_foot_spring('R_ANKLE')
 
         clock_msg = Clock()
         clock_msg.clock.sec = int(self.time)
@@ -288,7 +296,6 @@ class MujocoNode(Node):
         t.transform.rotation = msg_odom.pose.pose.orientation
         self.tf_broadcaster.sendTransform(t)
 
-        self.read_contact_states()
         msg_contact_right = StampedBool()
         msg_contact_left = StampedBool()
         msg_contact_right.header.stamp.sec = int(self.time)
@@ -313,9 +320,6 @@ class MujocoNode(Node):
             msg_joint_states.velocity.append(value['actual_vel'])
             msg_joint_states.effort.append(value['actual_acc'])
         self.joint_states_pub.publish(msg_joint_states)
-
-        self.ankle_foot_spring('L_ANKLE')
-        self.ankle_foot_spring('R_ANKLE')
 
         gyro_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_SENSOR, "gyro")
         accel_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_SENSOR, "accelerometer")
@@ -350,9 +354,6 @@ class MujocoNode(Node):
         if self.joint_traj_msg is None:
             return
 
-        print('running joint controllers')
-        print('policy NN:', policy_NN)
-        print(self.name_joints)
         if policy_NN is None:
             # running the expert policy
             for key, value in self.q_joints.items():
@@ -378,7 +379,6 @@ class MujocoNode(Node):
             cnt = 0
             for key, value in self.q_joints.items():
                 id_joint_mj = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_JOINT, key)
-                print(key)
                 value['actual_pos'] = self.data.qpos[self.model.jnt_qposadr[id_joint_mj]]
                 value['actual_vel'] = self.data.qvel[self.model.jnt_dofadr[id_joint_mj]]
                 value['actual_acc'] = self.data.qacc[self.model.jnt_dofadr[id_joint_mj]]
@@ -415,22 +415,30 @@ class MujocoNode(Node):
         #           t since no contact, 
         #           pos BF
         #   controller: tau_ff, q_j_des, q_j_vel_des
+        header_qs = ['q_' + str(i) for i in range(len(self.data.qpos)) ]
+        header_qd = ['qd_' + str(i) for i in range(len(self.data.qvel))]
 
-        header_for_joint_states = [name + '_pos' for name in self.name_joints]
-        header_for_joint_states += [name + '_vel' for name in self.name_joints]
-        header_for_baselink = ['vel_x_BF', 'vel_y_BF', 'vel_z_BF', 'normal_vec_x_BF', 'normal_vec_y_BF', 'normal_vec_z_BF', 'omega_x', 'omega_y', 'omega_z']
+        # header_for_joint_states = [name + '_pos' for name in self.name_joints]
+        # header_for_joint_states += [name + '_vel' for name in self.name_joints]
+        # header_for_baselink = ['vel_x_BF', 'vel_y_BF', 'vel_z_BF', 'normal_vec_x_BF', 'normal_vec_y_BF', 'normal_vec_z_BF', 'omega_x', 'omega_y', 'omega_z']
         header_for_goal = ['vx_des_BF', 'vy_des_BF']
         header_for_right_foot = ['right_foot_t_since_contact', 'right_foot_t_since_no_contact', 'right_foot_pos_x_BF', 'right_foot_pos_y_BF', 'right_foot_pos_z_BF']
         header_for_left_foot = ['left_foot_t_since_contact', 'left_foot_t_since_no_contact', 'left_foot_pos_x_BF', 'left_foot_pos_y_BF', 'left_foot_pos_z_BF']
-        header_for_tau_ff = [name + '_tau_ff' for name in self.name_joints]
-        header_for_q_j_des =  [name + '_q_des' for name in self.name_joints]
-        header_for_q_j_vel_des = [name + '_q_vel des' for name in self.name_joints]
-        header = ['time', *header_for_joint_states,
-                          *header_for_baselink,
+        # header_for_tau_ff = [name + '_tau_ff' for name in self.name_joints]
+        # header_for_q_j_des =  [name + '_q_des' for name in self.name_joints]
+        # header_for_q_j_vel_des = [name + '_q_vel des' for name in self.name_joints]
+        header_for_tau_ff = ['qfrc_applied_' + str(i) for i in range(len(self.data.qfrc_applied))]
+        header_for_des_q_q_dot = ['ctrl_' + str(i) for i in range(len(self.data.ctrl))]
+        header = ['time', 'dt', *header_qs, *header_qd,
+                        #   *header_for_joint_states,
+                        #   *header_for_baselink,
                           *header_for_goal, 
                           *header_for_right_foot,
                           *header_for_left_foot,
-                          *header_for_tau_ff, *header_for_q_j_des, *header_for_q_j_vel_des]
+                          *header_for_tau_ff,
+                          *header_for_des_q_q_dot]
+                        #   *header_for_q_j_des,
+                        #   *header_for_q_j_vel_des]
         print(header)
         self.writer.writerow(header)
 
@@ -457,26 +465,32 @@ class MujocoNode(Node):
         else:
             data_for_left_foot = [self.swing_foot_BF_pos[0], self.swing_foot_BF_pos[1], self.swing_foot_BF_pos[2],
                                 self.T_since_contact_left, self.T_since_no_contact_left]
-            
-        print('right foot:', data_for_right_foot)
-        print('left foot:', data_for_left_foot)
-        policy_input = [*data_for_joint_states,
-                        *data_for_baselink,
+
+        policy_input = [
+                        # *data_for_joint_states,
+                        # *data_for_baselink,
+                        *self.data.qpos,
+                        *self.data.qvel,
                         *data_for_goal,
                         *data_for_right_foot,
-                        *data_for_left_foot]
+                        *data_for_left_foot,
+                        ]
         return policy_input
 
     def create_policy_output(self):
         data_for_tau_ff = [self.q_joints[name]['feedforward_torque'] for name in self.name_joints]
         data_for_q_j_des = [self.q_joints[name]['desired_pos'] for name in self.name_joints]
         data_for_q_j_vel_des = [self.q_joints[name]['desired_vel'] for name in self.name_joints]
-        policy_output = [*data_for_tau_ff, *data_for_q_j_des, *data_for_q_j_vel_des]
+
+        q_frc = self.data.qfrc_applied
+        q_ctrl = self.data.ctrl
+        policy_output = [*q_frc, *q_ctrl]
+        # policy_output = [*data_for_tau_ff, *data_for_q_j_des, *data_for_q_j_vel_des]
         return policy_output
 
     def write_controller_dataset_entry(self, policy_input, policy_output):
         if self.initialization_done and self.dcm_desired_BF is not None:
-            row_entry = [self.time, *policy_input, *policy_output]
+            row_entry = [self.time, self.model.opt.timestep, *policy_input, *policy_output]
             self.writer.writerow(row_entry)
 
     def joint_traj_cb(self, msg):
