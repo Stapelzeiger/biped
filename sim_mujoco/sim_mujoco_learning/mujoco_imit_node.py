@@ -386,12 +386,9 @@ class MujocoImitNode:
 
         for i, (key, value) in enumerate(self.q_joints.items()):
             if key != 'L_ANKLE' and key != 'R_ANKLE':
-                error = value['actual_pos'] - value['desired_pos']
-                actuators_torque = - Kp[i]*error
-                actuators_vel = value['desired_vel']
                 feedforward_torque = value['feedforward_torque']
-                self.data.ctrl[self.q_actuator_addr[str(key)]] = actuators_torque
-                self.data.ctrl[self.q_actuator_addr[str(key) + "_VEL"]] = actuators_vel
+                self.data.ctrl[self.q_actuator_addr[str(key)]] = value['desired_pos']
+                self.data.ctrl[self.q_actuator_addr[str(key) + "_VEL"]] = value['desired_vel']
                 id_joint_mj = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_JOINT, key)
                 self.data.qfrc_applied[self.model.jnt_dofadr[id_joint_mj]] = feedforward_torque
 
