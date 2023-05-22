@@ -1,25 +1,9 @@
-# import rclpy
-# from rclpy.node import Node
-from time import sleep
-# from sensor_msgs.msg import JointState, Imu
-# from nav_msgs.msg import Odometry
-# from trajectory_msgs.msg import MultiDOFJointTrajectoryPoint, MultiDOFJointTrajectory, JointTrajectory
-# from geometry_msgs.msg import TransformStamped, Vector3Stamped, PoseStamped, PoseWithCovarianceStamped, TwistStamped
-
-# from rosgraph_msgs.msg import Clock
-# from biped_bringup.msg import StampedBool
-# from std_msgs.msg import Bool, Float64, Empty, Float32, String
-# from tf2_ros import TransformBroadcaster, TransformException
-# from tf2_ros.buffer import Buffer
-# from tf2_ros.transform_listener import TransformListener
-from scipy.spatial.transform import Rotation as R
+import time
+import numpy as np
 import mujoco as mj
 import mujoco_viewer
-import numpy as np
-import sys
-import json
-import time
 from sim_mujoco.sim_mujoco_learning.submodules.pid import pid as pid_ctrl
+from scipy.spatial.transform import Rotation as R
 
 from threading import Lock
 import math 
@@ -39,18 +23,19 @@ class MujocoImitNode:
         'L_YAW': 0, 'L_HAA': 1, 'L_HFE': 2, 'L_KFE': 3, 'R_YAW': 4, 'R_HAA': 5, 'R_HFE': 6, 'R_KFE': 7
     }
 
-    def __init__(self, mujoco_xml_path, sim_time_sec=0.002, vis_rate=60, visualize=False):
-        # self.declare_parameter("mujoco_xml_path", rclpy.parameter.Parameter.Type.STRING)
-        # self.declare_parameter("sim_time_sec", rclpy.parameter.Parameter.Type.DOUBLE)
-        # self.declare_parameter("visualization_rate", rclpy.parameter.Parameter.Type.DOUBLE)
-        # self.declare_parameter("visualize_mujoco", rclpy.parameter.Parameter.Type.BOOL)
-        # self.visualize_mujoco = self.get_parameter("visualize_mujoco").get_parameter_value().bool_value
+    def __init__(self, mujoco_xml_path, noisy_imu=False, sim_time_step=0.002, vis_rate=60, visualize=False):
+        """Initialized a Mujoco Simulation
+
+        Args:
+            mujoco_xml_path (path-like): Location of the XML file to load model from
+            sim_time_step (float, optional): Time step for simulation. Defaults to 0.002.
+            vis_rate (int, optional): Rate at which to visualize simulation, Hz. Defaults to 60.
+            visualize (bool, optional): Whether to visualize the simulation. Defaults to False.
+        """
         self.visualize_mujoco = visualize
-        # mujoco_xml_path = self.get_parameter("mujoco_xml_path").get_parameter_value().string_value
-        # self.sim_time_sec = self.get_parameter("sim_time_sec").get_parameter_value().double_value
-        self.sim_time_sec = sim_time_sec
-        # self.visualization_rate = self.get_parameter("visualization_rate").get_parameter_value().double_value
+        self.sim_time_step = sim_time_step
         self.visualization_rate = vis_rate
+        self.noisy_imu = noisy_imu
         self.initialization_done = False
         self.goal_pos = [0.0, 0.0]
         self.contact_states = {'R_FOOT': False,
@@ -62,7 +47,7 @@ class MujocoImitNode:
         self.lock = Lock()
 
         self.time = time.time()
-        self.model.opt.timestep = self.sim_time_sec
+        self.model.opt.timestep = self.sim_time_step
         self.dt = self.model.opt.timestep
         self.R_b_to_I = None
         self.v_b = None
@@ -120,32 +105,6 @@ class MujocoImitNode:
         self.counter = 0
         self.action_shape = (26,)
 
-        # self.init([0.0, 0.0, 0.0])
-
-        # self.clock_pub = self.create_publisher(Clock, '/clock', 10)
-
-        # self.odometry_base_pub = self.create_publisher(Odometry, '~/odometry', 10)
-        # self.contact_right_pub = self.create_publisher(StampedBool, '~/contact_foot_right', 10)
-        # self.contact_left_pub = self.create_publisher(StampedBool, '~/contact_foot_left', 10)
-
-        # self.joint_states_pub = self.create_publisher(JointState, 'joint_states', 10)
-        # self.imu_pub = self.create_publisher(Imu, '~/imu', 10)
-        # self.tf_broadcaster = TransformBroadcaster(self)
-
-        # self.joint_traj_sub = self.create_subscription(JointTrajectory, 'joint_trajectory', self.joint_traj_cb, 10)
-        # self.joint_traj_msg = None
-
-        # self.initial_pose_sub = self.create_subscription(PoseWithCovarianceStamped, 'initialpose', self.init_cb, 10)
-        # self.reset_sub = self.create_subscription(Empty, '~/reset', self.reset_cb, 10)
-
-        # self.swing_foot_BF_sub = self.create_subscription(Vector3Stamped, "~/swing_foot_BF", self.swing_foot_BF_cb, 10)
-        # self.stance_foot_BF_sub = self.create_subscription(Vector3Stamped, "~/stance_foot_BF", self.stance_foot_BF_cb, 10)
-        # self.dcm_desired_BF_sub = self.create_subscription(TwistStamped, "~/dcm_desired_BF", self.dcm_desired_BF_cb, 10)
-
-        # self.paused = True
-        # self.step_sim_sub = self.create_subscription(Float64, "~/step", self.step_cb, 1)
-        # self.pause_sim_sub = self.create_subscription(Bool, "~/pause", self.pause_cb, 1)
-
         self.folder_name = 'sim_mujoco/sim_mujoco_learning/data'
         if not os.path.exists(self.folder_name):
             os.makedirs(self.folder_name)
@@ -153,223 +112,69 @@ class MujocoImitNode:
         self.file = open(f'{self.folder_name}/dataset.csv', 'w', newline='')
         self.writer = csv.writer(self.file)
         self.write_controller_dataset_header()
-
-        # self.timer = self.create_timer(self.dt, self.timer_cb)
-
-
-
-    # def swing_foot_BF_cb(self, msg):
-    #     self.swing_foot_BF_pos = np.array([msg.vector.x, msg.vector.y, msg.vector.z])
-
-    # def stance_foot_BF_cb(self, msg):
-    #     self.stance_foot_BF_pos = np.array([msg.vector.x, msg.vector.y, msg.vector.z])
-
-    # def dcm_desired_BF_cb(self, msg):
-    #     self.dcm_desired_BF = np.array([msg.twist.linear.x, msg.twist.linear.y])
-
-
-    # def reset_cb(self, msg):
-    #     with self.lock:
-    #         self.init([0.0, 0.0, 0.0], q=[1.0, 0.0, 0.0, 0.0])
-
-    # def init_cb(self, msg):
-    #     with self.lock:
-    #         p = msg.pose.pose.position
-    #         q = msg.pose.pose.orientation
-    #         self.init([p.x, p.y, p.z], q=[q.w, q.x, q.y, q.z])
     
     def reset(self, qpos, qvel):
+        """Resets the model to a desired initial pose
 
-        # # set equality constraints
-        # self.model.eq_data[0][0] = qpos[0]
-        # self.model.eq_data[0][1] = qpos[1]
-        # self.model.eq_data[0][2] = 1.5 # one meter above gnd
-
-        # # Set Position Data
-        # self.data.qpos = qpos
-        # self.data.qpos[2] = self.model.eq_data[0][2]
-
-        # # Set velocity data
-        # self.data.qvel = [0.0]* self.model.nv
-
-        # # Activate equality constraint
-        # self.model.eq_active[0] = 1
-
-        # # Move model down until contact
-        # self.read_contact_states()
-        # while not (self.contact_states['R_FOOT'] or self.contact_states['L_FOOT']):
-        #     self.model.eq_data[0][2] -= 0.5 * self.dt
-        #     self.read_contact_states()
-        # # Contact made. Release the equality constraint
-        # self.model.eq_active[0] = 0
-
-        # # Set the velocities
-        # self.model.qvel = qvel
-
+        Args:
+            qpos (array-like): Initial pose of the model
+            qvel (array-like): Initial velocity of the model
+        """
         self.model.eq_active[0] = 0
         self.data.qpos = qpos
-        # self.data.qpos[2] += 0.01
         self.data.qvel = qvel
         self.read_contact_states()
         self.initialization_done = True
-
-    # def timer_cb(self):
-    #     with self.lock:
-    #         if not self.paused:
-    #             self.step()
-
-    # def step_cb(self, msg):
-    #     with self.lock:
-    #         if not self.paused:
-    #             return
-
-    #         t = msg.data
-    #         while t > 0:
-    #             t -= self.dt
-    #             self.step()
-
-    # def pause_cb(self, msg):
-    #     with self.lock:
-    #         self.paused = msg.data
 
     def step(self, action):
         if not self.initialization_done:
             raise RuntimeError("System must initialized before stepping. Call .reset()")
 
         self.read_contact_states()
-        # if self.contact_states['R_FOOT'] or self.contact_states['L_FOOT']:
-        #     if not self.initialization_done:
-        #         # self.get_logger().info("init done")
-        #         self.initialization_done = True
-        #         self.data.qvel = [0.0]* self.model.nv
-        #         self.model.eq_active[0] = 0 # let go of the robot
 
-        
         if self.visualize_mujoco is True:
-            vis_update_downsampling = int(round(1.0/self.visualization_rate/self.sim_time_sec/10))
+            vis_update_downsampling = int(round(1.0/self.visualization_rate/self.sim_time_step/10))
             if self.counter % vis_update_downsampling == 0:
                 self.viewer.render()
-        # qfrc = np.vstack((QFRC_ZEROS, action(:10))
+
         u_ff, q_des, qd_des = MujocoImitNode.parse_action(action)
         self.run_joint_controllers(u_ff, q_des, qd_des)
         mj.mj_step(self.model, self.data)
         self.time += self.dt
         self.counter += 1
 
-        # clock_msg = Clock()
-        # clock_msg.clock.sec = int(self.time)
-        # clock_msg.clock.nanosec = int((self.time - clock_msg.clock.sec) * 1e9)
-        # self.clock_pub.publish(clock_msg)
-
-        # msg_odom = Odometry()
-        # msg_odom.header.stamp.sec = int(self.time)
-        # msg_odom.header.stamp.nanosec = int((self.time - clock_msg.clock.sec) * 1e9)
-        # msg_odom.header.frame_id = 'odom'
-        # msg_odom.child_frame_id = 'base_link'
-        # msg_odom.pose.pose.position.x = self.data.qpos[0]
-        # msg_odom.pose.pose.position.y = self.data.qpos[1]
-        # msg_odom.pose.pose.position.z = self.data.qpos[2]
-        # msg_odom.pose.pose.orientation.w = self.data.qpos[3]
-        # msg_odom.pose.pose.orientation.x = self.data.qpos[4]
-        # msg_odom.pose.pose.orientation.y = self.data.qpos[5]
-        # msg_odom.pose.pose.orientation.z = self.data.qpos[6]
-        # q = msg_odom.pose.pose.orientation
-
         self.R_b_to_I = R.from_quat([self.data.qpos[3], self.data.qpos[4], self.data.qpos[5], self.data.qpos[6]]).as_matrix()
         self.v_b = self.R_b_to_I.T @ self.data.qvel[0:3] # linear vel is in inertial frame
-        # msg_odom.twist.twist.linear.x = self.v_b[0]
-        # msg_odom.twist.twist.linear.y = self.v_b[1]
-        # msg_odom.twist.twist.linear.z = self.v_b[2]
-        # msg_odom.twist.twist.angular.x = self.data.qvel[3] # angular vel is in body frame
-        # msg_odom.twist.twist.angular.y = self.data.qvel[4]
-        # msg_odom.twist.twist.angular.z = self.data.qvel[5]
-        # self.odometry_base_pub.publish(msg_odom)
-
-        # t = TransformStamped()
-        # t.header = msg_odom.header
-        # t.child_frame_id = msg_odom.child_frame_id
-        # t.transform.translation.x = msg_odom.pose.pose.position.x
-        # t.transform.translation.y = msg_odom.pose.pose.position.y
-        # t.transform.translation.z = msg_odom.pose.pose.position.z
-        # t.transform.rotation = msg_odom.pose.pose.orientation
-        # self.tf_broadcaster.sendTransform(t)
 
         self.read_contact_states()
-        # msg_contact_right = StampedBool()
-        # msg_contact_left = StampedBool()
-        # msg_contact_right.header.stamp.sec = int(self.time)
-        # msg_contact_right.header.stamp.nanosec = int((self.time - clock_msg.clock.sec) * 1e9)
-        # msg_contact_right.data = self.contact_states['R_FOOT']
-        # msg_contact_left.header.stamp.sec = int(self.time)
-        # msg_contact_left.header.stamp.nanosec = int((self.time - clock_msg.clock.sec) * 1e9)
-        # msg_contact_left.data = self.contact_states['L_FOOT']
-        # self.contact_right_pub.publish(msg_contact_right)
-        # self.contact_left_pub.publish(msg_contact_left)
 
-        # msg_joint_states = JointState()
-        # msg_joint_states.header.stamp.sec = int(self.time)
-        # msg_joint_states.header.stamp.nanosec = int((self.time - clock_msg.clock.sec) * 1e9)
         for key, value in self.q_joints.items():
             id_joint_mj = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_JOINT, key)
             value['actual_pos'] = self.data.qpos[self.model.jnt_qposadr[id_joint_mj]]
             value['actual_vel'] = self.data.qvel[self.model.jnt_dofadr[id_joint_mj]]
             value['actual_acc'] = self.data.qacc[self.model.jnt_dofadr[id_joint_mj]]
-            # msg_joint_states.name.append(key)
-            # msg_joint_states.position.append(value['actual_pos'])
-            # msg_joint_states.velocity.append(value['actual_vel'])
-            # msg_joint_states.effort.append(value['actual_acc'])
-        # self.joint_states_pub.publish(msg_joint_states)
+
 
         self.ankle_foot_spring('L_ANKLE')
         self.ankle_foot_spring('R_ANKLE')
-
-        gyro_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_SENSOR, "gyro")
-        accel_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_SENSOR, "accelerometer")
-        accel = self.data.sensordata[self.model.sensor_adr[accel_id]:self.model.sensor_adr[accel_id] + 3]
-        self.accel_bias += np.random.normal(0, self.accel_bias_noise_std, 3)
-        # accel += self.accel_bias + np.random.normal(0, self.accel_noise_std, 3)
-        gyro = self.data.sensordata[self.model.sensor_adr[gyro_id]:self.model.sensor_adr[gyro_id] + 3]
-        self.gyro_bias += np.random.normal(0, self.gyro_bias_noise_std, 3)
-        # gyro += self.gyro_bias + np.random.normal(0, self.gyro_noise_std, 3)
-        if not self.initialization_done:
-            accel = [0.0, 0.0, -9.81]
-            gyro = np.zeros(3)
-        # msg_imu = Imu()
-        # msg_imu.header.stamp.sec = int(self.time)
-        # msg_imu.header.stamp.nanosec = int((self.time - clock_msg.clock.sec) * 1e9)
-        # msg_imu.header.frame_id = 'imu'
-        # msg_imu.linear_acceleration.x = accel[0]
-        # msg_imu.linear_acceleration.y = accel[1]
-        # msg_imu.linear_acceleration.z = accel[2]
-        # msg_imu.angular_velocity.x = gyro[0]
-        # msg_imu.angular_velocity.y = gyro[1]
-        # msg_imu.angular_velocity.z = gyro[2]
-        # msg_imu.orientation_covariance[0] = -1 # no orientation
-        # self.imu_pub.publish(msg_imu)
 
         self.write_controller_dataset_entry()
         return self.time, self.data.qpos, self.data.qvel
 
 
     def run_joint_controllers(self, u_ff, q_des, qd_des):
-        # if self.joint_traj_msg is None:
-        #     return
+        """Runs the joint controllers
+
+        Args:
+            u_ff (array-like): Feedforward torque to track trajectory
+            q_des (array-like): Desired position for motor controller
+            qd_des (array-like): Desired velocity for motor controller
+        """
         for key, value in self.q_joints.items():
             id_joint_mj = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_JOINT, key)
             value['actual_pos'] = self.data.qpos[self.model.jnt_qposadr[id_joint_mj]]
             value['actual_vel'] = self.data.qvel[self.model.jnt_dofadr[id_joint_mj]]
-            value['actual_acc'] = self.data.qacc[self.model.jnt_dofadr[id_joint_mj]] 
-            # if key in self.joint_traj_msg.joint_names:
-            #     id_joint_msg = self.joint_traj_msg.joint_names.index(key)
-            #     value['desired_pos'] = self.joint_traj_msg.points[0].positions[id_joint_msg]
-            #     if self.joint_traj_msg.points[0].velocities:
-            #         value['desired_vel'] = self.joint_traj_msg.points[0].velocities[id_joint_msg]
-            #     if self.joint_traj_msg.points[0].effort:
-            #         if math.isnan(self.joint_traj_msg.points[0].effort[id_joint_msg]) is False:
-            #             value['feedforward_torque'] = self.joint_traj_msg.points[0].effort[id_joint_msg]
-            #         else:
-            #             value['feedforward_torque'] = 0.0
-            
+            value['actual_acc'] = self.data.qacc[self.model.jnt_dofadr[id_joint_mj]]  
             
             # This is the new way of passing actions
             if key in MujocoImitNode.ACT_INDS.keys():
@@ -398,37 +203,76 @@ class MujocoImitNode:
         q_des = action[8:16]
         qd_des = action[16:]
         return u_ff, q_des, qd_des
+
+    def get_IMU_data(self):
+        gyro_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_SENSOR, "gyro")
+        accel_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_SENSOR, "accelerometer")
+        accel = self.data.sensordata[self.model.sensor_adr[accel_id]:self.model.sensor_adr[accel_id] + 3]
+        self.accel_bias += np.random.normal(0, self.accel_bias_noise_std, 3)
+        
+        gyro = self.data.sensordata[self.model.sensor_adr[gyro_id]:self.model.sensor_adr[gyro_id] + 3]
+        self.gyro_bias += np.random.normal(0, self.gyro_bias_noise_std, 3)
+        if self.noisy_imu:
+            accel += self.accel_bias + np.random.normal(0, self.accel_noise_std, 3)
+            gyro += self.gyro_bias + np.random.normal(0, self.gyro_noise_std, 3)
+        return accel, gyro
     
     def write_controller_dataset_header(self):
-        # joint states
-        # baselink vel BF
-        # goal vx_des_BF, vy_des BF
-        # right foot: t since contact, t since no contact, pos BF
-        # left foot: t since contact, t since no contact, pos BF
-        # tau_ff
-        # q_j_des
-        # q_j_vel_des
-
+        # Dataset: 
+            #   time, dt
+            #   qpos, qvel, ctrl
+            #   joint states
+            #   baselink vel BF
+            #   imu BF
+            #   goal vx_des_BF, vy_des BF
+            #   right & left foot: 
+            #           t since contact,
+            #           t since no contact, 
+            #           pos BF
+            #   controller: tau_ff, q_j_des, q_j_vel_des
+        header_qs = ['q_' + str(i) for i in range(len(self.data.qpos)) ]
+        header_qd = ['qd_' + str(i) for i in range(len(self.data.qvel))]
+        header_for_tau_ff = ['qfrc_applied_' + str(i) for i in range(len(self.data.qfrc_applied))]
+        header_for_ctrl = ['ctrl_' + str(i) for i in range(len(self.data.ctrl))]
+        
         header_for_joint_states = [name + '_pos' for name in self.name_joints]
         header_for_joint_states += [name + '_vel' for name in self.name_joints]
         header_for_baselink = ['vel_x_BF', 'vel_y_BF', 'vel_z_BF', 'normal_vec_x_BF', 'normal_vec_y_BF', 'normal_vec_z_BF', 'omega_x', 'omega_y', 'omega_z']
-        # header_for_goal = ['vx_des_BF', 'vy_des_BF']
-        # header_for_right_foot = ['right_foot_t_since_contact', 'right_foot_t_since_no_contact', 'right_foot_pos_x_BF', 'right_foot_pos_y_BF', 'right_foot_pos_z_BF']
-        # header_for_left_foot = ['left_foot_t_since_contact', 'left_foot_t_since_no_contact', 'left_foot_pos_x_BF', 'left_foot_pos_y_BF', 'left_foot_pos_z_BF']
+        header_for_imu = ['ax', 'ay', 'az', 'wx', 'wy', 'wz']
+        header_for_goal = ['vx_des_BF', 'vy_des_BF']
+        header_for_right_foot = ['right_foot_pos_x_BF', 'right_foot_pos_y_BF', 'right_foot_pos_z_BF', 'right_foot_t_since_contact', 'right_foot_t_since_no_contact']
+        header_for_left_foot = ['left_foot_pos_x_BF', 'left_foot_pos_y_BF', 'left_foot_pos_z_BF', 'left_foot_t_since_contact', 'left_foot_t_since_no_contact']
         header_for_tau_ff = [name + '_tau_ff' for name in self.name_joints]
         header_for_q_j_des =  [name + '_q_des' for name in self.name_joints]
         header_for_q_j_vel_des = [name + '_q_vel des' for name in self.name_joints]
-        header = ['time', *header_for_joint_states,
-                          *header_for_baselink,
-                        #   *header_for_goal, 
-                        #   *header_for_right_foot,
-                        #   *header_for_left_foot,
-                          *header_for_tau_ff, *header_for_q_j_des, *header_for_q_j_vel_des]
+        
+        header = [
+            'time', 'dt', *header_qs, *header_qd, *header_for_ctrl,
+            *header_for_joint_states, *header_for_baselink, *header_for_imu, *header_for_goal, 
+            *header_for_right_foot, 'R_FOOT_contact', *header_for_left_foot, 'L_FOOT_contact',
+            *header_for_tau_ff, *header_for_q_j_des, *header_for_q_j_vel_des
+        ]
         print(header)
         self.writer.writerow(header)
 
     def write_controller_dataset_entry(self):
         if self.initialization_done:
+            # Dataset: 
+            #   time, dt
+            #   qpos, qvel, ctrl
+            #   joint states
+            #   baselink vel BF
+            #   imu BF
+            #   goal vx_des_BF, vy_des BF
+            #   right & left foot: 
+            #           t since contact,
+            #           t since no contact, 
+            #           pos BF
+            #   controller: tau_ff, q_j_des, q_j_vel_des
+            data_for_qs = self.data.qpos
+            data_for_qd = self.data.qvel
+            data_for_ctrl = self.data.ctrl
+            
             data_for_joint_states = [self.q_joints[name]['actual_pos'] for name in self.name_joints]
             data_for_joint_states += [self.q_joints[name]['actual_vel'] for name in self.name_joints]
             normal_vector_I = np.array([0.0, 0.0, 1.0])
@@ -436,39 +280,40 @@ class MujocoImitNode:
             data_for_baselink = [self.v_b[0], self.v_b[1], self.v_b[2],
                                 normal_vector_BF[0], normal_vector_BF[1], normal_vector_BF[2],
                                 self.data.qvel[3], self.data.qvel[4], self.data.qvel[5]]
+            accel, gyro = self.get_IMU_data()
+            data_for_imu = [*accel, *gyro]
             # data_for_goal = [self.dcm_desired_BF[0], self.dcm_desired_BF[1]]
+            data_for_goal = [-1, -1]
 
-            # if self.contact_states['R_FOOT'] == True:
-            #     data_for_right_foot = [self.stance_foot_BF_pos[0], self.stance_foot_BF_pos[1], self.stance_foot_BF_pos[2],
-            #                         self.T_since_contact_right, self.T_since_no_contact_right]
-            # else:
-            #     data_for_right_foot = [self.swing_foot_BF_pos[0], self.swing_foot_BF_pos[1], self.swing_foot_BF_pos[2],
-            #                         self.T_since_contact_right, self.T_since_contact_right]
+            if self.contact_states['R_FOOT'] == True:
+                # data_for_right_foot = [self.stance_foot_BF_pos[0], self.stance_foot_BF_pos[1], self.stance_foot_BF_pos[2],
+                #                     self.T_since_contact_right, self.T_since_no_contact_right]
+                data_for_right_foot = [0, 0, 0, self.T_since_contact_right, self.T_since_no_contact_right]
+            else:
+                # data_for_right_foot = [self.swing_foot_BF_pos[0], self.swing_foot_BF_pos[1], self.swing_foot_BF_pos[2],
+                #                     self.T_since_contact_right, self.T_since_no_contact_right]
+                data_for_right_foot = [-1, -1, -1, self.T_since_contact_right, self.T_since_no_contact_right]
 
-            # if self.contact_states['L_FOOT'] == True:
-            #     data_for_left_foot = [self.stance_foot_BF_pos[0], self.stance_foot_BF_pos[1], self.stance_foot_BF_pos[2],
-            #                         self.T_since_contact_left, self.T_since_no_contact_left]
-            # else:
-            #     data_for_left_foot = [self.swing_foot_BF_pos[0], self.swing_foot_BF_pos[1], self.swing_foot_BF_pos[2],
-            #                         self.T_since_contact_left, self.T_since_no_contact_left]
+            if self.contact_states['L_FOOT'] == True:
+                # data_for_left_foot = [self.stance_foot_BF_pos[0], self.stance_foot_BF_pos[1], self.stance_foot_BF_pos[2],
+                #                     self.T_since_contact_left, self.T_since_no_contact_left]
+                data_for_left_foot = [0, 0, 0, self.T_since_contact_left, self.T_since_no_contact_left]
+            else:
+                # data_for_left_foot = [self.swing_foot_BF_pos[0], self.swing_foot_BF_pos[1], self.swing_foot_BF_pos[2],
+                #                     self.T_since_contact_left, self.T_since_no_contact_left]
+                data_for_left_foot = [-1, -1, -1, self.T_since_contact_left, self.T_since_no_contact_left]
 
             data_for_tau_ff = [self.q_joints[name]['feedforward_torque'] for name in self.name_joints]
             data_for_q_j_des = [self.q_joints[name]['desired_pos'] for name in self.name_joints]
             data_for_q_j_vel_des = [self.q_joints[name]['desired_vel'] for name in self.name_joints]
 
-            row_entry = [self.time, *data_for_joint_states,
-                                    *data_for_baselink,
-                                    # *data_for_goal,
-                                    # *data_for_right_foot,
-                                    # *data_for_left_foot,
-                                    *data_for_tau_ff,
-                                    *data_for_q_j_des,
-                                    *data_for_q_j_vel_des]
+            row_entry = [
+                self.time, self.dt, *data_for_qs, *data_for_qd, *data_for_ctrl,
+                *data_for_joint_states, *data_for_baselink, *data_for_imu, *data_for_goal, 
+                *data_for_right_foot, int(self.contact_states['R_FOOT']), *data_for_left_foot, int(self.contact_states['L_FOOT']),
+                *data_for_tau_ff, *data_for_q_j_des, *data_for_q_j_vel_des
+            ]
             self.writer.writerow(row_entry)
-
-    # def joint_traj_cb(self, msg):
-    #     with self.lock:
-    #         self.joint_traj_msg = msg
 
     def read_contact_states(self):
         self.contact_states['R_FOOT'] = False
@@ -507,7 +352,7 @@ class MujocoImitNode:
 
         if self.contact_states['L_FOOT'] == True:
             self.T_since_contact_left = self.T_since_contact_left + self.dt
-            self.T_since_no_contact_right = 0.0
+            self.T_since_no_contact_left = 0.0
 
         if self.contact_states['L_FOOT'] == False:
             self.T_since_contact_left = 0.0
@@ -541,7 +386,6 @@ class MujocoImitNode:
 
 
 def main(args=None):
-    # rclpy.init(args=args)
     model_path = "../../install/biped_robot_description/share/biped_robot_description/urdf/custom_robot.mujoco.xml"
     sim_node = MujocoImitNode(model_path, visualize=True)
     qpos0 = np.array([
@@ -559,11 +403,7 @@ def main(args=None):
     ])
     sim_node.reset(qpos0, qvel0)
     while True:
-        sleep(1)
         sim_node.step(np.zeros(sim_node.action_shape))
-    # rclpy.spin(sim_node)
-    # sim_node.destroy_node()
-    # rclpy.shutdown()
 
 if __name__ == '__main__':
     main()

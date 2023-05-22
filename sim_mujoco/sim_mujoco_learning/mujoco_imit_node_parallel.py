@@ -41,6 +41,7 @@ class MujocoImitNodeParallel:
         # self.declare_parameter("visualize_mujoco", rclpy.parameter.Parameter.Type.BOOL)
         # self.visualize_mujoco = self.get_parameter("visualize_mujoco").get_parameter_value().bool_value
         self.visualize_mujoco = visualize
+        self.num_envs = num_envs
         # mujoco_xml_path = self.get_parameter("mujoco_xml_path").get_parameter_value().string_value
         # self.sim_time_sec = self.get_parameter("sim_time_sec").get_parameter_value().double_value
         self.sim_time_sec = sim_time_sec
@@ -51,23 +52,23 @@ class MujocoImitNodeParallel:
         self.contact_states = {'R_FOOT': False,
                                'L_FOOT': False}
 
-        self.model = mj.MjModel.from_xml_path(mujoco_xml_path)
-        mj.mj_printModel(self.model, 'robot_information.txt')
-        self.data = mj.MjData(self.model)
+        self.models = [mj.MjModel.from_xml_path(f'{mujoco_xml_path}') for _ in range(self.num_envs)]
+        mj.mj_printModel(self.models[0], 'robot_information.txt')
+        self.datas = [mj.MjData(self.models[ii]) for ii in range(self.num_envs)]
         self.lock = Lock()
 
         self.time = time.time()
         self.model.opt.timestep = self.sim_time_sec
         self.dt = self.model.opt.timestep
-        self.R_b_to_I = None
-        self.v_b = None
-        self.swing_foot_BF_pos = None
-        self.stance_foot_BF_pos = None
-        self.dcm_desired_BF = None
-        self.T_since_contact_right = 0.0
-        self.T_since_contact_left = 0.0
-        self.T_since_no_contact_right = 0.0
-        self.T_since_no_contact_left = 0.0
+        self.R_b_to_Is = [None for _ in range(self.num_envs)]
+        self.v_b = [None for _ in range(self.num_envs)]
+        self.swing_foot_BF_pos = [None for _ in range(self.num_envs)]
+        self.stance_foot_BF_pos = [None for _ in range(self.num_envs)]
+        self.dcm_desired_BF = [None for _ in range(self.num_envs)]
+        self.T_since_contact_right = np.zeros((self.num_envs,))
+        self.T_since_contact_left = np.zeros((self.num_envs,))
+        self.T_since_no_contact_right = np.zeros((self.num_envs,))
+        self.T_since_no_contact_left = np.zeros((self.num_envs,))
 
         self.accel_noise_density = 0.14 * 9.81/1000 # [m/s2 * sqrt(s)]
         self.accel_bias_random_walk = 0.0004 # [m/s2 / sqrt(s)]
@@ -99,20 +100,20 @@ class MujocoImitNodeParallel:
             }
 
         self.name_actuators = []
-        for i in range(0, self.model.nu):  # skip root
-            self.name_actuators.append(mj.mj_id2name(self.model, mj.mjtObj.mjOBJ_ACTUATOR, i))
+        for i in range(0, self.models[0].nu):  # skip root
+            self.name_actuators.append(mj.mj_id2name(self.models[0], mj.mjtObj.mjOBJ_ACTUATOR, i))
 
         self.q_actuator_addr = {}
         for name in self.name_actuators:
-            self.q_actuator_addr[name] = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_ACTUATOR, name)
+            self.q_actuator_addr[name] = mj.mj_name2id(self.models[0], mj.mjtObj.mjOBJ_ACTUATOR, name)
 
         self.q_pos_addr_joints = {}
         for name in self.name_joints:
-            self.q_pos_addr_joints[name] = self.model.jnt_qposadr[mj.mj_name2id(
-                self.model, mj.mjtObj.mjOBJ_JOINT, name)]
+            self.q_pos_addr_joints[name] = self.models[0].jnt_qposadr[mj.mj_name2id(
+                self.models[0], mj.mjtObj.mjOBJ_JOINT, name)]
         
         self.counter = 0
-        self.action_shape = (3*len(self.q_actuator_addr))
+        self.single_action_shape = (3*len(self.q_actuator_addr))
 
         # self.init([0.0, 0.0, 0.0])
 
@@ -199,9 +200,9 @@ class MujocoImitNodeParallel:
 
         # # Set the velocities
         # self.model.qvel = qvel
-
-        self.data.qpos = qpos
-        self.data.qvel = qvel
+        for ii in range(self.num_envs):
+            self.data[ii].qpos = qpos[ii, :]
+            self.data[ii].qvel = qvel[ii, :]
         self.initialization_done = True
 
     # def timer_cb(self):
@@ -242,7 +243,8 @@ class MujocoImitNodeParallel:
                 self.viewer.render()
 
         self.run_joint_controllers(action)
-        mj.mj_step(self.model, self.data)
+        for ii in range(self.num_envs):
+            mj.mj_step(self.models[ii], self.data[ii])
         self.time += self.dt
         self.counter += 1
 
@@ -265,8 +267,8 @@ class MujocoImitNodeParallel:
         # msg_odom.pose.pose.orientation.z = self.data.qpos[6]
         # q = msg_odom.pose.pose.orientation
 
-        # self.R_b_to_I = R.from_quat([q.x, q.y, q.z, q.w]).as_matrix()
-        # self.v_b = self.R_b_to_I.T @ self.data.qvel[0:3] # linear vel is in inertial frame
+        self.R_b_to_I = R.from_quat([q.x, q.y, q.z, q.w]).as_matrix()
+        self.v_b = self.R_b_to_I.T @ self.data.qvel[0:3] # linear vel is in inertial frame
         # msg_odom.twist.twist.linear.x = self.v_b[0]
         # msg_odom.twist.twist.linear.y = self.v_b[1]
         # msg_odom.twist.twist.linear.z = self.v_b[2]
@@ -524,7 +526,7 @@ class MujocoImitNodeParallel:
 def main(args=None):
     # rclpy.init(args=args)
     model_path = "../../install/biped_robot_description/share/biped_robot_description/urdf/custom_robot.mujoco.xml"
-    sim_node = MujocoImitNode(model_path, visualize=True)
+    sim_node = MujocoImitNodeParallel(model_path, 2, visualize=True)
     sim_node.reset(0, 0)
     while True:
         sim_node.step(0)
