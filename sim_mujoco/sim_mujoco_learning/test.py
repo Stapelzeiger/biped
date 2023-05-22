@@ -5,7 +5,7 @@ from sim_mujoco.sim_mujoco_learning.mujoco_imit_node import MujocoImitNode
 
 model_path = "../../install/biped_robot_description/share/biped_robot_description/urdf/custom_robot.mujoco.xml"
 data_path = "sim_mujoco/sim_mujoco_learning/data/dataset_qpos.csv"
-mj_node = MujocoImitNode(model_path, visualize=True, vis_rate=60)
+mj_node = MujocoImitNode(model_path, visualize=False, vis_rate=60)
 dataset = pd.read_csv(data_path)
 
 # Skip forward a bit in trajectory
@@ -30,11 +30,11 @@ actions = np.hstack((u_ff, q_des, qd_des))
 
 # Reset the env to the initial position
 mj_node.reset(qpos[0, :], qvel[0, :])
-mj_node.viewer.render()
+# mj_node.viewer.render()
 # sleep(1)
 
 # And sim forward
-i = 0
+i = 1
 while i < actions.shape[0]:
     print(i)
     action = actions[i, :]
