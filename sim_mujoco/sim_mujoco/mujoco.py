@@ -534,7 +534,7 @@ class MujocoNode(Node):
 
         if self.contact_states['L_FOOT'] == True:
             self.T_since_contact_left = self.T_since_contact_left + self.dt
-            self.T_since_no_contact_right = 0.0
+            self.T_since_no_contact_left = 0.0
 
         if self.contact_states['L_FOOT'] == False:
             self.T_since_contact_left = 0.0
