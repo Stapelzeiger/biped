@@ -37,8 +37,8 @@ class DAgger:
             traj_steps = 0
             traj_over = False
             obs = self.env.reset() # Reset environment to random IC at beginning
-            obs = obs[0] # SJ: IDK what gym version we should use, but under 0.26.2, obs looks like 
-            #    (array([cosT , sinT,  omega ], dtype=float32), {}), so it throws index-out-of-range error without obs = obs[0].
+            # obs = obs[0] # SJ: IDK what gym version we should use, but under 0.26.2, obs looks like 
+            # #    (array([cosT , sinT,  omega ], dtype=float32), {}), so it throws index-out-of-range error without obs = obs[0].
             while not traj_over and traj_steps < self.Tmax:
                 # Get the expert action at the current state
                 expert_action = self.expert(obs)
@@ -52,7 +52,7 @@ class DAgger:
                     result = self.env.step(expert_action)
                 else:
                     policy_action = self.policy.predict(obs)
-                    print("policy_action: ", policy_action)
+                    # print("policy_action: ", policy_action)
                     result = self.env.step(policy_action.detach().numpy())
                 # Grab the observation returned from the step
                 obs = result[0]
@@ -69,18 +69,18 @@ class DAgger:
         return (state_memory[:sample_ind, :], expert_action_memory[:sample_ind, :])
     
     
-    def train_dagger(self, epochs):
+    def train_dagger(self, iterations):
         """train_dagger runs pure behavior cloning on a deterministic policy. 
         The algorithm fits a neural network to the collected data, copying actions of the 
         expert policy
 
         Args:
-            epochs (int): number of epochs to train
+            iterations (int): number of iterations to train
         """
         train_states = np.zeros((0, self.env.observation_space.shape[0]))
         train_actions = np.zeros((0, self.env.action_space.shape[0]))
         # Run for a specific number of iterations
-        for _ in range(epochs):
+        for _ in range(iterations):
             # Perform a DAgger rollout
             states, expert_actions = self.dagger_rollout()
             # Append results to the set of data to train behavoir cloning

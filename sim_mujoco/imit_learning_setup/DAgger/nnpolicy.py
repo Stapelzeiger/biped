@@ -8,8 +8,10 @@ from sklearn.model_selection import train_test_split
 
 class NNPolicy:
 
-    def __init__(self, net_arch):
+    def __init__(self, net_arch, epochs=10, batch_size=32):
         # Construct the network (Feedfoward deterministic network)
+        self.epochs = epochs
+        self.batch_size = batch_size
         layers = []
         for ii in range(len(net_arch)):
             layers.append(nn.Linear(net_arch[ii][0], net_arch[ii][1]))
@@ -35,9 +37,7 @@ class NNPolicy:
         y_test = torch.tensor(y_test, dtype=torch.float32).reshape(-1, 1)
 
         # training parameters
-        n_epochs = 3   # number of epochs to run
-        batch_size = 32  # size of each batch
-        batch_start = torch.arange(0, len(X_train), batch_size)
+        batch_start = torch.arange(0, len(X_train), self.batch_size)
         
         # Hold the best model
         best_mse = np.inf   # init to infinity
@@ -45,15 +45,15 @@ class NNPolicy:
         history = []
         
         # training loop
-        for epoch in range(n_epochs):
+        for epoch in range(self.epochs):
             print(f"Epoch {epoch}")
             self.model.train()
             with tqdm.tqdm(batch_start, unit="batch", mininterval=0, disable=True) as bar:
                 bar.set_description(f"Epoch {epoch}")
                 for start in bar:
                     # take a batch
-                    X_batch = X_train[start:start+batch_size]
-                    y_batch = y_train[start:start+batch_size]
+                    X_batch = X_train[start:start+self.batch_size]
+                    y_batch = y_train[start:start+self.batch_size]
                     # forward pass
                     y_pred = self.model(X_batch)
                     loss = self.loss_fcn(y_pred, y_batch)

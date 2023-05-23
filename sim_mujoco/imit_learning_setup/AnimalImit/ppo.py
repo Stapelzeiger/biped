@@ -65,7 +65,10 @@ class Agent(nn.Module):
         action_mean = self.actor_mean(x)
         if self.eval_mode:
             return action_mean
-        action_std = torch.exp(self.actor_logstd.expand_as(action_mean))
+        if action_mean.shape == torch.Size([1]):
+            action_std = torch.exp(self.actor_logstd)
+        else:
+            action_std = torch.exp(self.actor_logstd.expand_as(action_mean))
         probs = Normal(action_mean, action_std)
         if action is None:
             action = probs.sample()
@@ -283,6 +286,7 @@ class PPO:
             self.writer.add_scalar("losses/approx_kl", approx_kl.item(), self.global_step)
             self.writer.add_scalar("losses/clipfrac", np.mean(clipfracs), self.global_step)
             self.writer.add_scalar("losses/explained_variance", explained_var, self.global_step)
+            self.writer.add_scalar("losses/action_entropy", torch.mean(torch.exp(self.agent.actor_logstd)), self.global_step)
             print("SPS:", int(self.global_step / (time.time() - self.start_time)))
             self.writer.add_scalar("charts/SPS", int(self.global_step / (time.time() - self.start_time)), self.global_step)
         

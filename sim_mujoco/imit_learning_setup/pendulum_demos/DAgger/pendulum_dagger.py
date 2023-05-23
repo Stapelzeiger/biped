@@ -1,6 +1,6 @@
-from pendulum_expert import pendulum_expert
-from DAgger import DAgger
-from nnpolicy import NNPolicy
+from sim_mujoco.imit_learning_setup.pendulum_demos.pendulum_expert import pendulum_expert
+from sim_mujoco.imit_learning_setup.DAgger.DAgger import DAgger
+from sim_mujoco.imit_learning_setup.DAgger.nnpolicy import NNPolicy
 import gym
 import numpy as np
 import torch
@@ -16,13 +16,17 @@ otherwise physics was broken
 print(os.path.dirname(os.path.realpath(__file__)))
 net_arch = [(3, 56), (56, 112), (112, 56), (56, 1)]
 env = gym.make("Pendulum-v1")
-policy = NNPolicy(net_arch)
-epochs = 5
+epochs = 10
+batch_size = 32
+policy = NNPolicy(net_arch, epochs=epochs, batch_size=batch_size)
+iterations = 5
+traj_per_iter = 10
+
 
 dagger_trainer = DAgger(
-    env, pendulum_expert, policy, np.linspace(1, 0, epochs), 200, None, 50
+    env, pendulum_expert, policy, np.linspace(1, 0, iterations), 200, None, traj_per_iter
 )
 
-dagger_trainer.train_dagger(epochs)
+dagger_trainer.train_dagger(iterations)
 
 torch.save(policy.model.state_dict(), os.path.join(os.path.dirname(os.path.realpath(__file__)), "pendulum_dagger_policy.pt"))
