@@ -19,7 +19,8 @@ import numpy as np
 import sys
 import json
 import time
-from sim_mujoco.sim_mujoco_learning.submodules.pid import pid as pid_ctrl
+sys.path.append("/home/sorina/Documents/code/biped_hardware/ros2_ws/src/biped/sim_mujoco/")
+from sim_mujoco_learning.submodules.pid import pid as pid_ctrl
 
 from threading import Lock
 import math 
@@ -208,8 +209,10 @@ class MujocoImitNode:
 
         self.model.eq_active[0] = 0
         self.data.qpos = qpos
-        # self.data.qpos[2] += 0.01
         self.data.qvel = qvel
+        self.data.ctrl = np.zeros(len(self.data.ctrl))
+        self.data.qfrc_applied = np.zeros(len(self.data.qfrc_applied))
+        
         self.read_contact_states()
         self.initialization_done = True
 
@@ -237,6 +240,7 @@ class MujocoImitNode:
             raise RuntimeError("System must initialized before stepping. Call .reset()")
 
         self.read_contact_states()
+        print(self.contact_states)
         # if self.contact_states['R_FOOT'] or self.contact_states['L_FOOT']:
         #     if not self.initialization_done:
         #         # self.get_logger().info("init done")
@@ -251,6 +255,7 @@ class MujocoImitNode:
                 self.viewer.render()
         # qfrc = np.vstack((QFRC_ZEROS, action(:10))
         u_ff, q_des, qd_des = MujocoImitNode.parse_action(action)
+        
         self.run_joint_controllers(u_ff, q_des, qd_des)
         mj.mj_step(self.model, self.data)
         self.time += self.dt
@@ -542,7 +547,7 @@ class MujocoImitNode:
 
 def main(args=None):
     # rclpy.init(args=args)
-    model_path = "../../install/biped_robot_description/share/biped_robot_description/urdf/custom_robot.mujoco.xml"
+    model_path = "/home/sorina/Documents/code/biped_hardware/ros2_ws/src/biped/biped_robot_description/urdf/custom_robot.mujoco.xml"
     sim_node = MujocoImitNode(model_path, visualize=True)
     qpos0 = np.array([
         -0.0737598007648667, -0.0733845727937982, 0.550748421344813, 0.998831755605091, -0.0471508286450751,
@@ -559,7 +564,7 @@ def main(args=None):
     ])
     sim_node.reset(qpos0, qvel0)
     while True:
-        sleep(1)
+        # sleep(1)
         sim_node.step(np.zeros(sim_node.action_shape))
     # rclpy.spin(sim_node)
     # sim_node.destroy_node()

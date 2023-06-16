@@ -8,7 +8,7 @@ data_rel_paths = [
     "../../sim_mujoco/data/dataset_backwards.csv", "../../sim_mujoco/data/dataset_forward_sideways.csv", "../../sim_mujoco/data/dataset_misc.csv"
 ]
 data_paths = [os.path.join(os.path.dirname(os.path.realpath(__file__)), pth) for pth in data_rel_paths]
-policy_name = "bc_policy_4_500e"
+policy_name = "bc_policy_4_500e_no_spectral_norm"
 # Fraction of data to train on. If you are going to test the policy on the biped in sim, use 1. (no reason to leave any data out)
 train_frac = 0.9
 
@@ -49,13 +49,13 @@ action_columns = [
 ]
 num_input_states = 3 # Number of states to include in input
 policy_arch = [
-    {'Layer': 'Linear', 'Input': len(state_columns) * num_input_states, 'Output': 256, 'SpectralNorm': True},
+    {'Layer': 'Linear', 'Input': len(state_columns) * num_input_states, 'Output': 256, 'SpectralNorm': False},
     {'Layer': 'ReLU'},
-    {'Layer': 'Linear', 'Input': 256, 'Output': 512, 'SpectralNorm': True},
+    {'Layer': 'Linear', 'Input': 256, 'Output': 512, 'SpectralNorm': False},
     {'Layer': 'ReLU'},
-    {'Layer': 'Linear', 'Input': 512, 'Output': 256, 'SpectralNorm': True},
+    {'Layer': 'Linear', 'Input': 512, 'Output': 256, 'SpectralNorm': False},
     {'Layer': 'ReLU'},
-    {'Layer': 'Linear', 'Input': 256, 'Output': len(action_columns), 'SpectralNorm': True}
+    {'Layer': 'Linear', 'Input': 256, 'Output': len(action_columns), 'SpectralNorm': False}
 ]
 train_epochs = 500
 

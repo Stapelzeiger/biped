@@ -1,15 +1,17 @@
 import numpy as np
 import pandas as pd
 from time import sleep
-from sim_mujoco.sim_mujoco_learning.mujoco_imit_node import MujocoImitNode
+import sys
+sys.path.append("/home/sorina/Documents/code/biped_hardware/ros2_ws/src/biped/sim_mujoco/")
+from sim_mujoco_learning.mujoco_imit_node import MujocoImitNode
+model_path = "/home/sorina/Documents/code/biped_hardware/ros2_ws/src/biped/biped_robot_description/urdf/custom_robot.mujoco.xml"
 
-model_path = "../../install/biped_robot_description/share/biped_robot_description/urdf/custom_robot.mujoco.xml"
-data_path = "sim_mujoco/sim_mujoco_learning/data/dataset_qpos.csv"
+data_path = "data/dataset_qpos.csv"
 mj_node = MujocoImitNode(model_path, visualize=True, vis_rate=60)
 dataset = pd.read_csv(data_path)
 
 # Skip forward a bit in trajectory
-dataset = dataset.iloc[300:, :]
+dataset = dataset.iloc[0:, :]
 # Grab relevant variables
 qpos = dataset[['q_0', 'q_1', 'q_2', 'q_3','q_4', 'q_5','q_6', 'q_7', 'q_8', 'q_9', 'q_10', 'q_11','q_12', 'q_13','q_14', 'q_15', 'q_16']].to_numpy()
 qvel = dataset[['qd_0', 'qd_1', 'qd_2', 'qd_3','qd_4', 'qd_5','qd_6', 'qd_7', 'qd_8', 'qd_9', 'qd_10', 'qd_11','qd_12', 'qd_13','qd_14', 'qd_15']].to_numpy()
@@ -34,7 +36,7 @@ mj_node.viewer.render()
 # sleep(1)
 
 # And sim forward
-i = 0
+i = 1
 while i < actions.shape[0]:
     print(i)
     action = actions[i, :]

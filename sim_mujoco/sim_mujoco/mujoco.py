@@ -143,15 +143,15 @@ class MujocoNode(Node):
         if not os.path.exists(self.folder_name):
             os.makedirs(self.folder_name)
 
-        self.file = open(f'{self.folder_name}/dataset.csv', 'w', newline='')
+        self.file = open(f'{self.folder_name}/dataset_comparison_spectral.csv', 'w', newline='')
         self.writer = csv.writer(self.file)
         self.write_controller_dataset_header()
 
-        self.policy_NN = None
-        self.use_bc_policy = False
+        self.policy_NN_output = None
+        self.use_bc_policy = True
 
         if self.use_bc_policy == True:
-            self.policy_input_size = len(self.name_joints) * 2 + 6 + 2 + 5 * 2
+            self.policy_input_size = 40 # todo fix this hardcoded thing
             action_size = len(self.name_joints) * 3 # q_des, qdot_des, tau_ff
             self.num_input_state = 3
             self.policy_bc_NN = PolicyBC(self.policy_input_size, action_size, self.num_input_state)
@@ -246,9 +246,9 @@ class MujocoNode(Node):
                 for i in range(self.policy_input_size):
                     self.list_policy_inputs.pop(0) # pop the old state
                 policy_input = np.array(self.list_policy_inputs)
-                self.policy_NN = self.policy_bc_NN(policy_input)
+                self.policy_NN_output = self.policy_bc_NN(policy_input)
 
-        self.run_joint_controllers(self.policy_NN)
+        self.run_joint_controllers(self.policy_NN_output)
 
         mj.mj_step(self.model, self.data)
         self.time += self.dt
@@ -346,15 +346,18 @@ class MujocoNode(Node):
         self.imu_pub.publish(msg_imu)
 
         if self.initialization_done and self.dcm_desired_BF is not None:
-            policy_input_for_recording = self.create_policy_input()
-            policy_output_for_recording = self.create_policy_output()
-            self.write_controller_dataset_entry(policy_input_for_recording, policy_output_for_recording)
+            input_data = self.create_policy_input()
+            output_data = self.create_policy_output()
+            self.write_controller_dataset_entry(input_data, output_data)
 
     def run_joint_controllers(self, policy_NN=None):
         if self.joint_traj_msg is None:
             return
 
-        if policy_NN is None:
+        duration = 10000
+        if self.counter < duration:
+            print('running expert, elapsed time:', duration - self.counter)
+
             # running the expert policy
             for key, value in self.q_joints.items():
                 id_joint_mj = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_JOINT, key)
@@ -372,6 +375,7 @@ class MujocoNode(Node):
                         else:
                             value['feedforward_torque'] = 0.0
         else:
+            print('running learner')
             desired_pos = policy_NN[0: len(self.name_joints)]
             desired_vel = policy_NN[len(self.name_joints): 2 * len(self.name_joints)]
             tau_ff = policy_NN[2 * len(self.name_joints): 3 * len(self.name_joints)]
@@ -415,31 +419,39 @@ class MujocoNode(Node):
         #           t since no contact, 
         #           pos BF
         #   controller: tau_ff, q_j_des, q_j_vel_des
+        #   policy network: tau_ff, q_j_des, q_j_vel_des
         header_qs = ['q_' + str(i) for i in range(len(self.data.qpos)) ]
         header_qd = ['qd_' + str(i) for i in range(len(self.data.qvel))]
 
-        # header_for_joint_states = [name + '_pos' for name in self.name_joints]
-        # header_for_joint_states += [name + '_vel' for name in self.name_joints]
-        # header_for_baselink = ['vel_x_BF', 'vel_y_BF', 'vel_z_BF', 'normal_vec_x_BF', 'normal_vec_y_BF', 'normal_vec_z_BF', 'omega_x', 'omega_y', 'omega_z']
+        header_for_joint_states = [name + '_pos' for name in self.name_joints]
+        header_for_joint_states += [name + '_vel' for name in self.name_joints]
+        header_for_baselink = ['vel_x_BF', 'vel_y_BF', 'vel_z_BF', 'normal_vec_x_BF', 'normal_vec_y_BF', 'normal_vec_z_BF', 'omega_x', 'omega_y', 'omega_z']
         header_for_goal = ['vx_des_BF', 'vy_des_BF']
         header_for_right_foot = ['right_foot_t_since_contact', 'right_foot_t_since_no_contact', 'right_foot_pos_x_BF', 'right_foot_pos_y_BF', 'right_foot_pos_z_BF']
         header_for_left_foot = ['left_foot_t_since_contact', 'left_foot_t_since_no_contact', 'left_foot_pos_x_BF', 'left_foot_pos_y_BF', 'left_foot_pos_z_BF']
-        # header_for_tau_ff = [name + '_tau_ff' for name in self.name_joints]
-        # header_for_q_j_des =  [name + '_q_des' for name in self.name_joints]
-        # header_for_q_j_vel_des = [name + '_q_vel des' for name in self.name_joints]
-        header_for_tau_ff = ['qfrc_applied_' + str(i) for i in range(len(self.data.qfrc_applied))]
-        header_for_des_q_q_dot = ['ctrl_' + str(i) for i in range(len(self.data.ctrl))]
-        header = ['time', 'dt', *header_qs, *header_qd,
-                        #   *header_for_joint_states,
-                        #   *header_for_baselink,
+        header_for_tau_ff = [name + '_tau_ff' for name in self.name_joints]
+        header_for_q_j_des =  [name + '_q_des' for name in self.name_joints]
+        header_for_q_j_vel_des = [name + '_q_vel_des' for name in self.name_joints]
+        header_for_tau_ff_policy = [name + '_tau_ff_policy' for name in self.name_joints]
+        header_for_q_j_des_policy =  [name + '_q_des_policy' for name in self.name_joints]
+        header_for_q_j_vel_des_policy = [name + '_q_vel_des_policy' for name in self.name_joints]
+        # header_for_tau_ff = ['qfrc_applied_' + str(i) for i in range(len(self.data.qfrc_applied))]
+        # header_for_des_q_q_dot = ['ctrl_' + str(i) for i in range(len(self.data.ctrl))]
+        header = ['time', 'dt', 
+                        # *header_qs, 
+                        # *header_qd,
+                          *header_for_joint_states,
+                          *header_for_baselink,
                           *header_for_goal, 
                           *header_for_right_foot,
                           *header_for_left_foot,
                           *header_for_tau_ff,
-                          *header_for_des_q_q_dot]
-                        #   *header_for_q_j_des,
-                        #   *header_for_q_j_vel_des]
-        print(header)
+                          *header_for_q_j_des,
+                          *header_for_q_j_vel_des,
+                          *header_for_tau_ff_policy,
+                          *header_for_q_j_des_policy,
+                          *header_for_q_j_vel_des_policy
+                          ]
         self.writer.writerow(header)
 
     def create_policy_input(self):
@@ -467,14 +479,15 @@ class MujocoNode(Node):
                                 self.T_since_contact_left, self.T_since_no_contact_left]
 
         policy_input = [
-                        # *data_for_joint_states,
-                        # *data_for_baselink,
-                        *self.data.qpos,
-                        *self.data.qvel,
+                        *data_for_joint_states,
+                        *data_for_baselink,
+                        # *self.data.qpos,
+                        # *self.data.qvel,
                         *data_for_goal,
                         *data_for_right_foot,
                         *data_for_left_foot,
                         ]
+        
         return policy_input
 
     def create_policy_output(self):
@@ -482,15 +495,15 @@ class MujocoNode(Node):
         data_for_q_j_des = [self.q_joints[name]['desired_pos'] for name in self.name_joints]
         data_for_q_j_vel_des = [self.q_joints[name]['desired_vel'] for name in self.name_joints]
 
-        q_frc = self.data.qfrc_applied
-        q_ctrl = self.data.ctrl
-        policy_output = [*q_frc, *q_ctrl]
-        # policy_output = [*data_for_tau_ff, *data_for_q_j_des, *data_for_q_j_vel_des]
+        # q_frc = self.data.qfrc_applied
+        # q_ctrl = self.data.ctrl
+        # policy_output = [*q_frc, *q_ctrl]
+        policy_output = [*data_for_tau_ff, *data_for_q_j_des, *data_for_q_j_vel_des]
         return policy_output
 
     def write_controller_dataset_entry(self, policy_input, policy_output):
         if self.initialization_done and self.dcm_desired_BF is not None:
-            row_entry = [self.time, self.model.opt.timestep, *policy_input, *policy_output]
+            row_entry = [self.time, self.model.opt.timestep, *policy_input, *policy_output, *self.policy_NN_output]
             self.writer.writerow(row_entry)
 
     def joint_traj_cb(self, msg):
