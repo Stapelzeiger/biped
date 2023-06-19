@@ -11,7 +11,6 @@
 #include "std_msgs/msg/float32.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "trajectory_msgs/msg/joint_trajectory.hpp"
-
 #include "trajectory_msgs/msg/joint_trajectory_point.hpp"
 #include "trajectory_msgs/msg/multi_dof_joint_trajectory.hpp"
 #include "nav_msgs/msg/odometry.hpp"
@@ -243,7 +242,6 @@ private:
 
         if (state_ == "RAMP_TO_STARTING_POS")
         {
-            // setup frames:
             auto T_BLF_to_BF = get_BLF_to_BF();
             auto T_BF_to_BLF = T_BLF_to_BF.inverse();
 
