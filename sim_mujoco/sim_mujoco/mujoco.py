@@ -81,6 +81,7 @@ class MujocoNode(Node):
             self.q_joints[i] = {
                 'actual_pos': 0.0,
                 'actual_vel': 0.0,
+                'actual_acc': 0.0,
                 'desired_pos': 0.0,
                 'desired_vel': 0.0,
                 'feedforward_torque': 0.0
@@ -121,6 +122,8 @@ class MujocoNode(Node):
         self.paused = True
         self.step_sim_sub = self.create_subscription(Float64, "~/step", self.step_cb, 1)
         self.pause_sim_sub = self.create_subscription(Bool, "~/pause", self.pause_cb, 1)
+
+        self.previous_q_vel = np.zeros(self.model.nv)
 
         self.timer = self.create_timer(self.dt, self.timer_cb)
 
@@ -252,20 +255,14 @@ class MujocoNode(Node):
         msg_joint_states.header.stamp.sec = int(self.time)
         msg_joint_states.header.stamp.nanosec = int((self.time - clock_msg.clock.sec) * 1e9)
         for key, value in self.q_joints.items():
-            id_joint_mj = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_JOINT, key)
-            value['actual_pos'] = self.data.qpos[self.model.jnt_qposadr[id_joint_mj]]
-            value['actual_vel'] = self.data.qvel[self.model.jnt_dofadr[id_joint_mj]]
-            value['actual_acc'] = self.data.qacc[self.model.jnt_dofadr[id_joint_mj]]
             msg_joint_states.name.append(key)
             msg_joint_states.position.append(value['actual_pos'])
             msg_joint_states.velocity.append(value['actual_vel'])
             msg_joint_states.effort.append(value['actual_acc'])
         self.joint_states_pub.publish(msg_joint_states)
-
         
         self.ankle_foot_spring('L_ANKLE')
         self.ankle_foot_spring('R_ANKLE')
-
 
         gyro_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_SENSOR, "gyro")
         accel_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_SENSOR, "accelerometer")
@@ -299,7 +296,8 @@ class MujocoNode(Node):
             id_joint_mj = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_JOINT, key)
             value['actual_pos'] = self.data.qpos[self.model.jnt_qposadr[id_joint_mj]]
             value['actual_vel'] = self.data.qvel[self.model.jnt_dofadr[id_joint_mj]]
-            value['actual_acc'] = self.data.qacc[self.model.jnt_dofadr[id_joint_mj]] 
+            actual_acc = (self.data.qvel[self.model.jnt_dofadr[id_joint_mj]] - self.previous_q_vel[self.model.jnt_dofadr[id_joint_mj]])/self.dt
+            value['actual_acc'] = actual_acc
             if key in self.joint_traj_msg.joint_names:
                 id_joint_msg = self.joint_traj_msg.joint_names.index(key)
                 value['desired_pos'] = self.joint_traj_msg.points[0].positions[id_joint_msg]
@@ -310,6 +308,7 @@ class MujocoNode(Node):
                         value['feedforward_torque'] = self.joint_traj_msg.points[0].effort[id_joint_msg]
                     else:
                         value['feedforward_torque'] = 0.0
+        self.previous_q_vel = self.data.qvel.copy()
 
         kp_moteus = 600.0
         Kp = (kp_moteus/(2*math.pi)) * np.ones(self.model.njnt - 1) # exclude root
