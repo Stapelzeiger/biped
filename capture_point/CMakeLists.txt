@@ -1,11 +1,12 @@
 cmake_minimum_required(VERSION 3.8)
 set(CMAKE_VERBOSE_MAKEFILE on)
-
 project(capture_point)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
+
+option(BUILD_TESTING "Build the testing tree." ON)
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
@@ -27,26 +28,37 @@ include_directories(include EIGEN3_INCLUDE_DIR)
 message(STATUS "EIGEN3_INCLUDE_DIR ${EIGEN3_INCLUDE_DIR}")
 
 
-
 add_executable(capture_point src/capture_point.cpp src/foot_trajectory.cpp)
 target_include_directories(capture_point PRIVATE ${EIGEN3_INCLUDE_DIR})
 ament_target_dependencies(capture_point 
-                          rclcpp 
-                          std_msgs 
-                          sensor_msgs 
-                          trajectory_msgs 
+                          rclcpp
+                          std_msgs
+                          sensor_msgs
+                          trajectory_msgs
                           nav_msgs
-                          geometry_msgs 
+                          geometry_msgs
                           biped_bringup
                           tf2
                           tf2_ros
                           visualization_msgs)
 
+add_executable(publisher_test_body_traj src/publisher_test_body_traj.cpp src/foot_trajectory.cpp)
+target_include_directories(publisher_test_body_traj PRIVATE ${EIGEN3_INCLUDE_DIR})
+ament_target_dependencies(publisher_test_body_traj
+                          rclcpp
+                          std_msgs
+                          sensor_msgs
+                          trajectory_msgs
+                          nav_msgs
+                          tf2
+                          tf2_ros
+                          geometry_msgs)
+
 install(TARGETS
   capture_point
+  publisher_test_body_traj
   DESTINATION lib/${PROJECT_NAME}
 )
-
 
 install(DIRECTORY
   launch
@@ -54,4 +66,12 @@ install(DIRECTORY
   DESTINATION share/${PROJECT_NAME}/
 )
 
+if(BUILD_TESTING)
+  find_package(ament_cmake_gtest REQUIRED)
+  ament_add_gtest(capture_point_test test/foot_traj_test.cpp src/foot_trajectory.cpp)
+  target_include_directories(capture_point_test PUBLIC ${EIGEN3_INCLUDE_DIR} include)
+  ament_target_dependencies(capture_point_test rclcpp)
+endif()
+
+set(AMENT_LINT_AUTO OFF)
 ament_package()
