@@ -217,8 +217,6 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
                 cur_constraint += 5;
 
             }
-            // get_singular_values(J_block.transpose(), sing_val_vector);
-            // double min_sing_value = sing_val_vector.minCoeff();
         }
         Eigen::MatrixXd identity_mat;
         identity_mat = Eigen::MatrixXd::Identity(nb_constraints, nb_constraints);
@@ -288,7 +286,7 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
             body_vels_stacked.block(cur_constraint_ff, 0, 3, 1) = body_vel;
             body_vels_stacked.block(cur_constraint_ff + 3, 0, 3, 1).setZero();
             J_dot_for_ff_stacked.block(cur_constraint_ff, 0, 6, model_.nv) = J_dot;
-            body_accs_stacked.block(cur_constraint_ff, 0, 6, 1) = body_acc;
+            body_accs_stacked.block(cur_constraint_ff, 0, 3, 1) = body_acc;
             body_accs_stacked.block(cur_constraint_ff + 3, 0, 3, 1).setZero();
 
             cur_constraint_ff += 6;
@@ -364,10 +362,9 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
         pinocchio::computeGeneralizedGravity(model_, data, q_); // data.g
         pinocchio::computeCoriolisMatrix(model_, data, q_, q_vel); // data.C
         pinocchio::crba(model_, data, q_); // data.M
-
+        data.M.triangularView<Eigen::StrictlyLower>() = data.M.transpose().triangularView<Eigen::StrictlyLower>();
         Eigen::HouseholderQR<Eigen::MatrixXd> QR(PB);
-        // std::cout << "extra terms:" << (P * data.C * q_vel + P * data.M * q_acc).transpose() << std::endl;
-        auto y = P * data.g + P * data.C * q_vel + P * data.M * q_acc; // question about q_vel
+        auto y = P * data.g + P * data.C * q_vel + P * data.M * q_acc;
         Eigen::VectorXd feedforward_torque(QR.solve(y));
 
         for (auto &joint_state: joint_states)
