@@ -28,38 +28,14 @@ public:
         body_desired_sub_ = this->create_subscription<trajectory_msgs::msg::MultiDOFJointTrajectory>(
             "body_trajectories", 10, std::bind(&IKNode::body_desired_cb, this, _1));
 
-        contact_right_sub_ = this->create_subscription<biped_bringup::msg::StampedBool>(
-            "~/contact_foot_right", 10, std::bind(&IKNode::contact_right_cb, this, _1));
-
-        contact_left_sub_ = this->create_subscription<biped_bringup::msg::StampedBool>(
-            "~/contact_foot_left", 10, std::bind(&IKNode::contact_left_cb, this, _1));
         robot_joints_pub_ = this->create_publisher<trajectory_msgs::msg::JointTrajectory>("joint_trajectory", 10);
         markers_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("~/markers", 10);
     }
 
 private:
-    void contact_right_cb(biped_bringup::msg::StampedBool::SharedPtr msg)
+    void contact_cb(biped_bringup::msg::StampedBool::SharedPtr msg, const std::string &joint_name)
     {
-        auto now = this->get_clock()->now();
-        double dt = (now - rclcpp::Time(msg->header.stamp)).seconds();
-        if (dt > 0.1)
-        {
-            RCLCPP_WARN(this->get_logger(), "contact right foot sensor data is too old: %f", dt);
-        }
-
-        foot_right_contact_ = msg->data;
-    }
-
-    void contact_left_cb(biped_bringup::msg::StampedBool::SharedPtr msg)
-    {
-        auto now = this->get_clock()->now();
-        double dt = (now - rclcpp::Time(msg->header.stamp)).seconds();
-        if (dt > 0.1)
-        {
-            RCLCPP_WARN(this->get_logger(), "contact left foot sensor data is too old: %f", dt);
-        }
-
-        foot_left_contact_ = msg->data;
+        contact_states_[joint_name] = msg;
     }
 
     void body_desired_cb(trajectory_msgs::msg::MultiDOFJointTrajectory::SharedPtr msg)
@@ -68,6 +44,25 @@ private:
             RCLCPP_ERROR_SKIPFIRST_THROTTLE(this->get_logger(), *this->get_clock(), 1000 /* [ms] */, "No robot model loaded");
             return;
         }
+        // ensure there are contact subscribers
+        for (const auto &name : msg->joint_names) {
+            if (contact_subs_.find(name) == contact_subs_.end())
+            {
+                contact_subs_[name] = this->create_subscription<biped_bringup::msg::StampedBool>(
+                    "~/contact_" + name, 1, [this, name](const biped_bringup::msg::StampedBool::SharedPtr msg) {contact_cb(msg, name);});
+            }
+        }
+        // check time of contact data
+        for (const auto &contact : contact_states_)
+        {
+            auto now = rclcpp::Time(msg->header.stamp);
+            double dt = (now - rclcpp::Time(contact.second->header.stamp)).seconds();
+            if (fabs(dt) > 0.1)
+            {
+                RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 100 /* [ms] */, "contact %s sensor data is too old: %f", contact.first.c_str(), dt);
+            }
+        }
+
         trajectory_msgs::msg::JointTrajectory out_msg;
         out_msg.header = msg->header;
         int pt_idx = 0;
@@ -100,6 +95,9 @@ private:
                 if (pt.velocities.size() > 0) {
                     body_state.linear_velocity = Eigen::Vector3d(pt.velocities[i].linear.x, pt.velocities[i].linear.y, pt.velocities[i].linear.z);
                 }
+                if (pt.accelerations.size() > 0) {
+                    body_state.linear_acceleration = Eigen::Vector3d(pt.accelerations[i].linear.x, pt.accelerations[i].linear.y, pt.accelerations[i].linear.z);
+                }
                 if (!this->has_parameter(name + ".joint_type")) {
                     this->declare_parameter(name + ".joint_type", "FULL_6DOF");
                 }
@@ -121,12 +119,10 @@ private:
                     return;
                 }
 
-                // not nice code, todo fix
-                if (name == "L_ANKLE"){
-                    body_state.in_contact = foot_left_contact_;
-                }
-                if (name == "R_ANKLE"){
-                    body_state.in_contact = foot_right_contact_;
+                if (contact_states_.find(name) != contact_states_.end()) {
+                    body_state.in_contact = contact_states_[name]->data;
+                } else {
+                    body_state.in_contact = false;
                 }
 
                 bodies.push_back(body_state);
@@ -240,12 +236,10 @@ private:
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr markers_pub_;
     rclcpp::Subscription<std_msgs::msg::String>::SharedPtr robot_desc_sub_;
     rclcpp::Subscription<trajectory_msgs::msg::MultiDOFJointTrajectory>::SharedPtr body_desired_sub_;
-    rclcpp::Subscription<biped_bringup::msg::StampedBool>::SharedPtr contact_right_sub_;
-    rclcpp::Subscription<biped_bringup::msg::StampedBool>::SharedPtr contact_left_sub_;
+    std::map<std::string, rclcpp::Subscription<biped_bringup::msg::StampedBool>::SharedPtr> contact_subs_;
+    std::map<std::string, biped_bringup::msg::StampedBool::SharedPtr> contact_states_;
 
     IKRobot robot_;
-    bool foot_right_contact_;
-    bool foot_left_contact_;
 };
 
 int main(int argc, char *argv[])
