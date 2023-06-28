@@ -352,7 +352,7 @@ private:
 
         Eigen::Vector3d dcm_STF;
         Eigen::Vector3d offset_com_baselink;
-        offset_com_baselink << -0.03, 0.0, 0.0;
+        offset_com_baselink << -0.04487, 0.0, 0.0;
         dcm_STF(0) = T_STF_to_BLF_.inverse().translation()[0] + offset_com_baselink[0] + 1.0 / robot_params.omega * vel_base_link_STF(0);
         dcm_STF(1) = T_STF_to_BLF_.inverse().translation()[1] + offset_com_baselink[1] + 1.0 / robot_params.omega * vel_base_link_STF(1);
         dcm_STF(2) = 0;
@@ -369,12 +369,31 @@ private:
         // }
         Eigen::Vector3d des_pos_foot_STF;
         des_pos_foot_STF << next_footstep_STF(0), next_footstep_STF(1), 0;
-        swing_foot_traj_.set_desired_end_position(des_pos_foot_STF);
 
         Eigen::Vector3d pos_desired_swing_foot_STF;
         Eigen::Vector3d vel_desired_swing_foot_STF;
         Eigen::Vector3d acc_desired_swing_foot_STF;
 
+        const double foot_separation = 0.1;
+        Eigen::Vector2d swing_x_safe_box;
+        Eigen::Vector2d swing_y_safe_box;
+
+        if (swing_foot_name == r_foot_frame_id_)
+        {
+            swing_x_safe_box << -0.2, 0.2;
+            swing_y_safe_box << -0.4, -foot_separation*0.5;
+
+            des_pos_foot_STF(0) = fmax( fmin( des_pos_foot_STF(0), swing_x_safe_box(1)), swing_x_safe_box(0));
+            des_pos_foot_STF(1) = fmax( fmin( des_pos_foot_STF(1), swing_y_safe_box(1)), swing_y_safe_box(0));
+        }else{
+            swing_x_safe_box << -0.2, 0.2;
+            swing_y_safe_box << foot_separation*0.5, 0.4;
+
+            des_pos_foot_STF(0) = fmax( fmin( des_pos_foot_STF(0), swing_x_safe_box(1)), swing_x_safe_box(0));
+            des_pos_foot_STF(1) = fmax( fmin( des_pos_foot_STF(1), swing_y_safe_box(1)), swing_y_safe_box(0));
+        }
+
+        swing_foot_traj_.set_desired_end_position(des_pos_foot_STF);
         swing_foot_traj_.get_traj_foot_pos_vel(time_since_last_step_, pos_desired_swing_foot_STF, vel_desired_swing_foot_STF, acc_desired_swing_foot_STF);
 
         double dt = robot_params.dt_ctrl;
@@ -385,11 +404,11 @@ private:
         Eigen::Vector3d pos_body_level_STF = T_STF_to_BLF_.inverse().translation();
         pos_body_level_STF(2) = robot_params.robot_height;
         Eigen::Quaterniond quat_body_level_STF = Eigen::Quaterniond(T_STF_to_BLF_.inverse().rotation());
-        // Eigen::Vector3d acc_body_level_STF =  (vel_base_link_STF - previous_vel_base_link_STF_)/robot_params.dt_ctrl;
-        Eigen::Vector3d acc_body_level_STF = Eigen::Vector3d::Zero();
-        // previous_vel_base_link_STF_ = vel_base_link_STF;
+        Eigen::Vector3d acc_body_level_STF =  (vel_base_link_STF - previous_vel_base_link_STF_)/robot_params.dt_ctrl;
+        // Eigen::Vector3d acc_body_level_STF = Eigen::Vector3d::Zero();
+        previous_vel_base_link_STF_ = vel_base_link_STF;
         // std::cout << "acc_body_level_STF" << acc_body_level_STF.transpose() << std::endl;
-
+// 
         Eigen::Vector3d pos_desired_stance_foot_STF = Eigen::Vector3d::Zero();
         Eigen::Vector3d vel_desired_stance_foot_STF = Eigen::Vector3d::Zero();
         Eigen::Vector3d acc_desired_stance_foot_STF = Eigen::Vector3d::Zero();
@@ -397,10 +416,6 @@ private:
         Eigen::Quaterniond quat_desired_swing_foot_STF = quat_body_level_STF;
 
         std::string frame_id = "STF";
-        const double foot_separation = 0.06;
-        Eigen::Vector2d swing_x_safe_box;
-        Eigen::Vector2d swing_y_safe_box;
-        Eigen::Vector2d swing_z_safe_box;
 
         if (swing_foot_name == r_foot_frame_id_)
         {
@@ -410,15 +425,6 @@ private:
             pub_desired_right_contact_->publish(des_contact_msg);
             des_contact_msg.data = true;
             pub_desired_left_contact_->publish(des_contact_msg);
-
-            swing_x_safe_box << -0.2, 0.2;
-            swing_y_safe_box << -0.4, -foot_separation*0.5;
-            swing_z_safe_box << -0.1, 0.2;
-
-            pos_desired_swing_foot_STF(0) = fmax( fmin( pos_desired_swing_foot_STF(0), swing_x_safe_box(1)), swing_x_safe_box(0));
-            pos_desired_swing_foot_STF(1) = fmax( fmin( pos_desired_swing_foot_STF(1), swing_y_safe_box(1)), swing_y_safe_box(0));
-            pos_desired_swing_foot_STF(2) = fmax( fmin( pos_desired_swing_foot_STF(2), swing_z_safe_box(1)), swing_z_safe_box(0));
-
 
             publish_body_trajectories(frame_id, pos_body_level_STF, quat_body_level_STF, vel_base_link_STF, acc_body_level_STF,
                                                 pos_desired_swing_foot_STF, quat_desired_swing_foot_STF, vel_desired_swing_foot_STF, acc_desired_swing_foot_STF,
@@ -431,14 +437,6 @@ private:
             pub_desired_left_contact_->publish(des_contact_msg);
             des_contact_msg.data = true;
             pub_desired_right_contact_->publish(des_contact_msg);
-
-            swing_x_safe_box << -0.2, 0.2;
-            swing_y_safe_box << foot_separation*0.5, 0.4;
-            swing_z_safe_box << -0.1, 0.2;
-
-            pos_desired_swing_foot_STF(0) = fmax( fmin( pos_desired_swing_foot_STF(0), swing_x_safe_box(1)), swing_x_safe_box(0));
-            pos_desired_swing_foot_STF(1) = fmax( fmin( pos_desired_swing_foot_STF(1), swing_y_safe_box(1)), swing_y_safe_box(0));
-            pos_desired_swing_foot_STF(2) = fmax( fmin( pos_desired_swing_foot_STF(2), swing_z_safe_box(1)), swing_z_safe_box(0));
 
             publish_body_trajectories(frame_id, pos_body_level_STF, quat_body_level_STF, vel_base_link_STF, acc_body_level_STF,
                                                 pos_desired_stance_foot_STF, quat_desired_stance_foot_STF, vel_desired_stance_foot_STF, acc_desired_stance_foot_STF,
