@@ -6,17 +6,17 @@ from scipy.sparse import csr_matrix
 
 Ts = 0.3
 dt = 0.01
-height_keep = 0.2
+foot_height_keep_STF = 0.2
 N = int(Ts/dt)
 print('Nb steps = ', N)
 
-nb_total_variables = 3*N
+nb_total_variables = 3 * N # px, vx, zx
 print(nb_total_variables, ' variables')
 
 # ======== Create P, q matrices ========
 block = np.zeros((3, 3))
 block[-1, -1] = 1
-P = spa.block_diag([block]*N, format='csc')
+P = spa.block_diag([block] * N, format='csc')
 q = np.zeros((nb_total_variables, 1))
 
 # ======== Create A matrix ========
@@ -60,10 +60,13 @@ n_end_keep = n_keep + n_start_keep
 A_keep_foot = lil_matrix((n_keep, nb_total_variables))
 j = n_start_keep
 for i in range(n_keep):
-    A_keep_foot[i, 3 * j] = 1.0
+    A_keep_foot[i, 3 * j] = 1
     j = j + 1
 
-A_total = spa.vstack([A_eq_pos_vel_desired, A_dynamics, A_limits, A_keep_foot], format='csc')
+A_total = spa.vstack([A_eq_pos_vel_desired,
+                    A_dynamics,
+                    A_limits,
+                    A_keep_foot], format='csc')
 
 # ======== Create l, u matrices ========
 # boundary points
@@ -93,14 +96,22 @@ u_limits[0::2] = v_max
 u_limits[1::2] = a_max
 
 # keep foot
-l_keep = height_keep*np.ones((n_keep, 1))
-u_keep = height_keep*np.ones((n_keep, 1))
+l_keep = foot_height_keep_STF*np.ones((n_keep, 1))
+u_keep = foot_height_keep_STF*np.ones((n_keep, 1))
 
-l_total = np.vstack([l_boundary_pts, l_dynamics, l_limits, l_keep])
-u_total = np.vstack([u_boundary_pts, u_dynamics, u_limits, u_keep])
+l_total = np.vstack([l_boundary_pts,
+                     l_dynamics,
+                     l_limits,
+                     l_keep])
+u_total = np.vstack([u_boundary_pts,
+                     u_dynamics,
+                     u_limits,
+                     u_keep])
 
 prob = osqp.OSQP()
-prob.setup(P, q, A_total, l_total, u_total, verbose=True)
+max_iter = 4000
+prob.setup(P, q, A_total, l_total, u_total, max_iter=max_iter)
+
 results = prob.solve()
 
 x_opt = results.x
@@ -122,6 +133,7 @@ plt.rcParams.update({
     'figure.titlesize': 22,
     'lines.linewidth': 2,
 })
+
 fig, axs = plt.subplots(3, 1, figsize=(10, 10))
 t = np.arange(0, Ts, dt)
 axs[0].plot(t, pos_opt, '.-r', label='pos')
