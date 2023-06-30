@@ -65,12 +65,12 @@ for i in range(n_keep):
 
 A_total = spa.vstack([A_eq_pos_vel_desired,
                     A_dynamics,
-                    A_limits,
-                    A_keep_foot], format='csc')
+                    A_limits])
+                    # A_keep_foot], format='csc')
 
 # ======== Create l, u matrices ========
 # boundary points
-p0_desired = 0.0
+p0_desired = 1.0
 v0_desired = 0.0
 p_N_desired = 0.0
 v_N_desired = 0.0
@@ -101,16 +101,18 @@ u_keep = foot_height_keep_STF*np.ones((n_keep, 1))
 
 l_total = np.vstack([l_boundary_pts,
                      l_dynamics,
-                     l_limits,
-                     l_keep])
+                     l_limits])
+                    #  l_keep])
 u_total = np.vstack([u_boundary_pts,
                      u_dynamics,
-                     u_limits,
-                     u_keep])
+                     u_limits])
+                    #  u_keep])
 
 prob = osqp.OSQP()
-max_iter = 4000
-prob.setup(P, q, A_total, l_total, u_total, max_iter=max_iter)
+max_iter = 20000
+eps_abs = 1.0e-03
+eps_rel = 1.0e-03
+prob.setup(P, q, A_total, l_total, u_total, max_iter=max_iter, eps_abs=eps_abs, eps_rel=eps_rel)
 
 results = prob.solve()
 
@@ -119,7 +121,7 @@ pos_opt = x_opt[::3]
 vel_opt = x_opt[1::3]
 acc_opt = x_opt[2::3]
 
-print('pos opt', pos_opt)
+print(pos_opt)
 
 import matplotlib.pyplot as plt
 plt.rcParams.update({
