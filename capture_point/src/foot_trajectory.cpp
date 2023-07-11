@@ -86,7 +86,7 @@ void FootTrajectory::integrate_trajectory_forward(Eigen::Vector3d foot_position,
 void FootTrajectory::get_traj_foot_pos_vel(double T_since_begin_step, Eigen::Vector3d &foot_pos, Eigen::Vector3d &foot_vel, Eigen::Vector3d &foot_acc)
 {
     double lift_foot_hgt = 0.10;
-    double lower_foot_impact_vel = 0.4;
+    double lower_foot_impact_vel = 0.3;
     double T_lift = 0.40 * T_step_;
     double T_lower = 0.40 * T_step_;
     double T_keep = T_step_ - T_lift - T_lower;
