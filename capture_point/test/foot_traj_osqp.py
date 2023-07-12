@@ -15,38 +15,25 @@ nb_total_variables = 3 * nb_total_variables_per_coordinate # x, y, z
 print(nb_total_variables, ' variables')
 
 # ======== Create P, q matrices ========
-opt_weight_desired_pos = 5000
-opt_weight_desired_vel = 4000
-p_N_des_x = 0.2
-p_N_des_y = 0.3
-p_N_des_z = 0.1
-v_N_des = 0.0
-block = np.zeros((3, 3))
-block[-1, -1] = 1
+opt_weight_desired_pos = np.array([55000, 55000, 5500000])
+opt_weight_desired_vel = np.array([55000, 55000, 5500000])
+p_N_des = np.array([0.2, 0.2, 0.0])
+v_N_des = np.zeros(3)
+
 P = np.zeros((nb_total_variables, nb_total_variables))
+q = np.zeros((nb_total_variables, 1))
 
-# put the 3x3 block on the diagonals of P
 for i in range(nb_total_variables_per_coordinate):
-    P[i*3:(i+1)*3, i*3:(i+1)*3] = block
+    P[i * 3 + 2, i * 3 + 2] = 0.001
 
-P[nb_total_variables_per_coordinate - 3, nb_total_variables_per_coordinate - 3] = opt_weight_desired_pos
-P[2*nb_total_variables_per_coordinate - 3, 2*nb_total_variables_per_coordinate - 3] = opt_weight_desired_pos
-P[3*nb_total_variables_per_coordinate - 3, 3*nb_total_variables_per_coordinate - 3] = opt_weight_desired_pos
+for i in range(3):
+    P[(i+1) * nb_total_variables_per_coordinate - 3, (i + 1) * nb_total_variables_per_coordinate - 3] = opt_weight_desired_pos[i]
+    P[(i+1) * nb_total_variables_per_coordinate - 2, (i + 1) * nb_total_variables_per_coordinate - 2] = opt_weight_desired_vel[i]
 
-P[nb_total_variables_per_coordinate - 2, nb_total_variables_per_coordinate - 2] = opt_weight_desired_vel
-P[2*nb_total_variables_per_coordinate - 2, 2*nb_total_variables_per_coordinate - 2] = opt_weight_desired_vel
-P[3*nb_total_variables_per_coordinate - 2, 3*nb_total_variables_per_coordinate - 2] = opt_weight_desired_vel
+    q[(i+1) * nb_total_variables_per_coordinate - 3] = - opt_weight_desired_pos[i] * p_N_des[i]
+    q[(i+1) * nb_total_variables_per_coordinate - 2] = - opt_weight_desired_vel[i] * v_N_des[i]
 
 P = csr_matrix(P)
-
-q = np.zeros((nb_total_variables, 1))
-q[nb_total_variables_per_coordinate - 3] = -2 * opt_weight_desired_pos * p_N_des_x
-q[2*nb_total_variables_per_coordinate - 3] = -2 * opt_weight_desired_pos * p_N_des_y
-q[3*nb_total_variables_per_coordinate - 3] = -2 * opt_weight_desired_pos * p_N_des_z
-
-q[nb_total_variables_per_coordinate - 2] = -2*opt_weight_desired_vel*v_N_des
-q[2*nb_total_variables_per_coordinate - 2] = -2*opt_weight_desired_vel*v_N_des
-q[3*nb_total_variables_per_coordinate - 2] = -2*opt_weight_desired_vel*v_N_des
 
 # q = csr_matrix(q)
 
@@ -57,8 +44,8 @@ A_eq_pos_vel_des[0, 0] = 1
 A_eq_pos_vel_des[1, 1] = 1
 A_eq_pos_vel_des[2, nb_total_variables_per_coordinate] = 1
 A_eq_pos_vel_des[3, nb_total_variables_per_coordinate + 1] = 1
-A_eq_pos_vel_des[4, 2*nb_total_variables_per_coordinate] = 1
-A_eq_pos_vel_des[5, 2*nb_total_variables_per_coordinate + 1] = 1
+A_eq_pos_vel_des[4, 2 * nb_total_variables_per_coordinate] = 1
+A_eq_pos_vel_des[5, 2 * nb_total_variables_per_coordinate + 1] = 1
 
 # dynamics points
 block_dynamics = np.zeros((2, 6))
@@ -96,8 +83,8 @@ for i in range(nb_total_variables_per_coordinate):
     A_limits[2*i:2*(i+1), 3*i:3*(i+1)] = block
 
 # raise foot
-T_keep = 33/100*Ts
-T_start_keep = 33/100*Ts
+T_keep = 33.333/100*Ts
+T_start_keep = 33.333/100*Ts
 T_end_keep = T_keep + T_start_keep
 n_keep = int(T_keep/dt)
 n_start_keep = int(T_start_keep/dt)
@@ -106,13 +93,13 @@ n_end_keep = n_keep + n_start_keep
 A_keep_foot = lil_matrix((n_keep, nb_total_variables))
 j = n_start_keep
 for i in range(n_keep):
-    A_keep_foot[i, 3 * j] = 1
+    A_keep_foot[i, 2*nb_total_variables_per_coordinate + 3*j] = 1
     j = j + 1
 
 A_total = spa.vstack([A_eq_pos_vel_des,
                     A_dynamics,
-                    A_limits])
-                    # A_keep_foot], format='csc')
+                    A_limits,
+                    A_keep_foot], format='csc')
 
 # ======== Create l, u matrices ========
 # boundary points
@@ -134,7 +121,7 @@ u_dynamics = np.vstack([u_dynamics_per_coordinate] * 3)
 
 # limits
 v_max = 100.0
-a_max = 300.0
+a_max = 100.0
 l_limits_per_coordinate = np.zeros((2 * N, 1))
 u_limits_per_coordinate = np.zeros((2 * N, 1))
 l_limits_per_coordinate[0::2] = -v_max
@@ -151,19 +138,20 @@ u_keep = foot_height_keep_STF*np.ones((n_keep, 1))
 
 l_total = np.vstack([l_boundary_pts,
                      l_dynamics,
-                     l_limits])
-                    #  l_keep])
+                     l_limits,
+                     l_keep])
 u_total = np.vstack([u_boundary_pts,
                      u_dynamics,
-                     u_limits])
-                    #  u_keep])
+                     u_limits,
+                     u_keep])
 
 prob = osqp.OSQP()
-max_iter = 20000
+max_iter = 200000
 eps_abs = 1.0e-05
 eps_rel = 1.0e-05
-prob.setup(P, q, A_total, l_total, u_total, max_iter=max_iter, eps_abs=eps_abs, eps_rel=eps_rel)
 
+
+prob.setup(P, q, A_total, l_total, u_total, max_iter=max_iter, eps_abs=eps_abs, eps_rel=eps_rel)
 results = prob.solve()
 
 x_opt = results.x
@@ -180,6 +168,7 @@ acc_opt_x = x_opt[2::3][0:N]
 acc_opt_y = x_opt[2::3][N:2*N]
 acc_opt_z = x_opt[2::3][2*N:3*N]
 
+print('square sum acc', np.sum(acc_opt_x**2 + acc_opt_y**2 + acc_opt_z**2))
 
 import matplotlib.pyplot as plt
 plt.rcParams.update({
@@ -196,29 +185,38 @@ plt.rcParams.update({
 
 fig, axs = plt.subplots(3, 3, figsize=(30, 10))
 t = np.arange(0, Ts, dt)
+axs[0, 0].set_title('x')
 axs[0, 0].plot(t, pos_opt_x, '.-r', label='pos')
 axs[0, 0].plot(0, p0_desired, 'o')
-axs[0, 0].plot(t[-1], p_N_des_x, 'o')
+axs[0, 0].set_ylabel('x [m]')
+axs[0, 0].plot(t[-1], p_N_des[0], 'o')
 axs[1, 0].plot(t, vel_opt_x, '.-g', label='vel')
 axs[1, 0].plot(0, v0_desired, 'o')
+axs[1, 0].set_ylabel('v [m/s]')
 # axs[1].plot(t[-1], v_N_desired, 'o')
 axs[2, 0].plot(t, acc_opt_x, '.-b', label='acc')
+axs[2, 0].set_ylabel('a [m/s^2]')
+axs[2, 0].set_xlabel('t [s]')
 
+axs[0, 1].set_title('y')
 axs[0, 1].plot(t, pos_opt_y, '.-r', label='pos')
 axs[0, 1].plot(0, p0_desired, 'o')
-axs[0, 1].plot(t[-1], p_N_des_y, 'o')
+axs[0, 1].plot(t[-1], p_N_des[1], 'o')
 axs[1, 1].plot(t, vel_opt_y, '.-g', label='vel')
 axs[1, 1].plot(0, v0_desired, 'o')
 # axs[1].plot(t[-1], v_N_desired, 'o')
 axs[2, 1].plot(t, acc_opt_y, '.-b', label='acc')
+axs[2, 1].set_xlabel('t [s]')
 
+axs[0, 2].set_title('z')
 axs[0, 2].plot(t, pos_opt_z, '.-r', label='pos')
 axs[0, 2].plot(0, p0_desired, 'o')
-axs[0, 2].plot(t[-1], p_N_des_z, 'o')
+axs[0, 2].plot(t[-1], p_N_des[2], 'o')
 axs[1, 2].plot(t, vel_opt_z, '.-g', label='vel')
 axs[1, 2].plot(0, v0_desired, 'o')
 # axs[1].plot(t[-1], v_N_desired, 'o')
 axs[2, 2].plot(t, acc_opt_z, '.-b', label='acc')
+axs[2, 2].set_xlabel('t [s]')
 
 plt.tight_layout()
 # [a.legend() for a in axs]
