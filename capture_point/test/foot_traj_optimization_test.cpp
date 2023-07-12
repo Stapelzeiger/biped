@@ -45,12 +45,13 @@ TEST(OptimizerFootTrajectoryTest, PMatrixQvecTest) {
     q_vec.resize(nb_total_variables, 1);
     q_vec.setZero();
 
-    P_matrix.insert(2, 2) = 1;
-    P_matrix.insert(5, 5) = 1;
-    P_matrix.insert(8, 8) = 1;
-    P_matrix.insert(11, 11) = 1;
-    P_matrix.insert(14, 14) = 1;
-    P_matrix.insert(17, 17) = 1;
+    double factor_acc = 0.001;
+    P_matrix.insert(2, 2) = factor_acc;
+    P_matrix.insert(5, 5) = factor_acc;
+    P_matrix.insert(8, 8) = factor_acc;
+    P_matrix.insert(11, 11) = factor_acc;
+    P_matrix.insert(14, 14) = factor_acc;
+    P_matrix.insert(17, 17) = factor_acc;
 
     P_matrix.insert(3, 3) = opt_weight_pos;
     P_matrix.insert(4, 4) = opt_weight_vel;
@@ -62,12 +63,12 @@ TEST(OptimizerFootTrajectoryTest, PMatrixQvecTest) {
     Eigen::MatrixXd dense_P_matrix = Eigen::MatrixXd(P_matrix);
     Eigen::MatrixXd dense_P_matrix_opt = Eigen::MatrixXd(opt.P_matrix_);
 
-    q_vec(3) = -2 * opt_weight_pos * p_N_des(0);
-    q_vec(4) = -2 * opt_weight_vel * v_N_des(0);
-    q_vec(9) = -2 * opt_weight_pos * p_N_des(1);
-    q_vec(10) = -2 * opt_weight_vel * v_N_des(1);
-    q_vec(15) = -2 * opt_weight_pos * p_N_des(2);
-    q_vec(16) = -2 * opt_weight_vel * v_N_des(2);
+    q_vec(3) = - opt_weight_pos * p_N_des(0);
+    q_vec(4) = - opt_weight_vel * v_N_des(0);
+    q_vec(9) = - opt_weight_pos * p_N_des(1);
+    q_vec(10) = - opt_weight_vel * v_N_des(1);
+    q_vec(15) = - opt_weight_pos * p_N_des(2);
+    q_vec(16) = - opt_weight_vel * v_N_des(2);
 
     std::cout << q_vec << std::endl;
     std::cout << opt.q_vec_ << std::endl;
