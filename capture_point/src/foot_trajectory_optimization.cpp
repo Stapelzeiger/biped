@@ -1,38 +1,212 @@
 #include "OsqpEigen/OsqpEigen.h"
 #include <Eigen/Dense>
+#include <Eigen/Sparse>
 #include "foot_trajectory_optimization.hpp"
+#include <fstream>
 
 OptimizerFootTrajectory::OptimizerFootTrajectory(double dt, double Ts)
 {
     Ts_ = Ts;
     dt_ = dt;
+    T_since_beginning_of_step_ = 0.0; // todo treat the case when T since beginning step = 0.5
+
     N_ = static_cast<int>(Ts_ / dt_);
-    nb_total_variables_per_coord_ = 3 * N_; // p, v, z
+    nb_total_variables_per_coord_ = 3 * N_; // p, v, a
     nb_total_variables_ = 3 * nb_total_variables_per_coord_; // x, y, z
-    T_since_beginning_of_step_ = 0.0;
+
+    // OSQP Solver Settings:
+    solver_.settings()->setWarmStart(true);
+    solver_.settings()->setVerbosity(true);
+    solver_.settings()->setAbsoluteTolerance(1e-4);
+    solver_.settings()->setRelativeTolerance(1e-4);
+
+    run_optimization_ = true;
 }
 
 OptimizerFootTrajectory::~OptimizerFootTrajectory()
 {
 }
 
-void OptimizerFootTrajectory::set_initial_pos_and_vel(Eigen::Vector3d initial_position) // questionable
+void OptimizerFootTrajectory::update_nb_variables(double T_since_beginning_of_step)
 {
-    computed_foot_pos_ = initial_position;
-    computed_foot_vel_ = Eigen::Vector3d::Zero();
+    N_ = N_ - 1;
+    T_since_beginning_of_step_ = T_since_beginning_of_step;
+    nb_total_variables_per_coord_ = 3 * N_; // p, v, a
+    nb_total_variables_ = 3 * nb_total_variables_per_coord_; // x, y, z
+
+    if (T_since_beginning_of_step_ > 90/100*Ts_) {
+        std::cout << "Freeze the optimization problem and keep integrating open loop" << std::endl;
+        run_optimization_ = false;
+    }
+
+    if (T_since_beginning_of_step_ == 0.0) {
+        std::cout << "Reset the optimization problem" << std::endl;
+        N_ = static_cast<int>(Ts_ / dt_);
+        run_optimization_ = true;
+    }
+
 }
 
-
-void OptimizerFootTrajectory::update_optimization_matrices()
+bool OptimizerFootTrajectory::update_P_and_q_matrices(Eigen::Vector3d opt_weight_pos,
+                                                    Eigen::Vector3d opt_weight_vel,
+                                                    Eigen::Vector3d p_N_des,
+                                                    Eigen::Vector3d v_N_des)
 {
+    P_matrix_.resize(nb_total_variables_, nb_total_variables_);
+    P_matrix_.setZero();
+    q_vec_.resize(nb_total_variables_, 1);
+    q_vec_.setZero();
+
+    for (int i = 0; i < nb_total_variables_per_coord_; i++) {
+        P_matrix_.insert(i * 3 + 2, i * 3 + 2) = 0.001; // accelerations
+    }
+
+    for (int i = 0; i < 3; i++) {
+        P_matrix_.insert((i+1) * nb_total_variables_per_coord_ - 3, (i+1) * nb_total_variables_per_coord_ - 3) = opt_weight_pos(i); // final pos
+        P_matrix_.insert((i+1) * nb_total_variables_per_coord_ - 2, (i+1) * nb_total_variables_per_coord_ - 2) = opt_weight_vel(i); // final vel
+        q_vec_((i+1) * nb_total_variables_per_coord_ - 3) = - opt_weight_pos(i) * p_N_des(i);
+        q_vec_((i+1) * nb_total_variables_per_coord_ - 2) = - opt_weight_vel(i) * v_N_des(i);
+    }
+
+    return true;
+}
+
+void OptimizerFootTrajectory::update_linear_matrix_and_bounds(Eigen::Vector3d p_0_des,
+                                                              Eigen::Vector3d v_0_des,
+                                                              double v_max,
+                                                              double a_max)
+{
+    // ======== Create A matrix ========
+    Eigen::MatrixXd A_eq_pos_vel_des = Eigen::MatrixXd::Zero(6, nb_total_variables_);
+    A_eq_pos_vel_des(0, 0) = 1;
+    A_eq_pos_vel_des(1, 1) = 1;
+    A_eq_pos_vel_des(2, nb_total_variables_per_coord_) = 1;
+    A_eq_pos_vel_des(3, nb_total_variables_per_coord_ + 1) = 1;
+    A_eq_pos_vel_des(4, 2 * nb_total_variables_per_coord_) = 1;
+    A_eq_pos_vel_des(5, 2 * nb_total_variables_per_coord_ + 1) = 1;
+
+    Eigen::MatrixXd block_dynamics = Eigen::MatrixXd::Zero(2, 6);
+    block_dynamics(0, 0) = 1;
+    block_dynamics(0, 1) = dt_;
+    block_dynamics(0, 3) = -1;
+    block_dynamics(1, 1) = 1;
+    block_dynamics(1, 2) = dt_;
+    block_dynamics(1, 4) = -1;
+
+    int A_dynamics_per_coordinate_rows = 2 * N_ - 2;
+    int A_dynamics_per_coordinate_cols = 3 * N_;
+    Eigen::MatrixXd A_dynamics_per_coordinate = Eigen::MatrixXd::Zero(A_dynamics_per_coordinate_rows, A_dynamics_per_coordinate_cols);
+
+    int j = 0;
+    for (int i = 0; i < A_dynamics_per_coordinate_rows / 2; i++) {
+        A_dynamics_per_coordinate.block<2, 6>(j, i * 3) = block_dynamics;
+        j += 2;
+    }
+
+    Eigen::MatrixXd A_dynamics(3 * A_dynamics_per_coordinate_rows, nb_total_variables_);
+
+    for (int i = 0; i < 3; i++) {
+        A_dynamics.block(i * A_dynamics_per_coordinate_rows, i * A_dynamics_per_coordinate_cols,
+                        A_dynamics_per_coordinate_rows, A_dynamics_per_coordinate_cols) = A_dynamics_per_coordinate;
+    }
+
+    Eigen::MatrixXd block = Eigen::MatrixXd::Zero(2, 3);
+    block(0, 1) = 1;
+    block(1, 2) = 1;
+    Eigen::MatrixXd A_limits = Eigen::MatrixXd::Zero(nb_total_variables_per_coord_ * 2, nb_total_variables_);
+
+    for (int i = 0; i < nb_total_variables_per_coord_; i++) {
+        A_limits.block<2, 3>(2 * i, 3 * i) = block;
+    }
+
+    double T_keep = 33.333/100*Ts_;
+    double T_start_keep = 33.333/100*Ts_;
+    double T_end_keep = T_keep + T_start_keep;
+    int n_keep = static_cast<int>(T_keep / dt_);
+    int n_start_keep = static_cast<int>(T_start_keep / dt_);
+    int n_end_keep = n_keep + n_start_keep;
+    Eigen::MatrixXd A_keep_foot = Eigen::MatrixXd::Zero(n_keep, nb_total_variables_);
+
+    j = n_start_keep;
+    for (int i = 0; i < n_keep; i++)
+    {
+        A_keep_foot(i, 2*nb_total_variables_per_coord_ + 3 * j) = 1;
+        j = j + 1;
+    }
+
+    Eigen::MatrixXd A_matrix_dense;
+    A_matrix_dense.resize(A_eq_pos_vel_des.rows() + A_dynamics.rows() + A_limits.rows() + A_keep_foot.rows(), nb_total_variables_);
+    A_matrix_dense.setZero();
+    A_matrix_dense.topRows(A_eq_pos_vel_des.rows()) = A_eq_pos_vel_des;
+    A_matrix_dense.middleRows(A_eq_pos_vel_des.rows(), A_dynamics.rows()) = A_dynamics;
+    A_matrix_dense.middleRows(A_eq_pos_vel_des.rows() + A_dynamics.rows(), A_limits.rows()) = A_limits;
+    A_matrix_dense.bottomRows(A_keep_foot.rows()) = A_keep_foot;
+
+    // Convert to sparse matrix
+    A_matrix_ = Eigen::SparseMatrix<double>(A_matrix_dense.rows(), A_matrix_dense.cols());
+    A_matrix_.reserve(A_matrix_dense.nonZeros());
+    for (int k = 0; k < A_matrix_dense.outerSize(); ++k) {
+        for (Eigen::MatrixXd::InnerIterator it(A_matrix_dense, k); it; ++it) {
+            A_matrix_.insert(it.row(), it.col()) = it.value();
+        }
+    }
+
+
+    // ======== Create l, u matrices ========
+    Eigen::MatrixXd l_boundary_pts(6, 1);
+    Eigen::MatrixXd u_boundary_pts(6, 1);
+    
+    l_boundary_pts << p_0_des(0), v_0_des(0), p_0_des(1), v_0_des(1), p_0_des(2), v_0_des(2);
+    u_boundary_pts << p_0_des(0), v_0_des(0), p_0_des(1), v_0_des(1), p_0_des(2), v_0_des(2);
+
+    Eigen::MatrixXd l_dynamics = Eigen::MatrixXd::Zero(A_dynamics.rows(), 1);
+    Eigen::MatrixXd u_dynamics = Eigen::MatrixXd::Zero(A_dynamics.rows(), 1);
+
+    Eigen::MatrixXd l_limits = Eigen::MatrixXd::Zero(3 * 2 * N_, 1);
+    Eigen::MatrixXd u_limits = Eigen::MatrixXd::Zero(3 * 2 * N_, 1);
+    for (int i = 0; i < 3 * 2 * N_; i += 2) {
+        l_limits(i) = -v_max;
+        l_limits(i+1) = -a_max;
+        u_limits(i) = v_max;
+        u_limits(i+1) = a_max;
+    }
+
+    double foot_height_keep = 0.2;
+    Eigen::MatrixXd l_keep_foot = foot_height_keep * Eigen::MatrixXd::Ones(n_keep, 1);
+    Eigen::MatrixXd u_keep_foot = foot_height_keep * Eigen::MatrixXd::Ones(n_keep, 1);
+
+
+    l_vec_.resize(l_boundary_pts.rows() + l_dynamics.rows() + l_limits.rows() + l_keep_foot.rows(), 1);
+    l_vec_ << l_boundary_pts, l_dynamics, l_limits, l_keep_foot;
+
+    u_vec_.resize(u_boundary_pts.rows() + u_dynamics.rows() + u_limits.rows() + u_keep_foot.rows(), 1);
+    u_vec_ << u_boundary_pts, u_dynamics, u_limits, u_keep_foot;
 }
 
 void OptimizerFootTrajectory::create_optimization_pb()
 {
+    solver_.data()->setNumberOfVariables(nb_total_variables_);
+    int nb_of_constraints = A_matrix_.rows();
+    solver_.data()->setNumberOfConstraints(nb_of_constraints);
+    solver_.data()->setHessianMatrix(P_matrix_);
+    solver_.data()->setGradient(q_vec_);
+    solver_.data()->setLinearConstraintsMatrix(A_matrix_);
+    solver_.data()->setLowerBound(l_vec_);
+    solver_.data()->setUpperBound(u_vec_);
+
+    solver_.initSolver();
+
 }
 
 Eigen::VectorXd OptimizerFootTrajectory::solve()
 {
+    Eigen::Vector4d ctr;
+    Eigen::VectorXd QPSolution;
+    solver_.solveProblem();
+
+    QPSolution = solver_.getSolution();
+    return QPSolution;
+    
 }
 
 void OptimizerFootTrajectory::integrate_trajectory_forward(Eigen::Vector3d foot_position, Eigen::Vector3d foot_velocity, Eigen::Vector3d foot_acceleration)
@@ -55,287 +229,60 @@ Eigen::Vector3d OptimizerFootTrajectory::getComputedFootVel()
 }
 
 
-// int main()
-// {
-// }
+int main()
+{
+    OptimizerFootTrajectory opt(0.01, 0.3);
 
-// void setDynamicsMatrices(Eigen::Matrix<double, 12, 12> &a, Eigen::Matrix<double, 12, 4> &b)
-// {
-//     a << 1.,      0.,     0., 0., 0., 0., 0.1,     0.,     0.,  0.,     0.,     0.    ,
-//         0.,      1.,     0., 0., 0., 0., 0.,      0.1,    0.,  0.,     0.,     0.    ,
-//         0.,      0.,     1., 0., 0., 0., 0.,      0.,     0.1, 0.,     0.,     0.    ,
-//         0.0488,  0.,     0., 1., 0., 0., 0.0016,  0.,     0.,  0.0992, 0.,     0.    ,
-//         0.,     -0.0488, 0., 0., 1., 0., 0.,     -0.0016, 0.,  0.,     0.0992, 0.    ,
-//         0.,      0.,     0., 0., 0., 1., 0.,      0.,     0.,  0.,     0.,     0.0992,
-//         0.,      0.,     0., 0., 0., 0., 1.,      0.,     0.,  0.,     0.,     0.    ,
-//         0.,      0.,     0., 0., 0., 0., 0.,      1.,     0.,  0.,     0.,     0.    ,
-//         0.,      0.,     0., 0., 0., 0., 0.,      0.,     1.,  0.,     0.,     0.    ,
-//         0.9734,  0.,     0., 0., 0., 0., 0.0488,  0.,     0.,  0.9846, 0.,     0.    ,
-//         0.,     -0.9734, 0., 0., 0., 0., 0.,     -0.0488, 0.,  0.,     0.9846, 0.    ,
-//         0.,      0.,     0., 0., 0., 0., 0.,      0.,     0.,  0.,     0.,     0.9846;
+    Eigen::Vector3d opt_weight_pos;
+    opt_weight_pos << 55000, 55000, 5500000;
+    Eigen::Vector3d opt_weight_vel;
+    opt_weight_vel << 55000, 55000, 5500000;
+    Eigen::Vector3d p_N_des;
+    Eigen::Vector3d v_N_des;
+    p_N_des << 0.2, 0.2, 0.0;
+    v_N_des << 0, 0, 0;
 
-//     b << 0.,      -0.0726,  0.,     0.0726,
-//         -0.0726,  0.,      0.0726, 0.    ,
-//         -0.0152,  0.0152, -0.0152, 0.0152,
-//         -0.,     -0.0006, -0.,     0.0006,
-//         0.0006,   0.,     -0.0006, 0.0000,
-//         0.0106,   0.0106,  0.0106, 0.0106,
-//         0,       -1.4512,  0.,     1.4512,
-//         -1.4512,  0.,      1.4512, 0.    ,
-//         -0.3049,  0.3049, -0.3049, 0.3049,
-//         -0.,     -0.0236,  0.,     0.0236,
-//         0.0236,   0.,     -0.0236, 0.    ,
-//         0.2107,   0.2107,  0.2107, 0.2107;
-// }
+    Eigen::Vector3d p_0_des;
+    Eigen::Vector3d v_0_des;
+    p_0_des << 0.0, 0.0, 0.0;
+    v_0_des << 0.0, 0.0, 0.0;
+    double v_max = 100;
+    double a_max = 100;
 
+    bool status_P_q_matrices;
+    status_P_q_matrices = opt.update_P_and_q_matrices(opt_weight_pos, opt_weight_vel, p_N_des, v_N_des);
+    opt.update_linear_matrix_and_bounds(p_0_des, v_0_des, v_max, a_max);
+    opt.create_optimization_pb();
 
-// void setInequalityConstraints(Eigen::Matrix<double, 12, 1> &xMax, Eigen::Matrix<double, 12, 1> &xMin,
-//                               Eigen::Matrix<double, 4, 1> &uMax, Eigen::Matrix<double, 4, 1> &uMin)
-// {
-//     double u0 = 10.5916;
+    Eigen::VectorXd sol;
+    sol = opt.solve();
 
-//     // input inequality constraints
-//     uMin << 9.6 - u0,
-//         9.6 - u0,
-//         9.6 - u0,
-//         9.6 - u0;
+    std::vector<Eigen::Vector3d> foot_position;
+    std::vector<Eigen::Vector3d> foot_velocity;
+    std::vector<Eigen::Vector3d> foot_acceleration;
+    // extract position, velocity and acceleration for x y z
+    for (int i = 0; i < opt.nb_total_variables_per_coord_ - 3; i = i + 3)
+    {
+        Eigen::Vector3d pos;
+        Eigen::Vector3d vel;
+        Eigen::Vector3d acc;
+        pos << sol(i), sol(i + opt.nb_total_variables_per_coord_), sol(i + 2 * opt.nb_total_variables_per_coord_);
+        vel << sol(i + 1), sol(i + 1 + opt.nb_total_variables_per_coord_), sol(i + 1 + 2 * opt.nb_total_variables_per_coord_);
+        acc << sol(i + 2), sol(i + 2 + opt.nb_total_variables_per_coord_), sol(i + 2 + 2 * opt.nb_total_variables_per_coord_);
+        foot_position.push_back(pos);
+        foot_velocity.push_back(vel);
+        foot_acceleration.push_back(acc);
+    }
 
-//     uMax << 13 - u0,
-//         13 - u0,
-//         13 - u0,
-//         13 - u0;
+    std::ofstream file("/home/sorina/Documents/code/biped_hardware/ros2_ws/src/biped/capture_point/test/output.csv");
+    file << "Position_X,Position_Y,Position_Z,Velocity_X,Velocity_Y,Velocity_Z,Acceleration_X,Acceleration_Y,Acceleration_Z\n";
+    for (int i = 0; i < foot_position.size(); i++)
+    {
+        file << foot_position[i](0) << "," << foot_position[i](1) << "," << foot_position[i](2) << ","
+            << foot_velocity[i](0) << "," << foot_velocity[i](1) << "," << foot_velocity[i](2) << ","
+            << foot_acceleration[i](0) << "," << foot_acceleration[i](1) << "," << foot_acceleration[i](2) << "\n";
+    }
+    file.close();
 
-//     // state inequality constraints
-//     xMin << -M_PI/6,-M_PI/6,-OsqpEigen::INFTY,-OsqpEigen::INFTY,-OsqpEigen::INFTY,-1.,
-//         -OsqpEigen::INFTY, -OsqpEigen::INFTY,-OsqpEigen::INFTY,-OsqpEigen::INFTY,
-//         -OsqpEigen::INFTY,-OsqpEigen::INFTY;
-
-//     xMax << M_PI/6,M_PI/6, OsqpEigen::INFTY,OsqpEigen::INFTY,OsqpEigen::INFTY,
-//         OsqpEigen::INFTY, OsqpEigen::INFTY,OsqpEigen::INFTY,OsqpEigen::INFTY,
-//         OsqpEigen::INFTY,OsqpEigen::INFTY,OsqpEigen::INFTY;
-// }
-
-// void setWeightMatrices(Eigen::DiagonalMatrix<double, 12> &Q, Eigen::DiagonalMatrix<double, 4> &R)
-// {
-//     Q.diagonal() << 0, 0, 10., 10., 10., 10., 0, 0, 0, 5., 5., 5.;
-//     R.diagonal() << 0.1, 0.1, 0.1, 0.1;
-// }
-
-// void castMPCToQPHessian(const Eigen::DiagonalMatrix<double, 12> &Q, const Eigen::DiagonalMatrix<double, 4> &R, int mpcWindow,
-//                         Eigen::SparseMatrix<double> &hessianMatrix)
-// {
-
-//     hessianMatrix.resize(12*(mpcWindow+1) + 4 * mpcWindow, 12*(mpcWindow+1) + 4 * mpcWindow);
-
-//     //populate hessian matrix
-//     for(int i = 0; i<12*(mpcWindow+1) + 4 * mpcWindow; i++){
-//         if(i < 12*(mpcWindow+1)){
-//             int posQ=i%12;
-//             float value = Q.diagonal()[posQ];
-//             if(value != 0)
-//                 hessianMatrix.insert(i,i) = value;
-//         }
-//         else{
-//             int posR=i%4;
-//             float value = R.diagonal()[posR];
-//             if(value != 0)
-//                 hessianMatrix.insert(i,i) = value;
-//         }
-//     }
-// }
-
-// void castMPCToQPGradient(const Eigen::DiagonalMatrix<double, 12> &Q, const Eigen::Matrix<double, 12, 1> &xRef, int mpcWindow,
-//                          Eigen::VectorXd &gradient)
-// {
-
-//     Eigen::Matrix<double,12,1> Qx_ref;
-//     Qx_ref = Q * (-xRef);
-
-//     // populate the gradient vector
-//     gradient = Eigen::VectorXd::Zero(12*(mpcWindow+1) +  4*mpcWindow, 1);
-//     for(int i = 0; i<12*(mpcWindow+1); i++){
-//         int posQ=i%12;
-//         float value = Qx_ref(posQ,0);
-//         gradient(i,0) = value;
-//     }
-// }
-
-// void castMPCToQPConstraintMatrix(const Eigen::Matrix<double, 12, 12> &dynamicMatrix, const Eigen::Matrix<double, 12, 4> &controlMatrix,
-//                                  int mpcWindow, Eigen::SparseMatrix<double> &constraintMatrix)
-// {
-//     constraintMatrix.resize(12*(mpcWindow+1)  + 12*(mpcWindow+1) + 4 * mpcWindow, 12*(mpcWindow+1) + 4 * mpcWindow);
-
-//     // populate linear constraint matrix
-//     for(int i = 0; i<12*(mpcWindow+1); i++){
-//         constraintMatrix.insert(i,i) = -1;
-//     }
-
-//     for(int i = 0; i < mpcWindow; i++)
-//         for(int j = 0; j<12; j++)
-//             for(int k = 0; k<12; k++){
-//                 float value = dynamicMatrix(j,k);
-//                 if(value != 0){
-//                     constraintMatrix.insert(12 * (i+1) + j, 12 * i + k) = value;
-//                 }
-//             }
-
-//     for(int i = 0; i < mpcWindow; i++)
-//         for(int j = 0; j < 12; j++)
-//             for(int k = 0; k < 4; k++){
-//                 float value = controlMatrix(j,k);
-//                 if(value != 0){
-//                     constraintMatrix.insert(12*(i+1)+j, 4*i+k+12*(mpcWindow + 1)) = value;
-//                 }
-//             }
-
-//     for(int i = 0; i<12*(mpcWindow+1) + 4*mpcWindow; i++){
-//         constraintMatrix.insert(i+(mpcWindow+1)*12,i) = 1;
-//     }
-// }
-
-// void castMPCToQPConstraintVectors(const Eigen::Matrix<double, 12, 1> &xMax, const Eigen::Matrix<double, 12, 1> &xMin,
-//                                    const Eigen::Matrix<double, 4, 1> &uMax, const Eigen::Matrix<double, 4, 1> &uMin,
-//                                    const Eigen::Matrix<double, 12, 1> &x0,
-//                                    int mpcWindow, Eigen::VectorXd &lowerBound, Eigen::VectorXd &upperBound)
-// {
-//     // evaluate the lower and the upper inequality vectors
-//     Eigen::VectorXd lowerInequality = Eigen::MatrixXd::Zero(12*(mpcWindow+1) +  4 * mpcWindow, 1);
-//     Eigen::VectorXd upperInequality = Eigen::MatrixXd::Zero(12*(mpcWindow+1) +  4 * mpcWindow, 1);
-//     for(int i=0; i<mpcWindow+1; i++){
-//         lowerInequality.block(12*i,0,12,1) = xMin;
-//         upperInequality.block(12*i,0,12,1) = xMax;
-//     }
-//     for(int i=0; i<mpcWindow; i++){
-//         lowerInequality.block(4 * i + 12 * (mpcWindow + 1), 0, 4, 1) = uMin;
-//         upperInequality.block(4 * i + 12 * (mpcWindow + 1), 0, 4, 1) = uMax;
-//     }
-
-//     // evaluate the lower and the upper equality vectors
-//     Eigen::VectorXd lowerEquality = Eigen::MatrixXd::Zero(12*(mpcWindow+1),1 );
-//     Eigen::VectorXd upperEquality;
-//     lowerEquality.block(0,0,12,1) = -x0;
-//     upperEquality = lowerEquality;
-//     lowerEquality = lowerEquality;
-
-//     // merge inequality and equality vectors
-//     lowerBound = Eigen::MatrixXd::Zero(2*12*(mpcWindow+1) +  4*mpcWindow,1 );
-//     lowerBound << lowerEquality,
-//         lowerInequality;
-
-//     upperBound = Eigen::MatrixXd::Zero(2*12*(mpcWindow+1) +  4*mpcWindow,1 );
-//     upperBound << upperEquality,
-//         upperInequality;
-// }
-
-
-// void updateConstraintVectors(const Eigen::Matrix<double, 12, 1> &x0,
-//                              Eigen::VectorXd &lowerBound, Eigen::VectorXd &upperBound)
-// {
-//     lowerBound.block(0,0,12,1) = -x0;
-//     upperBound.block(0,0,12,1) = -x0;
-// }
-
-
-// double getErrorNorm(const Eigen::Matrix<double, 12, 1> &x,
-//                     const Eigen::Matrix<double, 12, 1> &xRef)
-// {
-//     // evaluate the error
-//     Eigen::Matrix<double, 12, 1> error = x - xRef;
-
-//     // return the norm
-//     return error.norm();
-// }
-
-
-// int main()
-// {
-//     // set the preview window
-//     int mpcWindow = 20;
-
-//     // allocate the dynamics matrices
-//     Eigen::Matrix<double, 12, 12> a;
-//     Eigen::Matrix<double, 12, 4> b;
-
-//     // allocate the constraints vector
-//     Eigen::Matrix<double, 12, 1> xMax;
-//     Eigen::Matrix<double, 12, 1> xMin;
-//     Eigen::Matrix<double, 4, 1> uMax;
-//     Eigen::Matrix<double, 4, 1> uMin;
-
-//     // allocate the weight matrices
-//     Eigen::DiagonalMatrix<double, 12> Q;
-//     Eigen::DiagonalMatrix<double, 4> R;
-
-//     // allocate the initial and the reference state space
-//     Eigen::Matrix<double, 12, 1> x0;
-//     Eigen::Matrix<double, 12, 1> xRef;
-
-//     // allocate QP problem matrices and vectores
-//     Eigen::SparseMatrix<double> hessian;
-//     Eigen::VectorXd gradient;
-//     Eigen::SparseMatrix<double> linearMatrix;
-//     Eigen::VectorXd lowerBound;
-//     Eigen::VectorXd upperBound;
-
-//     // set the initial and the desired states
-//     x0 << 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ;
-//     xRef <<  0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0;
-
-//     // set MPC problem quantities
-//     setDynamicsMatrices(a, b);
-//     setInequalityConstraints(xMax, xMin, uMax, uMin);
-//     setWeightMatrices(Q, R);
-
-//     // cast the MPC problem as QP problem
-//     castMPCToQPHessian(Q, R, mpcWindow, hessian);
-//     castMPCToQPGradient(Q, xRef, mpcWindow, gradient);
-//     castMPCToQPConstraintMatrix(a, b, mpcWindow, linearMatrix);
-//     castMPCToQPConstraintVectors(xMax, xMin, uMax, uMin, x0, mpcWindow, lowerBound, upperBound);
-
-//     // instantiate the solver
-//     OsqpEigen::Solver solver;
-
-//     // settings
-//     //solver.settings()->setVerbosity(false);
-//     solver.settings()->setWarmStart(true);
-
-//     // set the initial data of the QP solver
-//     solver.data()->setNumberOfVariables(12 * (mpcWindow + 1) + 4 * mpcWindow);
-//     solver.data()->setNumberOfConstraints(2 * 12 * (mpcWindow + 1) + 4 * mpcWindow);
-//     if(!solver.data()->setHessianMatrix(hessian)) return 1;
-//     if(!solver.data()->setGradient(gradient)) return 1;
-//     if(!solver.data()->setLinearConstraintsMatrix(linearMatrix)) return 1;
-//     if(!solver.data()->setLowerBound(lowerBound)) return 1;
-//     if(!solver.data()->setUpperBound(upperBound)) return 1;
-
-//     // instantiate the solver
-//     if(!solver.initSolver()) return 1;
-
-//     // controller input and QPSolution vector
-//     Eigen::Vector4d ctr;
-//     Eigen::VectorXd QPSolution;
-
-//     // number of iteration steps
-//     int numberOfSteps = 50;
-
-//     for (int i = 0; i < numberOfSteps; i++){
-
-//         // solve the QP problem
-//         if(solver.solveProblem() != OsqpEigen::ErrorExitFlag::NoError) return 1;
-
-//         // get the controller input
-//         QPSolution = solver.getSolution();
-//         ctr = QPSolution.block(12 * (mpcWindow + 1), 0, 4, 1);
-
-//         // save data into file
-//         auto x0Data = x0.data();
-
-//         // propagate the model
-//         x0 = a * x0 + b * ctr;
-
-//         // update the constraint bound
-//         updateConstraintVectors(x0, lowerBound, upperBound);
-//         if(!solver.updateBounds(lowerBound, upperBound)) return 1;
-//       }
-//     return 0;
-// }
+    return 0;
+}
