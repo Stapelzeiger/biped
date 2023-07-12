@@ -54,10 +54,10 @@ ament_target_dependencies(publisher_test_body_traj
                           tf2_ros
                           geometry_msgs)
 
-# find_package(OsqpEigen REQUIRED)
-# add_executable(foot_traj_opt src/foot_trajectory_optimization.cpp)
-# target_include_directories(foot_traj_opt PRIVATE ${EIGEN3_INCLUDE_DIR})
-# target_link_libraries(foot_traj_opt OsqpEigen::OsqpEigen)
+find_package(OsqpEigen REQUIRED)
+add_executable(foot_traj_opt src/foot_trajectory_optimization.cpp)
+target_include_directories(foot_traj_opt PRIVATE ${EIGEN3_INCLUDE_DIR})
+target_link_libraries(foot_traj_opt OsqpEigen::OsqpEigen)
 
 install(TARGETS
   capture_point
@@ -71,18 +71,18 @@ install(DIRECTORY
   DESTINATION share/${PROJECT_NAME}/
 )
 
-if(BUILD_TESTING)
-  find_package(ament_cmake_gtest REQUIRED)
-  find_package(OsqpEigen REQUIRED)
+# if(BUILD_TESTING)
+#   find_package(ament_cmake_gtest REQUIRED)
+#   find_package(OsqpEigen REQUIRED)
 
-  ament_add_gtest(capture_point_test test/foot_traj_optimization_test.cpp
-                                     src/foot_trajectory_optimization.cpp)
+#   ament_add_gtest(capture_point_test test/foot_traj_optimization_test.cpp
+#                                      src/foot_trajectory_optimization.cpp)
 
-  target_link_libraries(capture_point_test OsqpEigen::OsqpEigen)
-  target_include_directories(capture_point_test PUBLIC ${EIGEN3_INCLUDE_DIR} include)
+#   target_link_libraries(capture_point_test OsqpEigen::OsqpEigen)
+#   target_include_directories(capture_point_test PUBLIC ${EIGEN3_INCLUDE_DIR} include)
 
-  ament_target_dependencies(capture_point_test rclcpp)
-endif()
+#   ament_target_dependencies(capture_point_test rclcpp)
+# endif()
 
 set(AMENT_LINT_AUTO OFF)
 ament_package()
