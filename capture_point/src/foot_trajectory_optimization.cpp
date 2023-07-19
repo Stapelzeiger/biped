@@ -15,10 +15,11 @@ OptimizerFootTrajectory::OptimizerFootTrajectory(double dt, double Ts)
     nb_total_variables_ = 3 * nb_total_variables_per_coord_; // x, y, z
 
     // OSQP Solver Settings:
-    solver_.settings()->setWarmStart(true);
+    solver_.settings()->setWarmStart(false);
     solver_.settings()->setVerbosity(true);
     solver_.settings()->setAbsoluteTolerance(1e-4);
     solver_.settings()->setRelativeTolerance(1e-4);
+    solver_.settings()->setMaxIteration(6000);
 
     run_optimization_ = true;
 }
@@ -47,7 +48,7 @@ void OptimizerFootTrajectory::update_nb_variables(double T_since_beginning_of_st
 
 }
 
-bool OptimizerFootTrajectory::update_P_and_q_matrices(Eigen::Vector3d opt_weight_pos,
+void OptimizerFootTrajectory::update_P_and_q_matrices(Eigen::Vector3d opt_weight_pos,
                                                     Eigen::Vector3d opt_weight_vel,
                                                     Eigen::Vector3d p_N_des,
                                                     Eigen::Vector3d v_N_des)
@@ -68,7 +69,6 @@ bool OptimizerFootTrajectory::update_P_and_q_matrices(Eigen::Vector3d opt_weight
         q_vec_((i+1) * nb_total_variables_per_coord_ - 2) = - opt_weight_vel(i) * v_N_des(i);
     }
 
-    return true;
 }
 
 void OptimizerFootTrajectory::update_linear_matrix_and_bounds(Eigen::Vector3d p_0_des,
@@ -98,12 +98,13 @@ void OptimizerFootTrajectory::update_linear_matrix_and_bounds(Eigen::Vector3d p_
     Eigen::MatrixXd A_dynamics_per_coordinate = Eigen::MatrixXd::Zero(A_dynamics_per_coordinate_rows, A_dynamics_per_coordinate_cols);
 
     int j = 0;
-    for (int i = 0; i < A_dynamics_per_coordinate_rows / 2; i++) {
+    for (int i = 0; i < N_ - 1; i++) {
         A_dynamics_per_coordinate.block<2, 6>(j, i * 3) = block_dynamics;
         j += 2;
     }
 
     Eigen::MatrixXd A_dynamics(3 * A_dynamics_per_coordinate_rows, nb_total_variables_);
+    A_dynamics.setZero();
 
     for (int i = 0; i < 3; i++) {
         A_dynamics.block(i * A_dynamics_per_coordinate_rows, i * A_dynamics_per_coordinate_cols,
@@ -121,10 +122,8 @@ void OptimizerFootTrajectory::update_linear_matrix_and_bounds(Eigen::Vector3d p_
 
     double T_keep = 33.333/100*Ts_;
     double T_start_keep = 33.333/100*Ts_;
-    double T_end_keep = T_keep + T_start_keep;
     int n_keep = static_cast<int>(T_keep / dt_);
     int n_start_keep = static_cast<int>(T_start_keep / dt_);
-    int n_end_keep = n_keep + n_start_keep;
     Eigen::MatrixXd A_keep_foot = Eigen::MatrixXd::Zero(n_keep, nb_total_variables_);
 
     j = n_start_keep;
@@ -142,15 +141,7 @@ void OptimizerFootTrajectory::update_linear_matrix_and_bounds(Eigen::Vector3d p_
     A_matrix_dense.middleRows(A_eq_pos_vel_des.rows() + A_dynamics.rows(), A_limits.rows()) = A_limits;
     A_matrix_dense.bottomRows(A_keep_foot.rows()) = A_keep_foot;
 
-    // Convert to sparse matrix
-    A_matrix_ = Eigen::SparseMatrix<double>(A_matrix_dense.rows(), A_matrix_dense.cols());
-    A_matrix_.reserve(A_matrix_dense.nonZeros());
-    for (int k = 0; k < A_matrix_dense.outerSize(); ++k) {
-        for (Eigen::MatrixXd::InnerIterator it(A_matrix_dense, k); it; ++it) {
-            A_matrix_.insert(it.row(), it.col()) = it.value();
-        }
-    }
-
+    A_matrix_ = A_matrix_dense.sparseView();
 
     // ======== Create l, u matrices ========
     Eigen::MatrixXd l_boundary_pts(6, 1);
@@ -166,9 +157,9 @@ void OptimizerFootTrajectory::update_linear_matrix_and_bounds(Eigen::Vector3d p_
     Eigen::MatrixXd u_limits = Eigen::MatrixXd::Zero(3 * 2 * N_, 1);
     for (int i = 0; i < 3 * 2 * N_; i += 2) {
         l_limits(i) = -v_max;
-        l_limits(i+1) = -a_max;
+        l_limits(i + 1) = -a_max;
         u_limits(i) = v_max;
-        u_limits(i+1) = a_max;
+        u_limits(i + 1) = a_max;
     }
 
     double foot_height_keep = 0.2;
@@ -249,8 +240,7 @@ int main()
     double v_max = 100;
     double a_max = 100;
 
-    bool status_P_q_matrices;
-    status_P_q_matrices = opt.update_P_and_q_matrices(opt_weight_pos, opt_weight_vel, p_N_des, v_N_des);
+    opt.update_P_and_q_matrices(opt_weight_pos, opt_weight_vel, p_N_des, v_N_des);
     opt.update_linear_matrix_and_bounds(p_0_des, v_0_des, v_max, a_max);
     opt.create_optimization_pb();
 
@@ -261,7 +251,7 @@ int main()
     std::vector<Eigen::Vector3d> foot_velocity;
     std::vector<Eigen::Vector3d> foot_acceleration;
     // extract position, velocity and acceleration for x y z
-    for (int i = 0; i < opt.nb_total_variables_per_coord_ - 3; i = i + 3)
+    for (int i = 0; i < opt.nb_total_variables_per_coord_; i = i + 3)
     {
         Eigen::Vector3d pos;
         Eigen::Vector3d vel;
@@ -274,9 +264,11 @@ int main()
         foot_acceleration.push_back(acc);
     }
 
+
+
     std::ofstream file("/home/sorina/Documents/code/biped_hardware/ros2_ws/src/biped/capture_point/test/output.csv");
     file << "Position_X,Position_Y,Position_Z,Velocity_X,Velocity_Y,Velocity_Z,Acceleration_X,Acceleration_Y,Acceleration_Z\n";
-    for (int i = 0; i < foot_position.size(); i++)
+    for (unsigned int i = 0; i < foot_position.size(); i++)
     {
         file << foot_position[i](0) << "," << foot_position[i](1) << "," << foot_position[i](2) << ","
             << foot_velocity[i](0) << "," << foot_velocity[i](1) << "," << foot_velocity[i](2) << ","

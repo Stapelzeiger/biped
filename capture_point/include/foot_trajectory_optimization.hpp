@@ -27,7 +27,7 @@ public:
 public:
     OptimizerFootTrajectory(double dt, double Ts);
     ~OptimizerFootTrajectory();
-    bool update_P_and_q_matrices(Eigen::Vector3d opt_weight_pos,
+    void update_P_and_q_matrices(Eigen::Vector3d opt_weight_pos,
                                  Eigen::Vector3d opt_weight_vel,
                                  Eigen::Vector3d p_N_des,
                                  Eigen::Vector3d v_N_des);
