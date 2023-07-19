@@ -17,9 +17,9 @@ OptimizerFootTrajectory::OptimizerFootTrajectory(double dt, double Ts)
     // OSQP Solver Settings:
     solver_.settings()->setWarmStart(false);
     solver_.settings()->setVerbosity(true);
-    solver_.settings()->setAbsoluteTolerance(1e-4);
-    solver_.settings()->setRelativeTolerance(1e-4);
-    solver_.settings()->setMaxIteration(6000);
+    solver_.settings()->setAbsoluteTolerance(1e-5);
+    solver_.settings()->setRelativeTolerance(1e-5);
+    solver_.settings()->setMaxIteration(30000);
 
     run_optimization_ = true;
 }
@@ -266,7 +266,7 @@ int main()
 
 
 
-    std::ofstream file("/home/sorina/Documents/code/biped_hardware/ros2_ws/src/biped/capture_point/test/output.csv");
+    std::ofstream file("/home/sorina/Documents/code/biped_hardware/ros2_ws/src/biped/capture_point/test/output_foot_traj_cpp.csv");
     file << "Position_X,Position_Y,Position_Z,Velocity_X,Velocity_Y,Velocity_Z,Acceleration_X,Acceleration_Y,Acceleration_Z\n";
     for (unsigned int i = 0; i < foot_position.size(); i++)
     {
