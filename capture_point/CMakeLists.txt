@@ -27,8 +27,9 @@ find_package(Eigen3 REQUIRED)
 include_directories(include EIGEN3_INCLUDE_DIR)
 message(STATUS "EIGEN3_INCLUDE_DIR ${EIGEN3_INCLUDE_DIR}")
 
+find_package(OsqpEigen REQUIRED)
 
-add_executable(capture_point src/capture_point.cpp src/foot_trajectory.cpp)
+add_executable(capture_point src/capture_point.cpp src/trajectory_optimization.cpp)
 target_include_directories(capture_point PRIVATE ${EIGEN3_INCLUDE_DIR})
 ament_target_dependencies(capture_point 
                           rclcpp
@@ -41,6 +42,7 @@ ament_target_dependencies(capture_point
                           tf2
                           tf2_ros
                           visualization_msgs)
+target_link_libraries(capture_point OsqpEigen::OsqpEigen)
 
 add_executable(publisher_test_body_traj src/publisher_test_body_traj.cpp src/foot_trajectory.cpp)
 target_include_directories(publisher_test_body_traj PRIVATE ${EIGEN3_INCLUDE_DIR})
@@ -54,10 +56,9 @@ ament_target_dependencies(publisher_test_body_traj
                           tf2_ros
                           geometry_msgs)
 
-find_package(OsqpEigen REQUIRED)
-add_executable(foot_traj_opt src/foot_trajectory_optimization.cpp)
-target_include_directories(foot_traj_opt PRIVATE ${EIGEN3_INCLUDE_DIR})
-target_link_libraries(foot_traj_opt OsqpEigen::OsqpEigen)
+# add_executable(foot_traj_opt src/trajectory_optimization.cpp)
+# target_include_directories(foot_traj_opt PRIVATE ${EIGEN3_INCLUDE_DIR})
+# target_link_libraries(foot_traj_opt OsqpEigen::OsqpEigen)
 
 install(TARGETS
   capture_point
@@ -75,8 +76,8 @@ install(DIRECTORY
 #   find_package(ament_cmake_gtest REQUIRED)
 #   find_package(OsqpEigen REQUIRED)
 
-#   ament_add_gtest(capture_point_test test/foot_traj_optimization_test.cpp
-#                                      src/foot_trajectory_optimization.cpp)
+#   ament_add_gtest(capture_point_test test/traj_optimization_test.cpp
+#                                      src/trajectory_optimization.cpp)
 
 #   target_link_libraries(capture_point_test OsqpEigen::OsqpEigen)
 #   target_include_directories(capture_point_test PUBLIC ${EIGEN3_INCLUDE_DIR} include)
