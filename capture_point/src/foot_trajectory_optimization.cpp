@@ -291,7 +291,6 @@ int main()
                 foot_velocity.push_back(vel);
                 foot_acceleration.push_back(acc);
             }
-
         }
         else
         {
@@ -304,7 +303,6 @@ int main()
                                     foot_velocity,
                                     foot_acceleration);
         }
-
         std::string file_name;
         file_name = "/home/sorina/Documents/code/biped_hardware/ros2_ws/src/biped/capture_point/test/output_foot_traj_cpp_" + std::to_string(i) + ".csv";
         std::ofstream file(file_name);
@@ -321,10 +319,6 @@ int main()
         initial_vel = foot_velocity[1];
 
         T_since_beginning_of_step = T_since_beginning_of_step + dt;
-
     }
-
-
-
     return 0;
 }
