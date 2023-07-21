@@ -7,44 +7,47 @@
 class OptimizerFootTrajectory
 {
 public:
-    Eigen::SparseMatrix<double> P_matrix_;
-    Eigen::VectorXd q_vec_;
-    Eigen::SparseMatrix<double> A_matrix_;
-    Eigen::VectorXd l_vec_;
-    Eigen::VectorXd u_vec_;
     int N_;
     double Ts_;
     double dt_;
-    double T_since_beginning_of_step_;
     int nb_total_variables_per_coord_;
     int nb_total_variables_;
 
-    Eigen::Vector3d computed_foot_pos_;
-    Eigen::Vector3d computed_foot_vel_;
     OsqpEigen::Solver solver_;
     bool run_optimization_;
 
 public:
     OptimizerFootTrajectory(double dt, double Ts);
     ~OptimizerFootTrajectory();
-    void update_P_and_q_matrices(Eigen::Vector3d opt_weight_pos,
+    void get_P_and_q_matrices(Eigen::Vector3d opt_weight_pos,
                                  Eigen::Vector3d opt_weight_vel,
-                                 Eigen::Vector3d p_N_des,
-                                 Eigen::Vector3d v_N_des);
+                                 Eigen::Vector3d final_pos,
+                                 Eigen::Vector3d final_vel,
+                                 Eigen::SparseMatrix<double>& P_matrix,
+                                 Eigen::VectorXd& q_vec);
 
-    void update_linear_matrix_and_bounds(Eigen::Vector3d p_0_des,
-                                                                  Eigen::Vector3d v_0_des,
-                                                                  double v_max,
-                                                                  double a_max);
+    void get_linear_matrix_and_bounds(Eigen::Vector3d initial_pos,
+                                      Eigen::Vector3d initial_vel,
+                                      double T_since_begin_step,
+                                      Eigen::SparseMatrix<double>& A_matrix,
+                                      Eigen::VectorXd& l_vec,
+                                      Eigen::VectorXd& u_vec);
 
-    void update_nb_variables(double T_since_beginning_of_step);
+    void setup_optimization_pb(Eigen::SparseMatrix<double>& P_matrix,
+                                Eigen::VectorXd& q_vec,
+                                Eigen::SparseMatrix<double>& A_matrix,
+                                Eigen::VectorXd& l_vec,
+                                Eigen::VectorXd& u_vec);
+    Eigen::VectorXd solve_optimization_pb();
+    void get_traj_foot_pos_vel(double T_since_begin_step,
+                                Eigen::Vector3d initial_pos,
+                                Eigen::Vector3d initial_vel,
+                                Eigen::Vector3d final_pos,
+                                Eigen::Vector3d final_vel,
+                                std::vector<Eigen::Vector3d> &foot_pos,
+                                std::vector<Eigen::Vector3d> &foot_vel,
+                                std::vector<Eigen::Vector3d> &foot_acc);
 
-    void create_optimization_pb();
-    Eigen::VectorXd solve();
-    void integrate_trajectory_forward(Eigen::Vector3d foot_position, Eigen::Vector3d foot_velocity, Eigen::Vector3d foot_acceleration);
-
-    Eigen::Vector3d getComputedFootPos();
-    Eigen::Vector3d getComputedFootVel();
 };
 
 #endif //OPTIMIZER_FOOT_TRAJECTORY_H
