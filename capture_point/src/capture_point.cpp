@@ -51,6 +51,7 @@ public:
         state_ = "INIT";
         initialization_done_ = false;
         t_init_traj_ = 0.0;
+        swing_foot_traj_ = OptimizerTrajectory(robot_params.dt_ctrl, robot_params.t_step);
 
         r_foot_frame_id_ = this->declare_parameter<std::string>("r_foot_frame_id", "R_FOOT");
         l_foot_frame_id_ = this->declare_parameter<std::string>("l_foot_frame_id", "L_FOOT");
@@ -110,6 +111,8 @@ private:
         foot_traj_list_STF_.clear();
         start_opt_pos_swing_foot_ = swing_foot_position_beginning_of_step_STF_;
         start_opt_vel_swing_foot_ = Eigen::Vector3d::Zero();
+        swing_foot_traj_.set_initial_pos_vel(start_opt_pos_swing_foot_, start_opt_vel_swing_foot_);
+
     }
 
     void odometry_callback(nav_msgs::msg::Odometry::SharedPtr msg)
@@ -273,6 +276,7 @@ private:
             start_opt_vel_swing_foot_ = Eigen::Vector3d::Zero();
 
             foot_traj_list_STF_.clear(); // used for markers
+            swing_foot_traj_.set_initial_pos_vel(start_opt_pos_swing_foot_, start_opt_vel_swing_foot_);
 
             time_since_last_step_ = 0.0;
         }
@@ -324,10 +328,6 @@ private:
         Eigen::Vector3d vel_desired_swing_foot_STF;
         Eigen::Vector3d acc_desired_swing_foot_STF;
 
-        std::vector<Eigen::Vector3d> pos_desired_swing_foot_STF_vec;
-        std::vector<Eigen::Vector3d> vel_desired_swing_foot_STF_vec;
-        std::vector<Eigen::Vector3d> acc_desired_swing_foot_STF_vec;
-
         const double foot_separation = 0.1;
         Eigen::Vector2d swing_x_safe_box;
         Eigen::Vector2d swing_y_safe_box;
@@ -347,27 +347,11 @@ private:
             des_pos_foot_STF(1) = fmax( fmin( des_pos_foot_STF(1), swing_y_safe_box(1)), swing_y_safe_box(0));
         }
 
-        std::cout << "des_pos_foot_STF" << des_pos_foot_STF.transpose() << std::endl;
-        std::cout << "start_opt_pos_swing_foot_" << start_opt_pos_swing_foot_.transpose() << std::endl;
-
-        swing_foot_traj_.get_traj_pos_vel(robot_params.dt_ctrl,
-                                        robot_params.t_step,
-                                        time_since_last_step_,
-                                        start_opt_pos_swing_foot_,
-                                        start_opt_vel_swing_foot_,
+        swing_foot_traj_.compute_traj_pos_vel(time_since_last_step_,
                                         des_pos_foot_STF,
-                                        Eigen::Vector3d::Zero(),
-                                        pos_desired_swing_foot_STF_vec,
-                                        vel_desired_swing_foot_STF_vec,
-                                        acc_desired_swing_foot_STF_vec);
-
-
-        start_opt_pos_swing_foot_ = pos_desired_swing_foot_STF_vec[1];
-        start_opt_vel_swing_foot_ = vel_desired_swing_foot_STF_vec[1];
-
-        pos_desired_swing_foot_STF = pos_desired_swing_foot_STF_vec[0];
-        vel_desired_swing_foot_STF = vel_desired_swing_foot_STF_vec[0];
-        acc_desired_swing_foot_STF = acc_desired_swing_foot_STF_vec[0];
+                                        pos_desired_swing_foot_STF,
+                                        vel_desired_swing_foot_STF,
+                                        acc_desired_swing_foot_STF);
 
         double dt = robot_params.dt_ctrl;
         remaining_time_in_step_ = robot_params.t_step - time_since_last_step_;
