@@ -5,15 +5,16 @@
 #include <fstream>
 #include <chrono>
 
-OptimizerTrajectory::~OptimizerTrajectory(){}
+typedef Eigen::Triplet<double> T;
 
-OptimizerTrajectory::OptimizerTrajectory()
+OptimizerTrajectory::OptimizerTrajectory(double dt, double Ts)
 {
-    N_ = 0;
-    Ts_ = 0;
+    Ts_ = Ts;
     nb_total_variables_per_coord_ = 0;
     nb_total_variables_per_coord_ = 0;
-    dt_ = 0;
+    dt_ = dt;
+    solution_opt_start_time_ = 0.0;
+    N_ = static_cast<int>(Ts_ / dt_);
 
     // OSQP Solver Settings:
     solver_.settings()->setWarmStart(false);
@@ -57,15 +58,22 @@ void OptimizerTrajectory::get_linear_matrix_and_bounds(Eigen::Vector3d initial_p
                                                               Eigen::VectorXd& l_vec,
                                                               Eigen::VectorXd& u_vec)
 {
-    // ======== Create A matrix ========
-    Eigen::MatrixXd A_eq_pos_vel_des = Eigen::MatrixXd::Zero(6, nb_total_variables_);
-    A_eq_pos_vel_des(0, 0) = 1;
-    A_eq_pos_vel_des(1, 1) = 1;
-    A_eq_pos_vel_des(2, nb_total_variables_per_coord_) = 1;
-    A_eq_pos_vel_des(3, nb_total_variables_per_coord_ + 1) = 1;
-    A_eq_pos_vel_des(4, 2 * nb_total_variables_per_coord_) = 1;
-    A_eq_pos_vel_des(5, 2 * nb_total_variables_per_coord_ + 1) = 1;
+    // ======== Create A matrix, lower bound and upper bound for initial_conditions ========
+    std::vector<T> tripletList;
+    int nb_eq_constraints_pos_vel = 6;
+    tripletList.push_back(T(0, 0, 1));
+    tripletList.push_back(T(1, 1, 1));
+    tripletList.push_back(T(2, nb_total_variables_per_coord_, 1));
+    tripletList.push_back(T(3, nb_total_variables_per_coord_ + 1, 1));
+    tripletList.push_back(T(4, 2 * nb_total_variables_per_coord_, 1));
+    tripletList.push_back(T(5, 2 * nb_total_variables_per_coord_ + 1, 1));
 
+    Eigen::MatrixXd l_boundary_pts(nb_eq_constraints_pos_vel, 1);
+    Eigen::MatrixXd u_boundary_pts(nb_eq_constraints_pos_vel, 1);
+    l_boundary_pts << initial_pos(0), initial_vel(0), initial_pos(1), initial_vel(1), initial_pos(2), initial_vel(2);
+    u_boundary_pts << initial_pos(0), initial_vel(0), initial_pos(1), initial_vel(1), initial_pos(2), initial_vel(2);
+
+    // ======== Create A matrix, lower bound and upper bound for dynamics ========
     Eigen::MatrixXd block_dynamics = Eigen::MatrixXd::Zero(2, 6);
     block_dynamics(0, 0) = 1;
     block_dynamics(0, 1) = dt_;
@@ -74,40 +82,54 @@ void OptimizerTrajectory::get_linear_matrix_and_bounds(Eigen::Vector3d initial_p
     block_dynamics(1, 2) = dt_;
     block_dynamics(1, 4) = -1;
 
-    int A_dynamics_per_coordinate_rows = 2 * N_ - 2;
-    int A_dynamics_per_coordinate_cols = 3 * N_;
-    Eigen::MatrixXd A_dynamics_per_coordinate = Eigen::MatrixXd::Zero(A_dynamics_per_coordinate_rows, A_dynamics_per_coordinate_cols);
+    int A_dynamics_per_coord_rows = 2 * N_ - 2;
+    int A_dynamics_per_coord_cols = 3 * N_;
+    int nb_dynamics_constraints = 3 * A_dynamics_per_coord_rows;
 
-    int j = 0;
-    for (int i = 0; i < N_ - 1; i++) {
-        A_dynamics_per_coordinate.block<2, 6>(j, i * 3) = block_dynamics;
-        j += 2;
+    int j;
+    for (int bl_idx = 0; bl_idx < 3; bl_idx++) {
+        j = 0;
+        for (int i = 0; i < N_ - 1; i++) {
+            tripletList.push_back(T(nb_eq_constraints_pos_vel + bl_idx * A_dynamics_per_coord_rows + j, bl_idx * A_dynamics_per_coord_cols + i * 3, block_dynamics(0, 0)));
+            tripletList.push_back(T(nb_eq_constraints_pos_vel + bl_idx * A_dynamics_per_coord_rows + j, bl_idx * A_dynamics_per_coord_cols + i * 3 + 1, block_dynamics(0, 1)));
+            tripletList.push_back(T(nb_eq_constraints_pos_vel + bl_idx * A_dynamics_per_coord_rows + j, bl_idx * A_dynamics_per_coord_cols + i * 3 + 3, block_dynamics(0, 3)));
+            tripletList.push_back(T(nb_eq_constraints_pos_vel + bl_idx * A_dynamics_per_coord_rows + j + 1, bl_idx * A_dynamics_per_coord_cols + i * 3 + 1, block_dynamics(1, 1)));
+            tripletList.push_back(T(nb_eq_constraints_pos_vel + bl_idx * A_dynamics_per_coord_rows + j + 1, bl_idx * A_dynamics_per_coord_cols + i * 3 + 2, block_dynamics(1, 2)));
+            tripletList.push_back(T(nb_eq_constraints_pos_vel + bl_idx * A_dynamics_per_coord_rows + j + 1, bl_idx * A_dynamics_per_coord_cols + i * 3 + 4, block_dynamics(1, 4)));
+            j += 2;
+        }
     }
 
-    Eigen::MatrixXd A_dynamics(3 * A_dynamics_per_coordinate_rows, nb_total_variables_);
-    A_dynamics.setZero();
+    Eigen::MatrixXd l_dynamics = Eigen::MatrixXd::Zero(nb_dynamics_constraints, 1);
+    Eigen::MatrixXd u_dynamics = Eigen::MatrixXd::Zero(nb_dynamics_constraints, 1);
 
-    for (int i = 0; i < 3; i++) {
-        A_dynamics.block(i * A_dynamics_per_coordinate_rows, i * A_dynamics_per_coordinate_cols,
-                        A_dynamics_per_coordinate_rows, A_dynamics_per_coordinate_cols) = A_dynamics_per_coordinate;
+
+    // ======== Create A matrix, lower bound and upper bound for limits ========
+    int nb_limits_constraints;
+    bool use_limits = false;
+    if (use_limits == true)
+    {
+        nb_limits_constraints = 2 * nb_total_variables_per_coord_;
+        for (int i = 0; i < nb_total_variables_per_coord_; i++) {
+            tripletList.push_back(T(nb_eq_constraints_pos_vel + nb_dynamics_constraints + 2 * i, 3 * i + 1, 1));
+            tripletList.push_back(T(nb_eq_constraints_pos_vel + nb_dynamics_constraints + 2 * i + 1, 3 * i + 2, 1));
+        }
+    } else {
+        nb_limits_constraints = 0;
     }
 
-    // Eigen::MatrixXd A_limits = Eigen::MatrixXd::Zero(nb_total_variables_per_coord_ * 1, nb_total_variables_);
-    // for (int i = 0; i < nb_total_variables_per_coord_; i++) {
-    //     A_limits(i, 3 * i + 2) = 1.0;
-    // }
-
-
-    Eigen::MatrixXd block = Eigen::MatrixXd::Zero(2, 3);
-    block(0, 1) = 1;
-    block(1, 2) = 1;
-    Eigen::MatrixXd A_limits = Eigen::MatrixXd::Zero(nb_total_variables_per_coord_ * 2, nb_total_variables_);
-
-    for (int i = 0; i < nb_total_variables_per_coord_; i++) {
-        A_limits.block<2, 3>(2 * i, 3 * i) = block;
+    double a_max = 150;
+    double v_max = 10;
+    Eigen::MatrixXd l_limits = Eigen::MatrixXd::Zero(nb_limits_constraints, 1);
+    Eigen::MatrixXd u_limits = Eigen::MatrixXd::Zero(nb_limits_constraints, 1);
+    for (int i = 0; i < nb_limits_constraints; i += 2) {
+        l_limits(i) = -v_max;
+        l_limits(i + 1) = -a_max;
+        u_limits(i) = v_max;
+        u_limits(i + 1) = a_max;
     }
 
-
+    // ======== Create A matrix, lower bound and upper bound for z keep ========
     int n_keep = 0;
     int n_start_keep = 0;
     double duration_keep = 33.333/100*Ts_;
@@ -132,86 +154,28 @@ void OptimizerTrajectory::get_linear_matrix_and_bounds(Eigen::Vector3d initial_p
     }
     // todo treat the case in which the foot_z_height is not the same as the initial foot z height when the robot starts walking.
 
-    std::cout << "n keep" << n_keep << std::endl;
-    std::cout << "T_since_begin_step = " << T_since_begin_step << std::endl;
-    Eigen::MatrixXd A_keep_foot = Eigen::MatrixXd::Zero(n_keep, nb_total_variables_);
-
+    int nb_keep_constraints = n_keep;
     j = n_start_keep;
-
+    std::cout << "n_keep = " << n_keep << std::endl;
     for (int i = 0; i < n_keep; i++)
     {
-        A_keep_foot(i, 2*nb_total_variables_per_coord_ + 3 * j) = 1;
+        tripletList.push_back(T(nb_eq_constraints_pos_vel + nb_dynamics_constraints + nb_limits_constraints + i, 2 * nb_total_variables_per_coord_ + 3 * j, 1));
         j = j + 1;
     }
-    std::cout << "A_keep_foot" << A_keep_foot << std::endl;
-
-    Eigen::MatrixXd A_matrix_dense;
-    A_matrix_dense.resize(A_eq_pos_vel_des.rows() + A_dynamics.rows() + A_keep_foot.rows(), nb_total_variables_);
-    A_matrix_dense.setZero();
-    A_matrix_dense.topRows(A_eq_pos_vel_des.rows()) = A_eq_pos_vel_des;
-    A_matrix_dense.middleRows(A_eq_pos_vel_des.rows(), A_dynamics.rows()) = A_dynamics;
-    A_matrix_dense.bottomRows(A_keep_foot.rows()) = A_keep_foot;
-
-    A_matrix = A_matrix_dense.sparseView();
-
-
-    // Eigen::MatrixXd A_matrix_dense;
-    // A_matrix_dense.resize(A_eq_pos_vel_des.rows() + A_dynamics.rows() + A_limits.rows() + A_keep_foot.rows(), nb_total_variables_);
-    // A_matrix_dense.setZero();
-    // A_matrix_dense.topRows(A_eq_pos_vel_des.rows()) = A_eq_pos_vel_des;
-    // A_matrix_dense.middleRows(A_eq_pos_vel_des.rows(), A_dynamics.rows()) = A_dynamics;
-    // A_matrix_dense.middleRows(A_eq_pos_vel_des.rows() + A_dynamics.rows(), A_limits.rows()) = A_limits;
-    // A_matrix_dense.bottomRows(A_keep_foot.rows()) = A_keep_foot;
-
-    // A_matrix = A_matrix_dense.sparseView();
-
-
-    // ======== Create l, u matrices ========
-    Eigen::MatrixXd l_boundary_pts(6, 1);
-    Eigen::MatrixXd u_boundary_pts(6, 1);
-    
-    l_boundary_pts << initial_pos(0), initial_vel(0), initial_pos(1), initial_vel(1), initial_pos(2), initial_vel(2);
-    u_boundary_pts << initial_pos(0), initial_vel(0), initial_pos(1), initial_vel(1), initial_pos(2), initial_vel(2);
-
-    Eigen::MatrixXd l_dynamics = Eigen::MatrixXd::Zero(A_dynamics.rows(), 1);
-    Eigen::MatrixXd u_dynamics = Eigen::MatrixXd::Zero(A_dynamics.rows(), 1);
-
-    // Eigen::MatrixXd l_limits = Eigen::MatrixXd::Zero(3 * N_, 1);
-    // Eigen::MatrixXd u_limits = Eigen::MatrixXd::Zero(3 * N_, 1);
-    // double a_max = 1000;
-    // for (int i = 0; i < 3 * N_; i = i + 1) {
-
-    //     l_limits(i) = -a_max;
-    //     u_limits(i) = a_max;
-    // }
-    double a_max = 150;
-    double v_max = 10;
-    Eigen::MatrixXd l_limits = Eigen::MatrixXd::Zero(3 * 2 * N_, 1);
-    Eigen::MatrixXd u_limits = Eigen::MatrixXd::Zero(3 * 2 * N_, 1);
-    for (int i = 0; i < 3 * 2 * N_; i += 2) {
-        l_limits(i) = -v_max;
-        l_limits(i + 1) = -a_max;
-        u_limits(i) = v_max;
-        u_limits(i + 1) = a_max;
-    }
-
 
     double foot_height_keep = 0.1;
     Eigen::MatrixXd l_keep_foot = foot_height_keep * Eigen::MatrixXd::Ones(n_keep, 1);
     Eigen::MatrixXd u_keep_foot = foot_height_keep * Eigen::MatrixXd::Ones(n_keep, 1);
 
-    l_vec.resize(l_boundary_pts.rows() + l_dynamics.rows() + l_keep_foot.rows(), 1);
-    l_vec << l_boundary_pts, l_dynamics, l_keep_foot;
+    A_matrix.resize(nb_eq_constraints_pos_vel + nb_dynamics_constraints + nb_limits_constraints + nb_keep_constraints, nb_total_variables_);
+    A_matrix.setFromTriplets(tripletList.begin(), tripletList.end());
+    A_matrix.makeCompressed();
 
-    u_vec.resize(u_boundary_pts.rows() + u_dynamics.rows() + u_keep_foot.rows(), 1);
-    u_vec << u_boundary_pts, u_dynamics, u_keep_foot;
+    l_vec.resize(l_boundary_pts.rows() + l_dynamics.rows() + l_limits.rows() + l_keep_foot.rows(), 1);
+    l_vec << l_boundary_pts, l_dynamics,  l_limits, l_keep_foot;
 
-    // l_vec.resize(l_boundary_pts.rows() + l_dynamics.rows() + l_limits.rows() + l_keep_foot.rows(), 1);
-    // l_vec << l_boundary_pts, l_dynamics, l_limits, l_keep_foot;
-
-    // u_vec.resize(u_boundary_pts.rows() + u_dynamics.rows() + u_limits.rows() + u_keep_foot.rows(), 1);
-    // u_vec << u_boundary_pts, u_dynamics, u_limits, u_keep_foot;
-
+    u_vec.resize(u_boundary_pts.rows() + u_dynamics.rows() + u_limits.rows() + u_keep_foot.rows(), 1);
+    u_vec << u_boundary_pts, u_dynamics, u_limits, u_keep_foot;
 }
 
 void OptimizerTrajectory::setup_optimization_pb(Eigen::SparseMatrix<double>& P_matrix,
@@ -242,16 +206,23 @@ Eigen::VectorXd OptimizerTrajectory::solve_optimization_pb()
     return qp_sol;
 }
 
-void OptimizerTrajectory::get_traj_pos_vel(double dt,
-                                            double Ts,
-                                            double T_since_begin_step,
-                                            Eigen::Vector3d initial_pos,
-                                            Eigen::Vector3d initial_vel,
+void OptimizerTrajectory::set_initial_pos_vel(Eigen::Vector3d initial_pos,
+                                                Eigen::Vector3d initial_vel)
+{
+    initial_pos_ = initial_pos;
+    initial_vel_ = initial_vel;
+    solution_opt_start_time_ = 0.0;
+    solution_opt_pos_.clear();
+    solution_opt_vel_.clear();
+    solution_opt_acc_.clear();
+    traj_opt_computed_ = false;
+}
+
+void OptimizerTrajectory::compute_traj_pos_vel(double T_since_begin_step,
                                             Eigen::Vector3d final_pos,
-                                            Eigen::Vector3d final_vel,
-                                            std::vector<Eigen::Vector3d> &pos_vec,
-                                            std::vector<Eigen::Vector3d> &vel_vec,
-                                            std::vector<Eigen::Vector3d> &acc_vec)
+                                            Eigen::Vector3d &foot_pos,
+                                            Eigen::Vector3d &foot_vel,
+                                            Eigen::Vector3d &foot_acc)
 {
     Eigen::Vector3d opt_weight_pos;
     opt_weight_pos << 5500, 5500, 55000;
@@ -264,39 +235,79 @@ void OptimizerTrajectory::get_traj_pos_vel(double dt,
     Eigen::VectorXd l_vec;
     Eigen::VectorXd u_vec;
 
-    dt_ = dt;
-    Ts_ = Ts;
-    N_ = static_cast<int>((Ts_ - T_since_begin_step) / dt_);
+    double lower_foot_impact_vel = 0.3;
+    Eigen::Vector3d final_vel;
+    final_vel << 0.0, 0.0, -lower_foot_impact_vel;
+
+    N_ = std::round((Ts_ - T_since_begin_step) / dt_);
     nb_total_variables_per_coord_ = 3 * N_; // p, v, a
     nb_total_variables_ = 3 * nb_total_variables_per_coord_; // px, vx, ax, py, vy, ay, pz, vz, az
 
-    std::cout << "dt" << dt << std::endl;
-    std::cout << "Ts" << Ts << std::endl;
-    std::cout << "T_since_begin_step" << T_since_begin_step << std::endl;
-    std::cout << "N_ = " << N_ << std::endl;
-    std::cout << "nb_total_variables_per_coord_ = " << nb_total_variables_per_coord_ << std::endl;
-    std::cout << "nb_total_variables_ = " << nb_total_variables_ << std::endl;
+    double T_remaining = Ts_ - T_since_begin_step; // for x and y
+    double fraction = 10.0/100.0;
 
-    get_P_and_q_matrices(opt_weight_pos, opt_weight_vel, final_pos, final_vel, P_matrix, q_vec);
-    get_linear_matrix_and_bounds(initial_pos, initial_vel, T_since_begin_step, A_matrix, l_vec, u_vec);
-    setup_optimization_pb(P_matrix, q_vec, A_matrix, l_vec, u_vec);
-    Eigen::VectorXd sol;
-    sol = solve_optimization_pb();
-    for (int i = 0; i < nb_total_variables_per_coord_; i = i + 3)
+    if (T_remaining > fraction*Ts_ || !traj_opt_computed_)
     {
-        Eigen::Vector3d pos;
-        Eigen::Vector3d vel;
-        Eigen::Vector3d acc;
-        pos << sol(i),     sol(i + nb_total_variables_per_coord_),     sol(i + 2 * nb_total_variables_per_coord_);
-        vel << sol(i + 1), sol(i + 1 + nb_total_variables_per_coord_), sol(i + 1 + 2 * nb_total_variables_per_coord_);
-        acc << sol(i + 2), sol(i + 2 + nb_total_variables_per_coord_), sol(i + 2 + 2 * nb_total_variables_per_coord_);
-        pos_vec.push_back(pos);
-        vel_vec.push_back(vel);
-        acc_vec.push_back(acc);
+        int idx = std::round((T_since_begin_step - solution_opt_start_time_)/dt_);
+        if (idx < (int)solution_opt_pos_.size() && idx >= 0)
+        {
+            std::cout << "here" << std::endl;
+            initial_pos_ = solution_opt_pos_[idx];
+            initial_vel_ = solution_opt_vel_[idx];
+        }
+
+        solution_opt_pos_.clear();
+        solution_opt_vel_.clear();
+        solution_opt_acc_.clear();
+
+        get_P_and_q_matrices(opt_weight_pos, opt_weight_vel, final_pos, final_vel, P_matrix, q_vec);
+        get_linear_matrix_and_bounds(initial_pos_, initial_vel_, T_since_begin_step, A_matrix, l_vec, u_vec);
+        setup_optimization_pb(P_matrix, q_vec, A_matrix, l_vec, u_vec);
+        Eigen::VectorXd sol;
+        sol = solve_optimization_pb();
+        for (int i = 0; i < nb_total_variables_per_coord_; i = i + 3)
+        {
+            Eigen::Vector3d pos;
+            Eigen::Vector3d vel;
+            Eigen::Vector3d acc;
+            pos << sol(i),     sol(i + nb_total_variables_per_coord_),     sol(i + 2 * nb_total_variables_per_coord_);
+            vel << sol(i + 1), sol(i + 1 + nb_total_variables_per_coord_), sol(i + 1 + 2 * nb_total_variables_per_coord_);
+            acc << sol(i + 2), sol(i + 2 + nb_total_variables_per_coord_), sol(i + 2 + 2 * nb_total_variables_per_coord_);
+            solution_opt_pos_.push_back(pos);
+            solution_opt_vel_.push_back(vel);
+            solution_opt_acc_.push_back(acc);
+        }
+
+        foot_pos = solution_opt_pos_[0];
+        foot_vel = solution_opt_vel_[0];
+        foot_acc = solution_opt_acc_[0];
+        std::cout << "T since beg step" << T_since_begin_step << std::endl;
+        std::cout << "sol opt start time" << solution_opt_start_time_ << std::endl;
+        std::cout << "idx = " << idx << std::endl;
+
+        solution_opt_start_time_ += dt_ * idx;
+        solver_.data()->clearHessianMatrix();
+        solver_.data()->clearLinearConstraintsMatrix();
+        solver_.clearSolver();
+        traj_opt_computed_ = true;
+
+    } else {
+        assert(solution_opt_pos_.size() > 0);
+        int idx = std::round((T_since_begin_step - solution_opt_start_time_)/dt_);
+        if (idx < (int)solution_opt_pos_.size() && idx >= 0)
+        {
+            foot_pos = solution_opt_pos_[idx];
+            foot_vel = solution_opt_vel_[idx];
+            foot_acc = solution_opt_acc_[idx];
+        }
+        else{
+            // continue lowering
+            idx = solution_opt_pos_.size() - 1;
+            foot_pos << solution_opt_pos_[idx](0), solution_opt_pos_[idx](1), solution_opt_pos_[idx](2) - lower_foot_impact_vel * (T_since_begin_step - Ts_);
+            foot_vel << 0.0, 0.0, -lower_foot_impact_vel;
+            foot_acc << 0.0, 0.0, 0.0;
+        }
     }
-     solver_.data()->clearHessianMatrix();
-     solver_.data()->clearLinearConstraintsMatrix();
-     solver_.clearSolver();
 }
 
 
@@ -306,72 +317,63 @@ void OptimizerTrajectory::get_traj_pos_vel(double dt,
 //     double Ts = 0.25;
 //     double T_since_beginning_of_step = 0.125;
 //     double N = int(Ts / dt);
-//     OptimizerTrajectory opt;
+//     OptimizerTrajectory opt(dt, Ts);
 
 //     Eigen::Vector3d final_pos ;
 //     Eigen::Vector3d final_vel;
-//     final_pos  << -0.07, 0.05, 0.0;
+//     final_pos  << 0.2, 0.2, 0.0;
 //     final_vel << 0, 0, 0;
 
 //     Eigen::Vector3d initial_pos;
 //     Eigen::Vector3d initial_vel;
-//     initial_pos << 0.0, 0.1, 0.1;
+//     initial_pos << 0.0, 0.0, 0.1;
 //     initial_vel << 0.0, 0.0, 0.0;
 
-//     int offset_for_testing = 0;
+//     int offset_for_testing = 20;
+//     Eigen::Vector3d foot_pos;
+//     Eigen::Vector3d foot_vel;
+//     Eigen::Vector3d foot_acc;
 
+//     std::vector<Eigen::Vector3d> full_traj_pos;
+//     std::vector<Eigen::Vector3d> full_traj_vel;
+//     std::vector<Eigen::Vector3d> full_traj_acc;
+
+//     opt.set_initial_pos_vel(initial_pos, initial_vel);
 //     for (int i = 0; i < N + offset_for_testing; i++)
 //     {
-//         std::vector<Eigen::Vector3d> position_vec;
-//         std::vector<Eigen::Vector3d> velocity_vec;
-//         std::vector<Eigen::Vector3d> acceleration_vec;
-//         if (T_since_beginning_of_step > 90.0/100.0*Ts)
-//         {
-//             std::cout << "stop opt pb!" << std::endl;
-//             // integrate forward open-loop
-//             Eigen::Vector3d pos;
-//             Eigen::Vector3d vel;
-//             Eigen::Vector3d acc;
-//             pos << initial_pos(0), initial_pos(1), initial_pos(2);
-//             vel << initial_vel(0), initial_vel(1), initial_vel(2);
-//             acc << 0, 0, 0;
+//         std::cout << "iteration nb " << i << " out of " << N << std::endl;
+//         opt.compute_traj_pos_vel(T_since_beginning_of_step,
+//                                 final_pos,
+//                                 foot_pos,
+//                                 foot_vel,
+//                                 foot_acc);
 
-//             for (int j = 0; j < N + offset_for_testing - i; j++)
-//             {
-//                 pos = pos + dt * vel;
-//                 vel = vel + dt * acc;
-//                 position_vec.push_back(pos);
-//                 velocity_vec.push_back(vel);
-//                 acceleration_vec.push_back(acc);
-//             }
-//         }
-//         else
-//         {
-//             opt.get_traj_pos_vel(dt, Ts, T_since_beginning_of_step,
-//                                     initial_pos,
-//                                     initial_vel,
-//                                     final_pos,
-//                                     final_vel,
-//                                     position_vec,
-//                                     velocity_vec,
-//                                     acceleration_vec);
-//         }
+//         full_traj_pos.push_back(foot_pos);
+//         full_traj_vel.push_back(foot_vel);
+//         full_traj_acc.push_back(foot_acc);
+    
 //         std::string file_name;
 //         file_name = "/home/sorina/Documents/code/biped_hardware/ros2_ws/src/biped/capture_point/test/output_traj_cpp_" + std::to_string(i) + ".csv";
 //         std::ofstream file(file_name);
 //         file << "Position_X,Position_Y,Position_Z,Velocity_X,Velocity_Y,Velocity_Z,Acceleration_X,Acceleration_Y,Acceleration_Z\n";
-//         for (unsigned int i = 0; i < position_vec.size(); i++)
+//         for (unsigned int i = 0; i < opt.solution_opt_pos_.size(); i++)
 //         {
-//             file << position_vec[i](0) << "," << position_vec[i](1) << "," << position_vec[i](2) << ","
-//                 << velocity_vec[i](0) << "," << velocity_vec[i](1) << "," << velocity_vec[i](2) << ","
-//                 << acceleration_vec[i](0) << "," << acceleration_vec[i](1) << "," << acceleration_vec[i](2) << "\n";
+//             file << opt.solution_opt_pos_[i](0) << "," << opt.solution_opt_pos_[i](1) << "," << opt.solution_opt_pos_[i](2) << ","
+//                 << opt.solution_opt_vel_[i](0) << "," << opt.solution_opt_vel_[i](1) << "," << opt.solution_opt_vel_[i](2) << ","
+//                 << opt.solution_opt_acc_[i](0) << "," << opt.solution_opt_acc_[i](1) << "," << opt.solution_opt_acc_[i](2) << "\n";
 //         }
 //         file.close();
-
-//         initial_pos = position_vec[1];
-//         initial_vel = velocity_vec[1];
-
 //         T_since_beginning_of_step = T_since_beginning_of_step + dt;
 //     }
+//     std::string file_name = "/home/sorina/Documents/code/biped_hardware/ros2_ws/src/biped/capture_point/test/full_traj.csv";
+//     std::ofstream file(file_name);
+//     file << "Position_X,Position_Y,Position_Z,Velocity_X,Velocity_Y,Velocity_Z,Acceleration_X,Acceleration_Y,Acceleration_Z\n";
+//     for (unsigned int i = 0; i < full_traj_pos.size(); i++)
+//     {
+//         file << full_traj_pos[i](0) << "," << full_traj_pos[i](1) << "," << full_traj_pos[i](2) << ","
+//             << full_traj_vel[i](0) << "," << full_traj_vel[i](1) << "," << full_traj_vel[i](2) << ","
+//             << full_traj_acc[i](0) << "," << full_traj_acc[i](1) << "," << full_traj_acc[i](2) << "\n";
+//     }
+//     file.close();
 //     return 0;
 // }
