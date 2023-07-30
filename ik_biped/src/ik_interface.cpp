@@ -10,6 +10,7 @@
 #include "trajectory_msgs/msg/multi_dof_joint_trajectory.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "geometry_msgs/msg/transform.hpp"
+#include "std_msgs/msg/float64_multi_array.hpp"
 #include "ik_class_pin.hpp"
 #include "biped_bringup/msg/stamped_bool.hpp"
 #include <math.h>
@@ -28,14 +29,51 @@ public:
         body_desired_sub_ = this->create_subscription<trajectory_msgs::msg::MultiDOFJointTrajectory>(
             "body_trajectories", 10, std::bind(&IKNode::body_desired_cb, this, _1));
 
+        measured_joint_states_sub_ = this->create_subscription<sensor_msgs::msg::JointState>(
+            "/joint_states", 10, std::bind(&IKNode::actual_joint_states_cb, this, _1));
+
+        odom_baselink_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
+            "/odometry", 10, std::bind(&IKNode::odom_baselink_cb, this, _1));
+
         robot_joints_pub_ = this->create_publisher<trajectory_msgs::msg::JointTrajectory>("joint_trajectory", 10);
         markers_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("~/markers", 10);
+
+        joint_states_for_EL_eq_pub_ = this->create_publisher<sensor_msgs::msg::JointState>("/joint_states_for_EL_eq", 10);
+
+        gravity_torque_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("gravity_torque", 10);
+        corriolis_torque_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("corriolis_torque", 10);
+        inertia_torque_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("inertia_torque", 10);
+
+        acc_foot_computed_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("acc_foot_computed", 10);
+
     }
 
 private:
     void contact_cb(biped_bringup::msg::StampedBool::SharedPtr msg, const std::string &joint_name)
     {
         contact_states_[joint_name] = msg;
+    }
+
+    void actual_joint_states_cb(sensor_msgs::msg::JointState::SharedPtr msg)
+    {
+        encoder_joint_states_.clear();
+        for (size_t i = 0; i < msg->name.size(); i++) {
+            const auto &name = msg->name[i];
+            const auto &pos = msg->position[i];
+            const auto &vel = msg->velocity[i];
+            const auto &eff = msg->effort[i];
+            encoder_joint_states_.push_back(IKRobot::JointState{name, pos, vel, eff});
+        }
+        time_encoder_joint_state_ = rclcpp::Time(msg->header.stamp);
+    }
+
+    void odom_baselink_cb(nav_msgs::msg::Odometry::SharedPtr msg)
+    {
+        odom_baselink_.position = Eigen::Vector3d(msg->pose.pose.position.x, msg->pose.pose.position.y, msg->pose.pose.position.z);
+        odom_baselink_.orientation = Eigen::Quaterniond(msg->pose.pose.orientation.w, msg->pose.pose.orientation.x, msg->pose.pose.orientation.y, msg->pose.pose.orientation.z);
+        odom_baselink_.linear_velocity = Eigen::Vector3d(msg->twist.twist.linear.x, msg->twist.twist.linear.y, msg->twist.twist.linear.z);
+        odom_baselink_.angular_velocity = Eigen::Vector3d(msg->twist.twist.angular.x, msg->twist.twist.angular.y, msg->twist.twist.angular.z);
+        time_odom_baselink_ = rclcpp::Time(msg->header.stamp);
     }
 
     void body_desired_cb(trajectory_msgs::msg::MultiDOFJointTrajectory::SharedPtr msg)
@@ -131,9 +169,72 @@ private:
             for (const auto &body : bodies) {
                 RCLCPP_DEBUG_STREAM(this->get_logger(), "   " << body.name);
             }
-
+            if (fabs((time_odom_baselink_ - time_encoder_joint_state_).seconds()) > 0.1) {
+                RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 100 /* [ms] */, "odom and joint_states are out of sync: ");
+            }
             std::vector<Eigen::Vector3d> body_positions_solution;
-            std::vector<IKRobot::JointState> joint_states = this->robot_.solve(bodies, body_positions_solution);
+            std::vector<IKRobot::JointState> joint_states_for_EL_eq;
+            Eigen::VectorXd gravity_torque;
+            Eigen::VectorXd coriolis_torque;
+            Eigen::VectorXd inertia_torque;
+            Eigen::VectorXd a_foot_computed;
+
+            std::vector<IKRobot::JointState> joint_states = this->robot_.solve(bodies,
+                                                                                odom_baselink_,
+                                                                                encoder_joint_states_,
+                                                                                body_positions_solution,
+                                                                                joint_states_for_EL_eq,
+                                                                                gravity_torque,
+                                                                                coriolis_torque,
+                                                                                inertia_torque,
+                                                                                a_foot_computed);
+            // publish joint joint_states_for_EL_eq
+            sensor_msgs::msg::JointState joint_states_for_EL_eq_msg;
+            joint_states_for_EL_eq_msg.header = msg->header;
+            joint_states_for_EL_eq_msg.name.resize(joint_states_for_EL_eq.size());
+            joint_states_for_EL_eq_msg.position.resize(joint_states_for_EL_eq.size());
+            joint_states_for_EL_eq_msg.velocity.resize(joint_states_for_EL_eq.size());
+            joint_states_for_EL_eq_msg.effort.resize(joint_states_for_EL_eq.size());
+
+            for (size_t i = 0; i < joint_states_for_EL_eq.size(); i++) {
+                joint_states_for_EL_eq_msg.name[i] = joint_states_for_EL_eq[i].name;
+                joint_states_for_EL_eq_msg.position[i] = joint_states_for_EL_eq[i].position;
+                joint_states_for_EL_eq_msg.velocity[i] = joint_states_for_EL_eq[i].velocity;
+                joint_states_for_EL_eq_msg.effort[i] = joint_states_for_EL_eq[i].acceleration;
+            }
+
+            joint_states_for_EL_eq_pub_->publish(joint_states_for_EL_eq_msg);
+
+            //pub gravity torque
+            std_msgs::msg::Float64MultiArray gravity_torque_msg;
+            gravity_torque_msg.data.resize(gravity_torque.size());
+            for (size_t i = 0; i < gravity_torque.size(); i++) {
+                gravity_torque_msg.data[i] = gravity_torque[i];
+            }
+            gravity_torque_pub_->publish(gravity_torque_msg);
+            // pub coriolis torque
+            std_msgs::msg::Float64MultiArray coriolis_torque_msg;
+            coriolis_torque_msg.data.resize(coriolis_torque.size());
+            for (size_t i = 0; i < coriolis_torque.size(); i++) {
+                coriolis_torque_msg.data[i] = coriolis_torque[i];
+            }
+            corriolis_torque_pub_->publish(coriolis_torque_msg);
+            // pub inertia torque
+            std_msgs::msg::Float64MultiArray inertia_torque_msg;
+            inertia_torque_msg.data.resize(inertia_torque.size());
+            for (size_t i = 0; i < inertia_torque.size(); i++) {
+                inertia_torque_msg.data[i] = inertia_torque[i];
+            }
+            inertia_torque_pub_->publish(inertia_torque_msg);
+
+            // pub a_foot_computed
+            std_msgs::msg::Float64MultiArray a_foot_computed_msg;
+            a_foot_computed_msg.data.resize(a_foot_computed.size());
+            for (size_t i = 0; i < a_foot_computed.size(); i++) {
+                a_foot_computed_msg.data[i] = a_foot_computed[i];
+            }
+            acc_foot_computed_pub_->publish(a_foot_computed_msg);
+
             out_msg.joint_names.resize(joint_states.size());
             for (size_t i = 0; i < joint_states.size(); i++) {
                 out_msg.joint_names[i] = joint_states[i].name;
@@ -236,10 +337,23 @@ private:
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr markers_pub_;
     rclcpp::Subscription<std_msgs::msg::String>::SharedPtr robot_desc_sub_;
     rclcpp::Subscription<trajectory_msgs::msg::MultiDOFJointTrajectory>::SharedPtr body_desired_sub_;
+    rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr measured_joint_states_sub_;
+    rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_states_for_EL_eq_pub_;
+    rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_baselink_sub_;
     std::map<std::string, rclcpp::Subscription<biped_bringup::msg::StampedBool>::SharedPtr> contact_subs_;
     std::map<std::string, biped_bringup::msg::StampedBool::SharedPtr> contact_states_;
 
+    rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr gravity_torque_pub_;
+    rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr corriolis_torque_pub_;
+    rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr inertia_torque_pub_;
+    rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr acc_foot_computed_pub_;
+
     IKRobot robot_;
+    rclcpp::Time time_encoder_joint_state_;
+    std::vector<IKRobot::JointState> encoder_joint_states_;
+    IKRobot::BodyState odom_baselink_;
+    rclcpp::Time time_odom_baselink_;
+
 };
 
 int main(int argc, char *argv[])
