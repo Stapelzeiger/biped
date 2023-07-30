@@ -76,11 +76,13 @@ void IKRobot::build_model(const std::string urdf_xml_string)
     }
 
     // build actuation matrix
-    auto joints_actuators = model_.nv - 6;
-    B_matrix_ = Eigen::MatrixXd::Zero(model_.nv, joints_actuators);
-    std::cout << "joint_actuators:" << joints_actuators << std::endl;
+    auto nb_joints_actuators = model_.nv - 6;
+    auto nb_u = nb_joints_actuators - 2;
+    B_matrix_ = Eigen::MatrixXd::Zero(model_.nv, nb_joints_actuators - 2);
+    std::cout << "joint_actuators:" << nb_joints_actuators << std::endl;
     std::cout << "model_.nv" << model_.nv << std::endl;
-    B_matrix_.block(6, 0, joints_actuators, joints_actuators) = Eigen::MatrixXd::Identity(joints_actuators, joints_actuators);
+    B_matrix_.block(6, 0, nb_u/2, nb_u/2) = Eigen::MatrixXd::Identity(nb_u/2, nb_u/2);
+    B_matrix_.block(6 + nb_joints_actuators/2, nb_u/2, nb_u/2, nb_u/2) = Eigen::MatrixXd::Identity(nb_u/2, nb_u/2);
 }
 
 bool IKRobot::has_model() const
@@ -88,7 +90,15 @@ bool IKRobot::has_model() const
     return model_.njoints > 1;
 }
 
-std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyState>& body_states, std::vector<Eigen::Vector3d> &body_positions_solution)
+std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyState>& body_states,
+                                                IKRobot::BodyState odom_baselink,
+                                                std::vector<IKRobot::JointState> &encoder_joint_states,
+                                                std::vector<Eigen::Vector3d> &body_positions_solution,
+                                                std::vector<IKRobot::JointState> &joint_states_for_EL_eq,
+                                                Eigen::VectorXd &gravity_torque,
+                                                Eigen::VectorXd &coriolis_torque,
+                                                Eigen::VectorXd &inertia_torque,
+                                                Eigen::VectorXd &a_foot_computed)
 {
     auto base_link = std::find_if(body_states.begin(), body_states.end(), [](const BodyState& bs) {
         return bs.name == "base_link";
@@ -245,7 +255,25 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
         }
     }
 
-    q_ = q;
+    q_[base_link_joint.idx_q()] = odom_baselink.position[0];
+    q_[base_link_joint.idx_q() + 1] = odom_baselink.position[1];
+    q_[base_link_joint.idx_q() + 2] = odom_baselink.position[2];
+    q_[base_link_joint.idx_q() + 3] = odom_baselink.orientation.x();
+    q_[base_link_joint.idx_q() + 4] = odom_baselink.orientation.y();
+    q_[base_link_joint.idx_q() + 5] = odom_baselink.orientation.z();
+    q_[base_link_joint.idx_q() + 6] = odom_baselink.orientation.w();
+
+    for (int joint_idx = 0; joint_idx < model_.njoints; joint_idx++) {
+        const auto &joint = model_.joints[joint_idx];
+        if (joint.nq() == 1 && joint.idx_q() != -1) {
+            auto encoder_joint = std::find_if(encoder_joint_states.begin(), encoder_joint_states.end(), [&](JointState& js) {
+                return js.name == model_.names[joint_idx];});
+            if (encoder_joint != encoder_joint_states.end()) {
+                q_[joint.idx_q()] = encoder_joint->position;
+            }
+        }
+    }
+
     pinocchio::forwardKinematics(model_, data, q_);
     for (const auto &body: body_states) {
         auto frame_id = model_.getFrameId(body.name);
@@ -300,31 +328,35 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
     J_dot_for_ff_stacked.setZero();
     for (const auto &body: body_states)
     {
+        auto frame_id = model_.getFrameId(body.name);
+        Eigen::MatrixXd J_dot(6, model_.nv);
+        J_dot.setZero();
+        pinocchio::getFrameJacobianTimeVariation(model_, data, frame_id, pinocchio::LOCAL_WORLD_ALIGNED, J_dot);
         Eigen::Vector3d body_acc = body.linear_acceleration;
         if (body_acc.hasNaN()){
             std::cout << "body_acc has NaN" << std::endl;
             body_acc.setZero();
         }
-        auto frame_id = model_.getFrameId(body.name);
+        // auto frame_id = model_.getFrameId(body.name);
         if (body.type == BodyState::ContraintType::FULL_6DOF) {
-            J_dot_for_ff_stacked.block(cur_constraint_ff, 0, 6, model_.nv) = data.dJ;
+            J_dot_for_ff_stacked.block(cur_constraint_ff, 0, 6, model_.nv) = J_dot;
             body_accs_stacked.block(cur_constraint_ff, 0, 3, 1) = body_acc;
             body_accs_stacked.block(cur_constraint_ff + 3, 0, 3, 1).setZero();
+            std::cout << "body acc 6DOF  = " << body_acc.transpose() << std::endl;
             cur_constraint_ff += 6;
         } else if (body.type == BodyState::ContraintType::POS_ONLY) {
-            J_dot_for_ff_stacked.block(cur_constraint_ff, 0, 3, model_.nv) = data.dJ.block(0, 0, 3, model_.nv);
+            J_dot_for_ff_stacked.block(cur_constraint_ff, 0, 3, model_.nv) = J_dot.block(0, 0, 3, model_.nv);
             body_accs_stacked.block(cur_constraint_ff, 0, 3, 1) = body_acc;
             cur_constraint_ff += 3;
         } else if (body.type == BodyState::ContraintType::POS_AXIS) {
-            J_dot_for_ff_stacked.block(cur_constraint_ff, 0, 3, model_.nv) = data.dJ.block(0, 0, 3, model_.nv);
-            J_dot_for_ff_stacked.block(cur_constraint_ff + 3, 0, 2, model_.nv) = data.dJ.block(4, 0, 2, model_.nv); // TODO compute from a
+            J_dot_for_ff_stacked.block(cur_constraint_ff, 0, 3, model_.nv) = J_dot.block(0, 0, 3, model_.nv);
+            J_dot_for_ff_stacked.block(cur_constraint_ff + 3, 0, 2, model_.nv) = J_dot.block(4, 0, 2, model_.nv); // TODO compute from a
             body_accs_stacked.block(cur_constraint_ff, 0, 3, 1) = body_acc;
             body_accs_stacked.block(cur_constraint_ff + 3, 0, 2, 1).setZero();
             cur_constraint_ff += 5;
         }
     }
     Eigen::VectorXd q_acc(QR_ff.solve(body_accs_stacked - J_dot_for_ff_stacked * q_vel));
-
     for (auto &joint_state: joint_states)
     {
         auto joint_id = model_.getJointId(joint_state.name);
@@ -345,12 +377,24 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
     {
         auto &body = bodies_in_contact[0].get();
         Eigen::MatrixXd J_contacts;
+        Eigen::MatrixXd J_contacts_dot;
+
+        Eigen::MatrixXd J(6, model_.nv);
+        J.setZero();
+        auto frame_id = model_.getFrameId(body.name);
+        pinocchio::getFrameJacobian(model_, data, frame_id, pinocchio::LOCAL_WORLD_ALIGNED, J);
+        Eigen::MatrixXd J_dot(6, model_.nv);
+        J_dot.setZero();
+        pinocchio::getFrameJacobianTimeVariation(model_, data, frame_id, pinocchio::LOCAL_WORLD_ALIGNED, J_dot);
+
         if (bodies_in_contact[0].get().type == BodyState::ContraintType::FULL_6DOF)
         {
             J_contacts.resize(6, model_.nv);
             J_contacts.setZero();
-            auto frame_id = model_.getFrameId(body.name);
-            pinocchio::getFrameJacobian(model_, data, frame_id, pinocchio::LOCAL_WORLD_ALIGNED, J_contacts);
+            J_contacts.block(0, 0, 6, model_.nv) = J;
+            J_contacts_dot.resize(6, model_.nv);
+            J_contacts_dot.setZero();
+            J_contacts_dot.block(0, 0, 6, model_.nv) = J_dot;
         }
         else if (bodies_in_contact[0].get().type == BodyState::ContraintType::POS_ONLY)
         {
@@ -361,10 +405,7 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
         {
             J_contacts.resize(5, model_.nv);
             J_contacts.setZero();
-            Eigen::MatrixXd J(6, model_.nv);
-            J.setZero();
-            auto frame_id = model_.getFrameId(body.name);
-            pinocchio::getFrameJacobian(model_, data, frame_id, pinocchio::LOCAL_WORLD_ALIGNED, J);
+
             Eigen::Matrix<double, 3, 2> a_normal_basis;
             a_normal_basis << 0, 0, // TODO compute from a
                         1, 0,
@@ -374,28 +415,73 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
             auto partial_a_proj_partial_q = a_normal_basis.transpose() * partial_a_partial_q;
             J_contacts.block(0, 0, 5, model_.nv) << J.block(0, 0, 3, model_.nv),
                                                     partial_a_proj_partial_q;
+            J_contacts_dot.resize(5, model_.nv);
+            J_contacts_dot.setZero();
+            J_contacts_dot.block(0, 0, 3, model_.nv) = J_dot.block(0, 0, 3, model_.nv);
+            J_contacts_dot.block(0 + 3, 0, 2, model_.nv) = J_dot.block(4, 0, 2, model_.nv); // TODO compute from a
         }
         Eigen::MatrixXd P(model_.nv, model_.nv);
         Eigen::MatrixXd I_nv = Eigen::MatrixXd::Identity(model_.nv, model_.nv);
 
         Eigen::CompleteOrthogonalDecomposition<Eigen::MatrixXd> complete_orth_decomp(J_contacts);
         auto J_contacts_pinv = complete_orth_decomp.pseudoInverse();
-
         P = I_nv - J_contacts_pinv * J_contacts;
-        auto PB = P * B_matrix_;
         pinocchio::computeGeneralizedGravity(model_, data, q_); // data.g
         pinocchio::computeCoriolisMatrix(model_, data, q_, q_vel); // data.C
         pinocchio::crba(model_, data, q_); // data.M
         data.M.triangularView<Eigen::StrictlyLower>() = data.M.transpose().triangularView<Eigen::StrictlyLower>();
-        Eigen::HouseholderQR<Eigen::MatrixXd> QR(PB);
         auto y = P * data.g + P * data.C * q_vel + P * data.M * q_acc;
-        std::cout << data.g.transpose() << std::endl;
-        Eigen::VectorXd feedforward_torque(QR.solve(y));
+        auto y_with_acceleration = P * data.g + P * data.C * q_vel + P * data.M * q_acc;
+        // Option 1 for B
+        auto nb_joints_actuators = model_.nv - 6;
+        auto nb_u = nb_joints_actuators - 2;
+        Eigen::MatrixXd B_matrix1 = Eigen::MatrixXd::Zero(model_.nv, nb_joints_actuators - 2);
+        B_matrix1.block(6, 0, nb_u/2, nb_u/2) = Eigen::MatrixXd::Identity(nb_u/2, nb_u/2);
+        B_matrix1.block(6 + nb_joints_actuators/2, nb_u/2, nb_u/2, nb_u/2) = Eigen::MatrixXd::Identity(nb_u/2, nb_u/2);
+        Eigen::MatrixXd PB1 = P * B_matrix1;
+        // print nb of rows and cols
+        Eigen::HouseholderQR<Eigen::MatrixXd> QR1(PB1);
+        Eigen::VectorXd feedforward_torque1(QR1.solve(y));
+        Eigen::VectorXd feedforward_torque_with_acceleration1(QR1.solve(y_with_acceleration));
+        Eigen::VectorXd feedforward_torque1_all_joints = Eigen::VectorXd::Zero(nb_joints_actuators);
+        feedforward_torque1_all_joints.head(nb_u/2) = feedforward_torque1.head(nb_u/2);
+        feedforward_torque1_all_joints.tail((nb_u)/2 + 1) = feedforward_torque1.tail(nb_u/2);
+
+        gravity_torque = QR1.solve(P * data.g);
+        coriolis_torque = QR1.solve(P * data.C * q_vel);
+        inertia_torque = QR1.solve(P * data.M * q_acc);
+
+        // compute contact forces:
+        Eigen::MatrixXd block_matrix_q_acc_and_lambda = Eigen::MatrixXd::Zero(model_.nv + 5, model_.nv + 5);
+        block_matrix_q_acc_and_lambda.block(0, 0, model_.nv, model_.nv) = data.M;
+        block_matrix_q_acc_and_lambda.block(model_.nv, 0, 5, model_.nv) = J_contacts;
+        block_matrix_q_acc_and_lambda.block(0, model_.nv, model_.nv, 5) = -J_contacts.transpose();
+
+        Eigen::VectorXd right_hand_side_q_lambda = Eigen::MatrixXd::Zero(model_.nv + 5, 1);
+        right_hand_side_q_lambda.head(model_.nv) = - data.g - data.C * q_vel + B_matrix1 * feedforward_torque_with_acceleration1;
+        right_hand_side_q_lambda.tail(5) = -J_contacts_dot * q_vel;
+
+        Eigen::HouseholderQR<Eigen::MatrixXd> QR_q_lambda(block_matrix_q_acc_and_lambda);
+        Eigen::VectorXd q_acc_and_lambda(QR_q_lambda.solve(right_hand_side_q_lambda));
+
+        auto computed_q_acc = q_acc_and_lambda.head(model_.nv);
+        // compute a_foot:
+        a_foot_computed = J_contacts * computed_q_acc + J_contacts_dot * q_vel;
         for (auto &joint_state: joint_states)
         {
             auto joint_id = model_.getJointId(joint_state.name);
             auto joint = model_.joints[joint_id];
-            joint_state.effort = feedforward_torque[joint.idx_v() - 6];
+            joint_state.effort = feedforward_torque1_all_joints[joint.idx_v() - 6];
+        }
+        for (int joint_idx = 0; joint_idx < model_.njoints; joint_idx++)
+        {
+            JointState joint_state_for_EL_eq;
+            const auto &joint = model_.joints[joint_idx];
+            joint_state_for_EL_eq.name = model_.names[joint_idx];
+            joint_state_for_EL_eq.position = q_[joint.idx_q()];
+            joint_state_for_EL_eq.velocity = q_vel[joint.idx_v()];
+            joint_state_for_EL_eq.acceleration = q_acc[joint.idx_v()];
+            joint_states_for_EL_eq.push_back(joint_state_for_EL_eq);
         }
     }
     else
