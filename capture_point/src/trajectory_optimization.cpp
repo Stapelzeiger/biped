@@ -18,7 +18,7 @@ OptimizerTrajectory::OptimizerTrajectory(double dt, double Ts)
 
     // OSQP Solver Settings:
     solver_.settings()->setWarmStart(false);
-    solver_.settings()->setVerbosity(true);
+    solver_.settings()->setVerbosity(false);
     solver_.settings()->setAbsoluteTolerance(1e-5);
     solver_.settings()->setRelativeTolerance(1e-5);
     solver_.settings()->setMaxIteration(30000);
@@ -156,7 +156,6 @@ void OptimizerTrajectory::get_linear_matrix_and_bounds(Eigen::Vector3d initial_p
 
     int nb_keep_constraints = n_keep;
     j = n_start_keep;
-    std::cout << "n_keep = " << n_keep << std::endl;
     for (int i = 0; i < n_keep; i++)
     {
         tripletList.push_back(T(nb_eq_constraints_pos_vel + nb_dynamics_constraints + nb_limits_constraints + i, 2 * nb_total_variables_per_coord_ + 3 * j, 1));
@@ -251,7 +250,6 @@ void OptimizerTrajectory::compute_traj_pos_vel(double T_since_begin_step,
         int idx = std::round((T_since_begin_step - solution_opt_start_time_)/dt_);
         if (idx < (int)solution_opt_pos_.size() && idx >= 0)
         {
-            std::cout << "here" << std::endl;
             initial_pos_ = solution_opt_pos_[idx];
             initial_vel_ = solution_opt_vel_[idx];
         }
@@ -281,9 +279,6 @@ void OptimizerTrajectory::compute_traj_pos_vel(double T_since_begin_step,
         foot_pos = solution_opt_pos_[0];
         foot_vel = solution_opt_vel_[0];
         foot_acc = solution_opt_acc_[0];
-        std::cout << "T since beg step" << T_since_begin_step << std::endl;
-        std::cout << "sol opt start time" << solution_opt_start_time_ << std::endl;
-        std::cout << "idx = " << idx << std::endl;
 
         solution_opt_start_time_ += dt_ * idx;
         solver_.data()->clearHessianMatrix();
