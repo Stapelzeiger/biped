@@ -40,18 +40,18 @@ class CapturePoint : public rclcpp::Node
 public:
     CapturePoint() : Node("cp_node")
     {
-        robot_params.robot_height = this->declare_parameter<double>("robot_height",  0.54);
-        robot_params.t_step = this->declare_parameter<double>("t_step", 0.25);
-        robot_params.dt_ctrl = this->declare_parameter<double>("ctrl_time_sec", 0.01);
-        robot_params.duration_init_traj = this->declare_parameter<double>("duration_init_traj", 3.0);
-        robot_params.safety_radius_CP = this->declare_parameter<double>("safety_radius_CP", 1.0);
-        robot_params.T_contact_ignore = this->declare_parameter<double>("T_contact_ignore", 0.1);
-        robot_params.omega = sqrt(9.81 / robot_params.robot_height);
+        robot_params_.robot_height = this->declare_parameter<double>("robot_height",  0.54);
+        robot_params_.t_step = this->declare_parameter<double>("t_step", 0.25);
+        robot_params_.dt_ctrl = this->declare_parameter<double>("ctrl_time_sec", 0.01);
+        robot_params_.duration_init_traj = this->declare_parameter<double>("duration_init_traj", 3.0);
+        robot_params_.safety_radius_CP = this->declare_parameter<double>("safety_radius_CP", 1.0);
+        robot_params_.T_contact_ignore = this->declare_parameter<double>("T_contact_ignore", 0.1);
+        robot_params_.omega = sqrt(9.81 / robot_params_.robot_height);
 
         state_ = "INIT";
         initialization_done_ = false;
         t_init_traj_ = 0.0;
-        swing_foot_traj_ = OptimizerTrajectory(robot_params.dt_ctrl, robot_params.t_step);
+        swing_foot_traj_ = OptimizerTrajectory(robot_params_.dt_ctrl, robot_params_.t_step);
 
         r_foot_frame_id_ = this->declare_parameter<std::string>("r_foot_frame_id", "R_FOOT");
         l_foot_frame_id_ = this->declare_parameter<std::string>("l_foot_frame_id", "L_FOOT");
@@ -92,7 +92,7 @@ public:
         vel_cmd_sub_ = this->create_subscription<geometry_msgs::msg::TwistStamped>(
             "~/vel_cmd", 10, std::bind(&CapturePoint::vel_cmd_cb, this, _1));
 
-        std::chrono::duration<double> period = robot_params.dt_ctrl * 1s;
+        std::chrono::duration<double> period = robot_params_.dt_ctrl * 1s;
         timer_ = rclcpp::create_timer(this, this->get_clock(), period, std::bind(&CapturePoint::timer_callback, this));
     }
 
@@ -102,8 +102,8 @@ private:
         foot_right_contact_ = false;
         foot_left_contact_ = false;
 
-        time_since_last_step_ = robot_params.t_step / 2;
-        remaining_time_in_step_ = robot_params.t_step - time_since_last_step_;
+        time_since_last_step_ = robot_params_.t_step / 2;
+        remaining_time_in_step_ = robot_params_.t_step - time_since_last_step_;
         timeout_for_no_feet_in_contact_ = 0;
 
         swing_foot_position_beginning_of_step_STF_ = swing_foot_STF;
@@ -155,7 +155,7 @@ private:
 
         if (foot_left_contact_ == false && foot_right_contact_ == false)
         {
-            timeout_for_no_feet_in_contact_ -= robot_params.dt_ctrl;
+            timeout_for_no_feet_in_contact_ -= robot_params_.dt_ctrl;
             std::cout << "lost contact of the feet" << std::endl;
         }
         else
@@ -188,7 +188,6 @@ private:
         {
             swing_foot_is_left_ = true;
             state_ = "RAMP_TO_STARTING_POS";
-            previous_vel_base_link_STF_.setZero();
         }
 
         if (state_ == "RAMP_TO_STARTING_POS")
@@ -210,7 +209,7 @@ private:
             fin_swing_foot_pos_STF = Eigen::Vector3d(0.0, 0.1, 0.10);
 
             Eigen::Vector3d fin_baselink_pos_STF;
-            fin_baselink_pos_STF = Eigen::Vector3d(0.0, -0.05, robot_params.robot_height);
+            fin_baselink_pos_STF = Eigen::Vector3d(0.0, -0.05, robot_params_.robot_height);
 
             std::string frame_id = "STF";
             publish_body_trajectories(frame_id, fin_baselink_pos_STF, Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0), Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero(),  // todo fix this so it takes the init orientation of the robot
@@ -224,18 +223,30 @@ private:
             des_contact_msg.data = false;
             pub_desired_right_contact_->publish(des_contact_msg);
 
-            t_init_traj_ += robot_params.dt_ctrl;
-            if (t_init_traj_ > robot_params.duration_init_traj)
+            t_init_traj_ += robot_params_.dt_ctrl;
+            if (t_init_traj_ > robot_params_.duration_init_traj)
             {
                 initialization_done_ = true;
                 set_starting_to_walk_params(fin_swing_foot_pos_STF);
-                t_init_traj_ = robot_params.duration_init_traj;
+                t_init_traj_ = robot_params_.duration_init_traj;
                 std::cout << "Starting to walk! RESET!" << std::endl;
             }
         }
         if (state_ == "FOOT_IN_CONTACT" && initialization_done_ == true)
         {
+            auto tic = std::chrono::high_resolution_clock::now();
             run_capture_point_controller();
+            auto toc = std::chrono::high_resolution_clock::now();
+            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic);
+
+            float dt_ctrl_ms = robot_params_.dt_ctrl * 1000;
+            if (duration.count() > dt_ctrl_ms)
+            {
+                std::cout << "duration of capture point controller in ms " << duration.count() << std::endl;
+                std::cout << "dt_ctrl_ms " << dt_ctrl_ms << std::endl;
+                RCLCPP_WARN(this->get_logger(), "Running slower than desired");
+
+            }
         }
     }
 
@@ -258,7 +269,7 @@ private:
         auto T_BLF_to_BF = get_BLF_to_BF();
         broadcast_transform(base_link_frame_id_, "BLF", T_BLF_to_BF.translation(), Eigen::Quaterniond(T_BLF_to_BF.rotation()));
         auto T_BF_to_BLF = T_BLF_to_BF.inverse();
-        if (time_since_last_step_ > robot_params.T_contact_ignore && swing_foot_contact == true)
+        if (time_since_last_step_ > robot_params_.T_contact_ignore && swing_foot_contact == true)
         {
             swing_foot_is_left_ = !swing_foot_is_left_;
             std::swap(stance_foot_name, swing_foot_name);
@@ -288,7 +299,6 @@ private:
         T_STF_to_BLF_.translation() = stance_foot_BLF; // todo figure out if i update TSTF
         broadcast_transform("BLF", "STF", T_STF_to_BLF_.translation(), Eigen::Quaterniond(T_STF_to_BLF_.rotation()));
 
-
         // Desired DCM Trajectory
         Eigen::Vector3d dcm_desired_STF;
         dcm_desired_STF << vel_d_[0], 0.0, 0.0;
@@ -307,20 +317,13 @@ private:
         Eigen::Vector3d dcm_STF;
         Eigen::Vector3d offset_com_baselink;
         offset_com_baselink << -0.04487, 0.0, 0.0;
-        dcm_STF(0) = T_STF_to_BLF_.inverse().translation()[0] + offset_com_baselink[0] + 1.0 / robot_params.omega * vel_base_link_STF(0);
-        dcm_STF(1) = T_STF_to_BLF_.inverse().translation()[1] + offset_com_baselink[1] + 1.0 / robot_params.omega * vel_base_link_STF(1);
+        dcm_STF(0) = T_STF_to_BLF_.inverse().translation()[0] + offset_com_baselink[0] + 1.0 / robot_params_.omega * vel_base_link_STF(0);
+        dcm_STF(1) = T_STF_to_BLF_.inverse().translation()[1] + offset_com_baselink[1] + 1.0 / robot_params_.omega * vel_base_link_STF(1);
         dcm_STF(2) = 0;
 
         Eigen::Vector3d next_footstep_STF;
-        next_footstep_STF = -dcm_desired_STF + dcm_STF * exp(robot_params.omega * remaining_time_in_step_);
-        // // safety circle for the CP
-        // Eigen::Vector3d vec_STF_to_next_CP = next_footstep_STF - Eigen::Vector3d(0.0, 0.0, 0.0);
-        // auto norm_vec_STF_to_next_CP = sqrt(vec_STF_to_next_CP(0) * vec_STF_to_next_CP(0) + vec_STF_to_next_CP(1) * vec_STF_to_next_CP(1));
-        // Eigen::Vector3d safe_next_footstep_STF = robot_params.safety_radius_CP / norm_vec_STF_to_next_CP * vec_STF_to_next_CP;
-        // if (norm_vec_STF_to_next_CP > robot_params.safety_radius_CP)
-        // {
-        //     next_footstep_STF = safe_next_footstep_STF;
-        // }
+        next_footstep_STF = -dcm_desired_STF + dcm_STF * exp(robot_params_.omega * remaining_time_in_step_);
+
         Eigen::Vector3d des_pos_foot_STF;
         des_pos_foot_STF << next_footstep_STF(0), next_footstep_STF(1), 0;
 
@@ -353,18 +356,17 @@ private:
                                         vel_desired_swing_foot_STF,
                                         acc_desired_swing_foot_STF);
 
-        double dt = robot_params.dt_ctrl;
-        remaining_time_in_step_ = robot_params.t_step - time_since_last_step_;
-        time_since_last_step_ = time_since_last_step_ + dt;
-
 
         Eigen::Vector3d pos_body_level_STF = T_STF_to_BLF_.inverse().translation();
-        pos_body_level_STF(2) = robot_params.robot_height;
+        pos_body_level_STF(2) = robot_params_.robot_height;
         Eigen::Quaterniond quat_body_level_STF = Eigen::Quaterniond(T_STF_to_BLF_.inverse().rotation());
-        Eigen::Vector3d acc_body_level_STF =  (vel_base_link_STF - previous_vel_base_link_STF_)/robot_params.dt_ctrl;
-        // Eigen::Vector3d acc_body_level_STF = Eigen::Vector3d::Zero();
-        previous_vel_base_link_STF_ = vel_base_link_STF;
-        // std::cout << "acc_body_level_STF" << acc_body_level_STF.transpose() << std::endl;
+        Eigen::Vector3d acc_body_level_STF = Eigen::Vector3d::Zero();
+        acc_body_level_STF(0) = robot_params_.omega * robot_params_.omega * (pos_body_level_STF(0) + offset_com_baselink(0));
+        acc_body_level_STF(1) = robot_params_.omega * robot_params_.omega * (pos_body_level_STF(1) + offset_com_baselink(1));
+
+        double dt = robot_params_.dt_ctrl;
+        remaining_time_in_step_ = robot_params_.t_step - time_since_last_step_;
+        time_since_last_step_ = time_since_last_step_ + dt;
 
         Eigen::Vector3d pos_desired_stance_foot_STF = Eigen::Vector3d::Zero();
         Eigen::Vector3d vel_desired_stance_foot_STF = Eigen::Vector3d::Zero();
@@ -409,7 +411,7 @@ private:
         for (int i = 0; i <= 2 * M_PI / 0.1; i++)
         {
             Eigen::Vector3d safety_circle_point;
-            safety_circle_point << robot_params.safety_radius_CP * cos(i * 0.1), robot_params.safety_radius_CP * sin(i * 0.1), 0.0;
+            safety_circle_point << robot_params_.safety_radius_CP * cos(i * 0.1), robot_params_.safety_radius_CP * sin(i * 0.1), 0.0;
             safety_circle_points.push_back(safety_circle_point);
         }
         publish_line_traj_markers(safety_circle_points, "safety_circle", "STF", 4, Eigen::Vector3d(0.0, 1.0, 0.0), pub_markers_safety_circle_);
@@ -723,7 +725,6 @@ private:
     std::string base_link_frame_id_;
 
     Eigen::Transform<double, 3, Eigen::AffineCompact> T_STF_to_BLF_;
-    Eigen::Vector3d previous_vel_base_link_STF_;
 
 
     struct
@@ -735,7 +736,7 @@ private:
         double duration_init_traj;
         double safety_radius_CP;
         double T_contact_ignore;
-    } robot_params;
+    } robot_params_;
 
     bool foot_right_contact_;
     bool foot_left_contact_;
