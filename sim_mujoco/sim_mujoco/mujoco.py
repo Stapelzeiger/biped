@@ -310,7 +310,7 @@ class MujocoNode(Node):
                         value['feedforward_torque'] = 0.0
         self.previous_q_vel = self.data.qvel.copy()
 
-        kp_moteus = 600.0
+        kp_moteus = 300.0
         Kp = (kp_moteus/(2*math.pi)) * np.ones(self.model.njnt - 1) # exclude root
 
         i = 0
