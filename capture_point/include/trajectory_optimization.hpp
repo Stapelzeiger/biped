@@ -24,9 +24,14 @@ public:
     bool run_optimization_;
     bool traj_opt_computed_;
 
+    Eigen::Vector2d pos_x_lims_;
+    Eigen::Vector2d pos_y_lims_;
+    Eigen::Vector2d pos_z_lims_;
+
 public:
     OptimizerTrajectory(double dt, double Ts);
     OptimizerTrajectory(){}
+    void set_position_limits(Eigen::Vector2d pos_x_lims, Eigen::Vector2d pos_y_lims, Eigen::Vector2d pos_z_lims);
 
     void get_P_and_q_matrices(Eigen::Vector3d opt_weight_pos,
                                  Eigen::Vector3d opt_weight_vel,
