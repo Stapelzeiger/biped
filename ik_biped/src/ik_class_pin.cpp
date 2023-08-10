@@ -372,6 +372,7 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
             bodies_in_contact.push_back(body);
         }
     }
+
     if (bodies_in_contact.size() == 1)
     {
         auto &body = bodies_in_contact[0].get();
@@ -488,7 +489,6 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
         for (auto &joint_state: joint_states)
         {
             joint_state.effort = 0.0;
-
         }
     }
 
