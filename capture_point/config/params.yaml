@@ -13,3 +13,14 @@
     l_foot_frame_id: L_FOOT_CONTACT
     l_foot_urdf_frame_id: L_ANKLE
     base_link_frame_id: base_link
+    offset_baselink_cog_x: -0.035
+    offset_baselink_cog_y: 0.0
+    offset_baselink_cog_z: 0.0
+    time_no_feet_in_contact: 0.2
+    foot_separation: 0.1
+    swing_x_safe_box_min: -0.3
+    swing_x_safe_box_max: 0.3
+    swing_y_safe_box_min: -0.4
+    swing_y_safe_box_max: 0.4
+    swing_z_safe_box_min: -0.1
+    swing_z_safe_box_max: 0.3

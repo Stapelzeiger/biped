@@ -11,7 +11,6 @@ OptimizerTrajectory::OptimizerTrajectory(double dt, double Ts)
 {
     Ts_ = Ts;
     nb_total_variables_per_coord_ = 0;
-    nb_total_variables_per_coord_ = 0;
     dt_ = dt;
     solution_opt_start_time_ = 0.0;
     N_ = static_cast<int>(Ts_ / dt_);
@@ -25,6 +24,13 @@ OptimizerTrajectory::OptimizerTrajectory(double dt, double Ts)
     // solver_.settings()->getSettings()->time_limit = 0.01;
 
     run_optimization_ = true;
+}
+
+void OptimizerTrajectory::set_position_limits(Eigen::Vector2d pos_x_lims, Eigen::Vector2d pos_y_lims, Eigen::Vector2d pos_z_lims)
+{
+    pos_x_lims_ = pos_x_lims;
+    pos_y_lims_ = pos_y_lims;
+    pos_z_lims_ = pos_z_lims;
 }
 
 void OptimizerTrajectory::get_P_and_q_matrices(Eigen::Vector3d opt_weight_pos,
@@ -106,27 +112,52 @@ void OptimizerTrajectory::get_linear_matrix_and_bounds(Eigen::Vector3d initial_p
 
     // ======== Create A matrix, lower bound and upper bound for limits ========
     int nb_limits_constraints;
-    bool use_limits = false;
-    if (use_limits == true)
+    bool use_pos_limits = true;
+    // if (use_limits == true)
+    // {
+    //     nb_limits_constraints = 2 * nb_total_variables_per_coord_;
+    //     for (int i = 0; i < nb_total_variables_per_coord_; i++) {
+    //         tripletList.push_back(T(nb_eq_constraints_pos_vel + nb_dynamics_constraints + 2 * i, 3 * i + 1, 1));
+    //         tripletList.push_back(T(nb_eq_constraints_pos_vel + nb_dynamics_constraints + 2 * i + 1, 3 * i + 2, 1));
+    //     }
+    // } else {
+    //     nb_limits_constraints = 0;
+    // }
+
+    // double a_max = 150;
+    // double v_max = 10;
+    // Eigen::MatrixXd l_limits = Eigen::MatrixXd::Zero(nb_limits_constraints, 1);
+    // Eigen::MatrixXd u_limits = Eigen::MatrixXd::Zero(nb_limits_constraints, 1);
+    // for (int i = 0; i < nb_limits_constraints; i += 2) {
+    //     l_limits(i) = -v_max;
+    //     l_limits(i + 1) = -a_max;
+    //     u_limits(i) = v_max;
+    //     u_limits(i + 1) = a_max;
+    // }
+
+    if (use_pos_limits == true)
     {
-        nb_limits_constraints = 2 * nb_total_variables_per_coord_;
+        nb_limits_constraints = nb_total_variables_per_coord_;
         for (int i = 0; i < nb_total_variables_per_coord_; i++) {
-            tripletList.push_back(T(nb_eq_constraints_pos_vel + nb_dynamics_constraints + 2 * i, 3 * i + 1, 1));
-            tripletList.push_back(T(nb_eq_constraints_pos_vel + nb_dynamics_constraints + 2 * i + 1, 3 * i + 2, 1));
+            tripletList.push_back(T(nb_eq_constraints_pos_vel + nb_dynamics_constraints + i, 3 * i, 1)); // position constraints
         }
     } else {
         nb_limits_constraints = 0;
     }
-
-    double a_max = 150;
-    double v_max = 10;
     Eigen::MatrixXd l_limits = Eigen::MatrixXd::Zero(nb_limits_constraints, 1);
     Eigen::MatrixXd u_limits = Eigen::MatrixXd::Zero(nb_limits_constraints, 1);
-    for (int i = 0; i < nb_limits_constraints; i += 2) {
-        l_limits(i) = -v_max;
-        l_limits(i + 1) = -a_max;
-        u_limits(i) = v_max;
-        u_limits(i + 1) = a_max;
+
+    for (int i = 0; i < int(nb_limits_constraints / 3); i++) {
+        l_limits(i) = pos_x_lims_[0];
+        u_limits(i) = pos_x_lims_[1];
+    }
+    for (int i = int(nb_limits_constraints / 3); i < int(2 * nb_limits_constraints / 3); i++) {
+        l_limits(i) = pos_y_lims_[0];
+        u_limits(i) = pos_y_lims_[1];
+    }
+    for (int i = int(2 * nb_limits_constraints / 3); i < int(3 * nb_limits_constraints / 3); i++) {
+        l_limits(i) = pos_z_lims_[0];
+        u_limits(i) = pos_z_lims_[1];
     }
 
     // ======== Create A matrix, lower bound and upper bound for z keep ========

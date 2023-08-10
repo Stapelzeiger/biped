@@ -50,6 +50,14 @@ public:
         robot_params_.offset_baselink_cog_x = this->declare_parameter<double>("offset_baselink_cog_x", 0.0);
         robot_params_.offset_baselink_cog_y = this->declare_parameter<double>("offset_baselink_cog_y", 0.0);
         robot_params_.offset_baselink_cog_z = this->declare_parameter<double>("offset_baselink_cog_z", 0.0);
+        robot_params_.time_no_feet_in_contact = this->declare_parameter<double>("time_no_feet_in_contact", 0.2);
+        robot_params_.foot_separation = this->declare_parameter<double>("foot_separation", 0.1);
+        robot_params_.swing_x_safe_box_min = this->declare_parameter<double>("swing_x_safe_box_min", -0.2);
+        robot_params_.swing_x_safe_box_max = this->declare_parameter<double>("swing_x_safe_box_max", 0.2);
+        robot_params_.swing_y_safe_box_min = this->declare_parameter<double>("swing_y_safe_box_min", -0.2);
+        robot_params_.swing_y_safe_box_max = this->declare_parameter<double>("swing_y_safe_box_max", 0.2);
+        robot_params_.swing_z_safe_box_min = this->declare_parameter<double>("swing_z_safe_box_min", 0.0);
+        robot_params_.swing_z_safe_box_max = this->declare_parameter<double>("swing_z_safe_box_max", 0.2);
 
         state_ = "INIT";
         initialization_done_ = false;
@@ -115,7 +123,21 @@ private:
         start_opt_pos_swing_foot_ = swing_foot_position_beginning_of_step_STF_;
         start_opt_vel_swing_foot_ = Eigen::Vector3d::Zero();
         swing_foot_traj_.set_initial_pos_vel(start_opt_pos_swing_foot_, start_opt_vel_swing_foot_);
+    }
 
+    void set_position_limits_for_foot_in_optimization(std::string swing_foot_name)
+    {
+        Eigen::Vector2d swing_x_safe_box_min_max, swing_y_safe_box_min_max,swing_z_safe_box_min_max;
+        swing_x_safe_box_min_max << robot_params_.swing_x_safe_box_min, robot_params_.swing_x_safe_box_max;
+        swing_z_safe_box_min_max << robot_params_.swing_z_safe_box_min, robot_params_.swing_z_safe_box_max;
+
+        if (swing_foot_name == r_foot_frame_id_)
+        {
+            swing_y_safe_box_min_max << robot_params_.swing_y_safe_box_min, -robot_params_.foot_separation * 0.5;
+        } else{
+            swing_y_safe_box_min_max << robot_params_.foot_separation * 0.5, robot_params_.swing_z_safe_box_max;
+        }
+        swing_foot_traj_.set_position_limits(swing_x_safe_box_min_max, swing_y_safe_box_min_max, swing_z_safe_box_min_max);
     }
 
     void odometry_callback(nav_msgs::msg::Odometry::SharedPtr msg)
@@ -163,7 +185,7 @@ private:
         }
         else
         {
-            timeout_for_no_feet_in_contact_ = 0.2;
+            timeout_for_no_feet_in_contact_ = robot_params_.time_no_feet_in_contact;
             state_ = "FOOT_IN_CONTACT";
         }
 
@@ -190,6 +212,9 @@ private:
         if (state_ == "INIT")
         {
             swing_foot_is_left_ = true;
+            auto swing_foot_name = l_foot_frame_id_;
+            set_position_limits_for_foot_in_optimization(swing_foot_name);
+
             state_ = "RAMP_TO_STARTING_POS";
         }
 
@@ -199,8 +224,6 @@ private:
             auto T_BF_to_BLF = T_BLF_to_BF.inverse();
 
             Eigen::Vector3d stance_foot_BF = get_eigen_transform(r_foot_frame_id_, base_link_frame_id_).translation();
-            Eigen::Vector3d swing_foot_BF = get_eigen_transform(l_foot_frame_id_, base_link_frame_id_).translation();
-            auto swing_foot_BLF = T_BF_to_BLF * swing_foot_BF;
 
             Eigen::Vector3d stance_foot_BLF = T_BF_to_BLF * stance_foot_BF;
             T_STF_to_BLF_.linear() = Eigen::Matrix3d::Identity();
@@ -291,6 +314,7 @@ private:
 
             foot_traj_list_STF_.clear(); // used for markers
             swing_foot_traj_.set_initial_pos_vel(start_opt_pos_swing_foot_, start_opt_vel_swing_foot_);
+            set_position_limits_for_foot_in_optimization(swing_foot_name);
 
             time_since_last_step_ = 0.0;
         }
@@ -334,31 +358,11 @@ private:
         Eigen::Vector3d vel_desired_swing_foot_STF;
         Eigen::Vector3d acc_desired_swing_foot_STF;
 
-        const double foot_separation = 0.1;
-        Eigen::Vector2d swing_x_safe_box;
-        Eigen::Vector2d swing_y_safe_box;
-
-        if (swing_foot_name == r_foot_frame_id_)
-        {
-            swing_x_safe_box << -0.2, 0.2;
-            swing_y_safe_box << -0.4, -foot_separation*0.5;
-
-            des_pos_foot_STF(0) = fmax( fmin( des_pos_foot_STF(0), swing_x_safe_box(1)), swing_x_safe_box(0));
-            des_pos_foot_STF(1) = fmax( fmin( des_pos_foot_STF(1), swing_y_safe_box(1)), swing_y_safe_box(0));
-        }else{
-            swing_x_safe_box << -0.2, 0.2;
-            swing_y_safe_box << foot_separation*0.5, 0.4;
-
-            des_pos_foot_STF(0) = fmax( fmin( des_pos_foot_STF(0), swing_x_safe_box(1)), swing_x_safe_box(0));
-            des_pos_foot_STF(1) = fmax( fmin( des_pos_foot_STF(1), swing_y_safe_box(1)), swing_y_safe_box(0));
-        }
-
         swing_foot_traj_.compute_traj_pos_vel(time_since_last_step_,
                                         des_pos_foot_STF,
                                         pos_desired_swing_foot_STF,
                                         vel_desired_swing_foot_STF,
                                         acc_desired_swing_foot_STF);
-
 
         Eigen::Vector3d pos_body_level_STF = T_STF_to_BLF_.inverse().translation();
         pos_body_level_STF(2) = robot_params_.robot_height;
@@ -729,7 +733,6 @@ private:
 
     Eigen::Transform<double, 3, Eigen::AffineCompact> T_STF_to_BLF_;
 
-
     struct
     {
         double robot_height;
@@ -742,6 +745,14 @@ private:
         double offset_baselink_cog_x;
         double offset_baselink_cog_y;
         double offset_baselink_cog_z;
+        double time_no_feet_in_contact;
+        double foot_separation;
+        double swing_x_safe_box_min;
+        double swing_x_safe_box_max;
+        double swing_y_safe_box_min;
+        double swing_y_safe_box_max;
+        double swing_z_safe_box_min;
+        double swing_z_safe_box_max;
     } robot_params_;
 
     bool foot_right_contact_;
