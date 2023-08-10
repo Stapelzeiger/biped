@@ -47,6 +47,9 @@ public:
         robot_params_.safety_radius_CP = this->declare_parameter<double>("safety_radius_CP", 1.0);
         robot_params_.T_contact_ignore = this->declare_parameter<double>("T_contact_ignore", 0.1);
         robot_params_.omega = sqrt(9.81 / robot_params_.robot_height);
+        robot_params_.offset_baselink_cog_x = this->declare_parameter<double>("offset_baselink_cog_x", 0.0);
+        robot_params_.offset_baselink_cog_y = this->declare_parameter<double>("offset_baselink_cog_y", 0.0);
+        robot_params_.offset_baselink_cog_z = this->declare_parameter<double>("offset_baselink_cog_z", 0.0);
 
         state_ = "INIT";
         initialization_done_ = false;
@@ -316,7 +319,7 @@ private:
 
         Eigen::Vector3d dcm_STF;
         Eigen::Vector3d offset_com_baselink;
-        offset_com_baselink << -0.04487, 0.0, 0.0;
+        offset_com_baselink << robot_params_.offset_baselink_cog_x, robot_params_.offset_baselink_cog_y, robot_params_.offset_baselink_cog_z;
         dcm_STF(0) = T_STF_to_BLF_.inverse().translation()[0] + offset_com_baselink[0] + 1.0 / robot_params_.omega * vel_base_link_STF(0);
         dcm_STF(1) = T_STF_to_BLF_.inverse().translation()[1] + offset_com_baselink[1] + 1.0 / robot_params_.omega * vel_base_link_STF(1);
         dcm_STF(2) = 0;
@@ -736,6 +739,9 @@ private:
         double duration_init_traj;
         double safety_radius_CP;
         double T_contact_ignore;
+        double offset_baselink_cog_x;
+        double offset_baselink_cog_y;
+        double offset_baselink_cog_z;
     } robot_params_;
 
     bool foot_right_contact_;
