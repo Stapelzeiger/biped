@@ -342,7 +342,6 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
             J_dot_for_ff_stacked.block(cur_constraint_ff, 0, 6, model_.nv) = J_dot;
             body_accs_stacked.block(cur_constraint_ff, 0, 3, 1) = body_acc;
             body_accs_stacked.block(cur_constraint_ff + 3, 0, 3, 1).setZero();
-            std::cout << "body acc 6DOF  = " << body_acc.transpose() << std::endl;
             cur_constraint_ff += 6;
         } else if (body.type == BodyState::ContraintType::POS_ONLY) {
             J_dot_for_ff_stacked.block(cur_constraint_ff, 0, 3, model_.nv) = J_dot.block(0, 0, 3, model_.nv);
