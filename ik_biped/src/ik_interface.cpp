@@ -16,7 +16,7 @@
 #include <math.h>
 
 using namespace std::placeholders;
-
+using namespace std::chrono_literals;
 class IKNode : public rclcpp::Node
 {
 
@@ -101,6 +101,19 @@ private:
             }
         }
 
+        auto time_now = rclcpp::Time(msg->header.stamp);
+        if (time_now - time_odom_baselink_ > rclcpp::Duration(0.1s) || time_odom_baselink_ == rclcpp::Time(0, 0, RCL_ROS_TIME))
+        {
+            RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 100 /* [ms] */, "odom_baselink data is too old: %f", (time_odom_baselink_ - time_now).seconds());
+            return;
+        }
+
+        if (time_now - time_encoder_joint_state_ > rclcpp::Duration(0.1s) || time_encoder_joint_state_ == rclcpp::Time(0, 0, RCL_ROS_TIME))
+        {
+            RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 100 /* [ms] */, "time_encoder_joint_state data is too old: %f", (time_encoder_joint_state_ - time_now).seconds());
+            return;
+        }
+
         trajectory_msgs::msg::JointTrajectory out_msg;
         out_msg.header = msg->header;
         int pt_idx = 0;
@@ -169,7 +182,7 @@ private:
             for (const auto &body : bodies) {
                 RCLCPP_DEBUG_STREAM(this->get_logger(), "   " << body.name);
             }
-            if (fabs((time_odom_baselink_ - time_encoder_joint_state_).seconds()) > 0.1) {
+            if (fabs((time_odom_baselink_ - time_encoder_joint_state_).seconds()) > 0.01) {
                 RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 100 /* [ms] */, "odom and joint_states are out of sync: ");
             }
             std::vector<Eigen::Vector3d> body_positions_solution;
@@ -208,21 +221,21 @@ private:
             //pub gravity torque
             std_msgs::msg::Float64MultiArray gravity_torque_msg;
             gravity_torque_msg.data.resize(gravity_torque.size());
-            for (size_t i = 0; i < gravity_torque.size(); i++) {
+            for (unsigned int i = 0; i < gravity_torque.size(); i++) {
                 gravity_torque_msg.data[i] = gravity_torque[i];
             }
             gravity_torque_pub_->publish(gravity_torque_msg);
             // pub coriolis torque
             std_msgs::msg::Float64MultiArray coriolis_torque_msg;
             coriolis_torque_msg.data.resize(coriolis_torque.size());
-            for (size_t i = 0; i < coriolis_torque.size(); i++) {
+            for (unsigned int i = 0; i < coriolis_torque.size(); i++) {
                 coriolis_torque_msg.data[i] = coriolis_torque[i];
             }
             corriolis_torque_pub_->publish(coriolis_torque_msg);
             // pub inertia torque
             std_msgs::msg::Float64MultiArray inertia_torque_msg;
             inertia_torque_msg.data.resize(inertia_torque.size());
-            for (size_t i = 0; i < inertia_torque.size(); i++) {
+            for (unsigned int i = 0; i < inertia_torque.size(); i++) {
                 inertia_torque_msg.data[i] = inertia_torque[i];
             }
             inertia_torque_pub_->publish(inertia_torque_msg);
@@ -230,7 +243,7 @@ private:
             // pub a_foot_computed
             std_msgs::msg::Float64MultiArray a_foot_computed_msg;
             a_foot_computed_msg.data.resize(a_foot_computed.size());
-            for (size_t i = 0; i < a_foot_computed.size(); i++) {
+            for (unsigned int i = 0; i < a_foot_computed.size(); i++) {
                 a_foot_computed_msg.data[i] = a_foot_computed[i];
             }
             acc_foot_computed_pub_->publish(a_foot_computed_msg);
@@ -328,7 +341,7 @@ private:
 
     void robot_desc_cb(const std_msgs::msg::String::SharedPtr msg)
     {
-        std::cout << "Subscribed to robot description" << std::endl;
+        std::cout << "Robot description received!" << std::endl;
         robot_.build_model(msg->data.c_str());
     }
 
@@ -349,10 +362,10 @@ private:
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr acc_foot_computed_pub_;
 
     IKRobot robot_;
-    rclcpp::Time time_encoder_joint_state_;
+    rclcpp::Time time_encoder_joint_state_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
     std::vector<IKRobot::JointState> encoder_joint_states_;
     IKRobot::BodyState odom_baselink_;
-    rclcpp::Time time_odom_baselink_;
+    rclcpp::Time time_odom_baselink_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
 
 };
 
