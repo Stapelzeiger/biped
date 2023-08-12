@@ -119,7 +119,7 @@ class MujocoNode(Node):
         self.initial_pose_sub = self.create_subscription(PoseWithCovarianceStamped, 'initialpose', self.init_cb, 10)
         self.reset_sub = self.create_subscription(Empty, '~/reset', self.reset_cb, 10)
 
-        self.paused = True
+        self.paused = False
         self.step_sim_sub = self.create_subscription(Float64, "~/step", self.step_cb, 1)
         self.pause_sim_sub = self.create_subscription(Bool, "~/pause", self.pause_cb, 1)
 
