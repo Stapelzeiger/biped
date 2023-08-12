@@ -310,6 +310,9 @@ void OptimizerTrajectory::compute_traj_pos_vel(double T_since_begin_step,
         if (!success)
         {
             std::cout << "Optimization failed" << std::endl;
+            solver_.data()->clearHessianMatrix();
+            solver_.data()->clearLinearConstraintsMatrix();
+            solver_.clearSolver();
             return;
         }
         for (int i = 0; i < nb_total_variables_per_coord_; i = i + 3)
