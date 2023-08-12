@@ -1,0 +1,20 @@
+launch:
+- arg:
+    name: "use_sim_time"
+    default: "False"
+
+- node:
+    pkg: pos_ctrl
+    exec: pos_ctrl
+    name: pos_ctrl
+    param:
+      - name: use_sim_time
+        value: '$(var use_sim_time)'
+    remap:
+      - from: /pos_ctrl/cmd_vel
+        to: /vel_cmd
+      - from: /pos_ctrl/goal
+        to: /goal_pose
+      - from: /pos_ctrl/odometry
+        to: /odometry
+    output: screen
