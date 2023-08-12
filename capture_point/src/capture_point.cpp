@@ -181,7 +181,6 @@ private:
         if (foot_left_contact_ == false && foot_right_contact_ == false)
         {
             timeout_for_no_feet_in_contact_ -= robot_params_.dt_ctrl;
-            std::cout << "lost contact of the feet" << std::endl;
         }
         else
         {
@@ -191,6 +190,7 @@ private:
 
         if (timeout_for_no_feet_in_contact_ < 0)
         {
+            RCLCPP_ERROR(this->get_logger(), "No feet in contact for too long");
             if (state_ == "FOOT_IN_CONTACT")
             {
                 state_ = "INIT";
@@ -255,23 +255,21 @@ private:
                 initialization_done_ = true;
                 set_starting_to_walk_params(fin_swing_foot_pos_STF);
                 t_init_traj_ = robot_params_.duration_init_traj;
-                std::cout << "Starting to walk! RESET!" << std::endl;
             }
         }
         if (state_ == "FOOT_IN_CONTACT" && initialization_done_ == true)
         {
-            auto tic = std::chrono::high_resolution_clock::now();
+            auto t_start = std::chrono::high_resolution_clock::now();
             run_capture_point_controller();
-            auto toc = std::chrono::high_resolution_clock::now();
-            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(toc - tic);
+            auto t_finish = std::chrono::high_resolution_clock::now();
+            auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t_finish - t_start);
 
-            float dt_ctrl_ms = robot_params_.dt_ctrl * 1000;
-            if (duration.count() > dt_ctrl_ms)
+            double dt_ctrl_ms = robot_params_.dt_ctrl * 1000;
+            if (duration_ms.count() > dt_ctrl_ms * 0.8)
             {
-                std::cout << "duration of capture point controller in ms " << duration.count() << std::endl;
-                std::cout << "dt_ctrl_ms " << dt_ctrl_ms << std::endl;
+                RCLCPP_WARN(this->get_logger(), "duration of capture point controller in ms %ld ", duration_ms.count());
+                RCLCPP_WARN(this->get_logger(), "dt_ctrl_ms %ld", dt_ctrl_ms);
                 RCLCPP_WARN(this->get_logger(), "Running slower than desired");
-
             }
         }
     }
