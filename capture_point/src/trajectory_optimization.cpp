@@ -147,13 +147,14 @@ void OptimizerTrajectory::get_linear_matrix_and_bounds(Eigen::Vector3d initial_p
     Eigen::MatrixXd l_limits = Eigen::MatrixXd::Zero(nb_limits_constraints, 1);
     Eigen::MatrixXd u_limits = Eigen::MatrixXd::Zero(nb_limits_constraints, 1);
 
+    double buffer = 0.1;
     for (int i = 0; i < int(nb_limits_constraints / 3); i++) {
-        l_limits(i) = pos_x_lims_[0];
-        u_limits(i) = pos_x_lims_[1];
+        l_limits(i) = pos_x_lims_[0] - buffer;
+        u_limits(i) = pos_x_lims_[1] + buffer;
     }
     for (int i = int(nb_limits_constraints / 3); i < int(2 * nb_limits_constraints / 3); i++) {
-        l_limits(i) = pos_y_lims_[0];
-        u_limits(i) = pos_y_lims_[1];
+        l_limits(i) = pos_y_lims_[0] - buffer;
+        u_limits(i) = pos_y_lims_[1] + buffer;
     }
     for (int i = int(2 * nb_limits_constraints / 3); i < int(3 * nb_limits_constraints / 3); i++) {
         l_limits(i) = pos_z_lims_[0];
@@ -226,14 +227,26 @@ void OptimizerTrajectory::setup_optimization_pb(Eigen::SparseMatrix<double>& P_m
     solver_.initSolver();
 }
 
-Eigen::VectorXd OptimizerTrajectory::solve_optimization_pb()
+bool OptimizerTrajectory::solve_optimization_pb(Eigen::VectorXd &qp_sol)
 {
     Eigen::Vector4d ctr;
-    Eigen::VectorXd qp_sol;
     solver_.solveProblem();
 
+    if (solver_.solveProblem() != OsqpEigen::ErrorExitFlag::NoError)
+    {
+        std::cout << "[OsqpEigen::Solver::solve] Unable to solve the problem." << std::endl;
+        return false;
+    }
+
+    // check if the solution is feasible
+    if (solver_.getStatus() != OsqpEigen::Status::Solved)
+    {
+        std::cout << "[OsqpEigen::Solver::solve] The solution is unfeasible." << std::endl;
+        return false;
+    }
+
     qp_sol = solver_.getSolution();
-    return qp_sol;
+    return true;
 }
 
 void OptimizerTrajectory::set_initial_pos_vel(Eigen::Vector3d initial_pos,
@@ -293,7 +306,12 @@ void OptimizerTrajectory::compute_traj_pos_vel(double T_since_begin_step,
         get_linear_matrix_and_bounds(initial_pos_, initial_vel_, T_since_begin_step, A_matrix, l_vec, u_vec);
         setup_optimization_pb(P_matrix, q_vec, A_matrix, l_vec, u_vec);
         Eigen::VectorXd sol;
-        sol = solve_optimization_pb();
+        auto success = solve_optimization_pb(sol);
+        if (!success)
+        {
+            std::cout << "Optimization failed" << std::endl;
+            return;
+        }
         for (int i = 0; i < nb_total_variables_per_coord_; i = i + 3)
         {
             Eigen::Vector3d pos;

@@ -52,7 +52,9 @@ public:
                                 Eigen::SparseMatrix<double>& A_matrix,
                                 Eigen::VectorXd& l_vec,
                                 Eigen::VectorXd& u_vec);
-    Eigen::VectorXd solve_optimization_pb();
+
+    bool solve_optimization_pb(Eigen::VectorXd &qp_sol);
+
     void compute_traj_pos_vel(double T_since_begin_step,
                                                 Eigen::Vector3d final_pos,
                                                 Eigen::Vector3d &foot_pos,
