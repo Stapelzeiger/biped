@@ -18,7 +18,6 @@ Panels:
         - /Marker1/Topic1
         - /Marker1/Namespaces1
         - /Image1/Topic1
-        - /Speed [m/s]1
         - /Speed [m/s]1/Topic1
       Splitter Ratio: 0.6657929420471191
     Tree Height: 1664
@@ -67,25 +66,69 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: false
+        BLF:
+          Value: true
+        L_FOOT:
+          Value: true
         L_FOOT_CONTACT:
+          Value: true
+        L_HIP:
           Value: true
         L_LOWER_LEG:
           Value: false
+        L_SHOULDER:
+          Value: true
+        L_UPPER_LEG:
+          Value: true
+        R_FOOT:
+          Value: true
         R_FOOT_CONTACT:
           Value: false
+        R_HIP:
+          Value: true
         R_LOWER_LEG:
           Value: false
+        R_SHOULDER:
+          Value: true
+        R_UPPER_LEG:
+          Value: true
+        STF:
+          Value: true
         base_link:
           Value: false
         imu:
           Value: false
+        odom:
+          Value: true
       Marker Scale: 0.30000001192092896
       Name: TF
       Show Arrows: false
       Show Axes: true
       Show Names: false
       Tree:
-        {}
+        odom:
+          base_link:
+            BLF:
+              STF:
+                {}
+            L_HIP:
+              L_SHOULDER:
+                L_UPPER_LEG:
+                  L_LOWER_LEG:
+                    L_FOOT:
+                      {}
+                    L_FOOT_CONTACT:
+                      {}
+            R_HIP:
+              R_SHOULDER:
+                R_UPPER_LEG:
+                  R_LOWER_LEG:
+                    R_FOOT:
+                      {}
+                    R_FOOT_CONTACT:
+                      {}
+            imu:
+              {}
       Update Interval: 0
       Value: true
     - Alpha: 1
@@ -270,7 +313,15 @@ Visualization Manager:
       Enabled: true
       Name: IK_pos
       Namespaces:
-        {}
+        L_ANKLE: true
+        L_ANKLE_desired: true
+        L_ANKLE_input: true
+        R_ANKLE: true
+        R_ANKLE_desired: true
+        R_ANKLE_input: true
+        base_link: true
+        base_link_desired: true
+        base_link_input: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -295,7 +346,7 @@ Visualization Manager:
       Enabled: true
       Name: Marker_next_footstep
       Namespaces:
-        {}
+        next_footstep: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -321,7 +372,7 @@ Visualization Manager:
       Enabled: true
       Name: marker_stance_foot_BF
       Namespaces:
-        {}
+        stance_foot: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -334,7 +385,7 @@ Visualization Manager:
       Enabled: true
       Name: marker_swing_foot_BF
       Namespaces:
-        {}
+        swing_foot: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -347,7 +398,7 @@ Visualization Manager:
       Enabled: true
       Name: foot_traj
       Namespaces:
-        {}
+        foot_trajectory: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -411,6 +462,19 @@ Visualization Manager:
       size: 200
       text size: 14
       top: 50
+    - Class: rviz_default_plugins/Marker
+      Enabled: true
+      Name: Marker
+      Namespaces:
+        safety_circle: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /capture_point/markers_safety_circle
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -457,7 +521,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/XYOrbit
-      Distance: 1.877370834350586
+      Distance: 2.3549740314483643
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
