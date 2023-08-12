@@ -125,7 +125,7 @@ class MujocoNode(Node):
 
         self.previous_q_vel = np.zeros(self.model.nv)
 
-        self.timer = self.create_timer(self.dt, self.timer_cb)
+        self.timer = self.create_timer(self.dt*2, self.timer_cb, clock=rclpy.clock.Clock(clock_type=rclpy.clock.ClockType.STEADY_TIME))
 
     def reset_cb(self, msg):
         with self.lock:
@@ -196,10 +196,13 @@ class MujocoNode(Node):
             if self.counter % vis_update_downsampling == 0:
                 self.viewer.render()
 
-        self.run_joint_controllers()
-        mj.mj_step(self.model, self.data)
-        self.time += self.dt
-        self.counter += 1
+        for _ in range(2):
+            self.run_joint_controllers()
+            self.ankle_foot_spring('L_ANKLE')
+            self.ankle_foot_spring('R_ANKLE')
+            mj.mj_step(self.model, self.data)
+            self.time += self.dt
+            self.counter += 1
 
         clock_msg = Clock()
         clock_msg.clock.sec = int(self.time)
@@ -260,9 +263,6 @@ class MujocoNode(Node):
             msg_joint_states.velocity.append(value['actual_vel'])
             msg_joint_states.effort.append(value['actual_acc'])
         self.joint_states_pub.publish(msg_joint_states)
-        
-        self.ankle_foot_spring('L_ANKLE')
-        self.ankle_foot_spring('R_ANKLE')
 
         gyro_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_SENSOR, "gyro")
         accel_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_SENSOR, "accelerometer")
@@ -310,7 +310,7 @@ class MujocoNode(Node):
                         value['feedforward_torque'] = 0.0
         self.previous_q_vel = self.data.qvel.copy()
 
-        kp_moteus = 300.0
+        kp_moteus = 240.0
         Kp = (kp_moteus/(2*math.pi)) * np.ones(self.model.njnt - 1) # exclude root
 
         i = 0
