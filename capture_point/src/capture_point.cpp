@@ -349,6 +349,15 @@ private:
         Eigen::Vector3d next_footstep_STF;
         next_footstep_STF = -dcm_desired_STF + dcm_STF * exp(robot_params_.omega * remaining_time_in_step_);
 
+        Eigen::Vector3d vec_STF_to_next_CP = next_footstep_STF - Eigen::Vector3d(0.0, 0.0, 0.0);
+        auto norm_vec_STF_to_next_CP = sqrt(vec_STF_to_next_CP(0) * vec_STF_to_next_CP(0) + vec_STF_to_next_CP(1) * vec_STF_to_next_CP(1));
+        Eigen::Vector3d safe_next_footstep_STF = robot_params_.safety_radius_CP / norm_vec_STF_to_next_CP * vec_STF_to_next_CP;
+
+        if (norm_vec_STF_to_next_CP > robot_params_.safety_radius_CP)
+        {
+            next_footstep_STF = safe_next_footstep_STF;
+        }
+
         Eigen::Vector3d des_pos_foot_STF;
         des_pos_foot_STF << next_footstep_STF(0), next_footstep_STF(1), 0;
 
