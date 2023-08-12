@@ -42,3 +42,6 @@ launch:
 
 - include:
     file: "$(find-pkg-share metrics)/metrics.launch.yml"
+
+- include:
+    file: "$(find-pkg-share pos_ctrl)/pos_ctrl.launch.yml"
