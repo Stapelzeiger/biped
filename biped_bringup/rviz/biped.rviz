@@ -6,33 +6,21 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
-        - /Grid1
-        - /TF1
         - /TF1/Frames1
         - /TF1/Tree1
-        - /RobotModel1
         - /RobotModel1/Mass Properties1
         - /RobotModel1/Description Topic1
-        - /Pose1
         - /Odometry1/Shape1
         - /MarkerArray1/Topic1
         - /MarkerArray1/Namespaces1
-        - /IK_pos1
         - /IK_pos1/Topic1
         - /IK_pos1/Namespaces1
-        - /Marker1
-        - /Marker_dcm_desired1
-        - /Marker_next_footstep1
-        - /Marker_next_safe_footstep1
-        - /marker_stance_foot_BF1
-        - /marker_swing_foot_BF1
-        - /foot_traj1
-        - /Marker2
-        - /Marker2/Topic1
-        - /Marker2/Namespaces1
-        - /Image1
+        - /Marker1/Topic1
+        - /Marker1/Namespaces1
         - /Image1/Topic1
-      Splitter Ratio: 0.44881075620651245
+        - /Speed [m/s]1
+        - /Speed [m/s]1/Topic1
+      Splitter Ratio: 0.6657929420471191
     Tree Height: 1664
   - Class: rviz_common/Selection
     Name: Selection
@@ -79,69 +67,25 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: false
-        BLF:
-          Value: true
-        L_FOOT:
-          Value: true
         L_FOOT_CONTACT:
-          Value: true
-        L_HIP:
           Value: true
         L_LOWER_LEG:
           Value: false
-        L_SHOULDER:
-          Value: true
-        L_UPPER_LEG:
-          Value: true
-        R_FOOT:
-          Value: true
         R_FOOT_CONTACT:
           Value: false
-        R_HIP:
-          Value: true
         R_LOWER_LEG:
           Value: false
-        R_SHOULDER:
-          Value: true
-        R_UPPER_LEG:
-          Value: true
-        STF:
-          Value: true
         base_link:
           Value: false
         imu:
           Value: false
-        odom:
-          Value: true
       Marker Scale: 0.30000001192092896
       Name: TF
       Show Arrows: false
       Show Axes: true
       Show Names: false
       Tree:
-        odom:
-          base_link:
-            BLF:
-              STF:
-                {}
-            L_HIP:
-              L_SHOULDER:
-                L_UPPER_LEG:
-                  L_LOWER_LEG:
-                    L_FOOT:
-                      {}
-                    L_FOOT_CONTACT:
-                      {}
-            R_HIP:
-              R_SHOULDER:
-                R_UPPER_LEG:
-                  R_LOWER_LEG:
-                    R_FOOT:
-                      {}
-                    R_FOOT_CONTACT:
-                      {}
-            imu:
-              {}
+        {}
       Update Interval: 0
       Value: true
     - Alpha: 1
@@ -326,15 +270,7 @@ Visualization Manager:
       Enabled: true
       Name: IK_pos
       Namespaces:
-        L_ANKLE: true
-        L_ANKLE_desired: true
-        L_ANKLE_input: true
-        R_ANKLE: true
-        R_ANKLE_desired: true
-        R_ANKLE_input: true
-        base_link: true
-        base_link_desired: true
-        base_link_input: true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -342,19 +278,6 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /ik_interface/markers
       Value: true
-    - Class: rviz_default_plugins/Marker
-      Enabled: false
-      Name: Marker
-      Namespaces:
-        {}
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        Filter size: 10
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /capture_point/markers_safety_circle
-      Value: false
     - Class: rviz_default_plugins/Marker
       Enabled: true
       Name: Marker_dcm_desired
@@ -372,7 +295,7 @@ Visualization Manager:
       Enabled: true
       Name: Marker_next_footstep
       Namespaces:
-        next_footstep: true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -398,7 +321,7 @@ Visualization Manager:
       Enabled: true
       Name: marker_stance_foot_BF
       Namespaces:
-        stance_foot: true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -411,7 +334,7 @@ Visualization Manager:
       Enabled: true
       Name: marker_swing_foot_BF
       Namespaces:
-        swing_foot: true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -424,7 +347,7 @@ Visualization Manager:
       Enabled: true
       Name: foot_traj
       Namespaces:
-        foot_trajectory: true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -460,6 +383,34 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /blackfly_0/image_raw
       Value: true
+    - Class: rviz_2d_overlay_plugins/PieChartOverlay
+      Enabled: true
+      Name: Speed [m/s]
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /metrics/speed
+      Value: true
+      auto color change: true
+      background color: 0; 0; 0
+      backround alpha: 0
+      clockwise rotate direction: false
+      foreground alpha: 0.699999988079071
+      foreground alpha 2: 0.4000000059604645
+      foreground color: 255; 255; 255
+      left: 50
+      max color: 255; 0; 0
+      max color change threthold: 0.5
+      max value: 1
+      med color: 0; 255; 0
+      med color change threthold: 0.20000000298023224
+      min value: 0
+      show caption: true
+      size: 200
+      text size: 14
+      top: 50
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -506,7 +457,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/XYOrbit
-      Distance: 2.159437656402588
+      Distance: 1.877370834350586
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -521,10 +472,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.1753983050584793
+      Pitch: 0.06039830669760704
       Target Frame: base_link
       Value: XYOrbit (rviz_default_plugins)
-      Yaw: 0.9354022145271301
+      Yaw: 0.5804017186164856
     Saved: ~
 Window Geometry:
   Displays:
@@ -534,7 +485,7 @@ Window Geometry:
   Hide Right Dock: true
   Image:
     collapsed: false
-  QMainWindow State: 000000ff00000000fd0000000400000000000001f7000006eefc020000000bfb0000001200530065006c0065006300740069006f006e00000001e10000009b000000b000fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000006e000006ee0000018200fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb0000000a0049006d00610067006500000004f20000026a0000004a00fffffffb0000000c00430061006d00650072006101000005c6000001cc0000000000000000fb0000000a0049006d006100670065010000042a000003320000000000000000000000010000015f000006eefc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000006e000006ee0000013200fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e1000001970000000300000e6c0000005afc0100000002fb0000000800540069006d0065010000000000000e6c0000058100fffffffb0000000800540069006d0065010000000000000450000000000000000000000c69000006ee00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd00000004000000000000023b000006eefc020000000bfb0000001200530065006c0065006300740069006f006e00000001e10000009b000000b000fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000006e000006ee0000018200fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb0000000a0049006d00610067006500000004f20000026a0000004a00fffffffb0000000c00430061006d00650072006101000005c6000001cc0000000000000000fb0000000a0049006d006100670065010000042a000003320000000000000000000000010000015f000006eefc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000006e000006ee0000013200fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e1000001970000000300000e6c0000005afc0100000002fb0000000800540069006d0065010000000000000e6c0000058100fffffffb0000000800540069006d0065010000000000000450000000000000000000000c25000006ee00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Time:
