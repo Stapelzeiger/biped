@@ -8,6 +8,7 @@
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wtype-limits"
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #include "pinocchio/algorithm/joint-configuration.hpp"
 #pragma GCC diagnostic pop
 
