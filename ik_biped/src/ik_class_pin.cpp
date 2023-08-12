@@ -445,7 +445,7 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
         Eigen::VectorXd feedforward_torque_with_acceleration1(QR1.solve(y_with_acceleration));
         Eigen::VectorXd feedforward_torque1_all_joints = Eigen::VectorXd::Zero(nb_joints_actuators);
         feedforward_torque1_all_joints.head(nb_u/2) = feedforward_torque1.head(nb_u/2);
-        feedforward_torque1_all_joints.tail((nb_u)/2 + 1) = feedforward_torque1.tail(nb_u/2);
+        feedforward_torque1_all_joints.segment((nb_u)/2 + 1, (nb_u)/2) = feedforward_torque1.tail(nb_u/2);
 
         gravity_torque = QR1.solve(P * data.g);
         coriolis_torque = QR1.solve(P * data.C * q_vel);
