@@ -268,7 +268,7 @@ private:
             if (duration_ms.count() > dt_ctrl_ms * 0.8)
             {
                 RCLCPP_WARN(this->get_logger(), "duration of capture point controller in ms %ld ", duration_ms.count());
-                RCLCPP_WARN(this->get_logger(), "dt_ctrl_ms %ld", dt_ctrl_ms);
+                RCLCPP_WARN(this->get_logger(), "dt_ctrl_ms %f", dt_ctrl_ms);
                 RCLCPP_WARN(this->get_logger(), "Running slower than desired");
             }
         }
