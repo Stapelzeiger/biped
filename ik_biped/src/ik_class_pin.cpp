@@ -75,14 +75,11 @@ void IKRobot::build_model(const std::string urdf_xml_string)
         std::cout << "" << std::endl;
     }
 
-    // build actuation matrix
-    auto nb_joints_actuators = model_.nv - 6;
-    auto nb_u = nb_joints_actuators - 2;
-    B_matrix_ = Eigen::MatrixXd::Zero(model_.nv, nb_joints_actuators - 2);
-    std::cout << "joint_actuators:" << nb_joints_actuators << std::endl;
-    std::cout << "model_.nv" << model_.nv << std::endl;
-    B_matrix_.block(6, 0, nb_u/2, nb_u/2) = Eigen::MatrixXd::Identity(nb_u/2, nb_u/2);
-    B_matrix_.block(6 + nb_joints_actuators/2, nb_u/2, nb_u/2, nb_u/2) = Eigen::MatrixXd::Identity(nb_u/2, nb_u/2);
+    nb_joints_actuators_ = model_.nv - 6;
+    nb_u_ = nb_joints_actuators_ - 2;
+    B_matrix_ = Eigen::MatrixXd::Zero(model_.nv, nb_joints_actuators_ - 2);
+    B_matrix_.block(6, 0, nb_u_/2, nb_u_/2) = Eigen::MatrixXd::Identity(nb_u_/2, nb_u_/2);
+    B_matrix_.block(6 + nb_joints_actuators_/2, nb_u_/2, nb_u_/2, nb_u_/2) = Eigen::MatrixXd::Identity(nb_u_/2, nb_u_/2);
 }
 
 bool IKRobot::has_model() const
@@ -431,25 +428,20 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
         pinocchio::crba(model_, data, q_); // data.M
         data.M.triangularView<Eigen::StrictlyLower>() = data.M.transpose().triangularView<Eigen::StrictlyLower>();
         auto y = P * data.g + P * data.C * q_vel + P * data.M * q_acc;
-        auto y_with_acceleration = P * data.g + P * data.C * q_vel + P * data.M * q_acc;
-        // Option 1 for B
-        auto nb_joints_actuators = model_.nv - 6;
-        auto nb_u = nb_joints_actuators - 2;
-        Eigen::MatrixXd B_matrix1 = Eigen::MatrixXd::Zero(model_.nv, nb_joints_actuators - 2);
-        B_matrix1.block(6, 0, nb_u/2, nb_u/2) = Eigen::MatrixXd::Identity(nb_u/2, nb_u/2);
-        B_matrix1.block(6 + nb_joints_actuators/2, nb_u/2, nb_u/2, nb_u/2) = Eigen::MatrixXd::Identity(nb_u/2, nb_u/2);
-        Eigen::MatrixXd PB1 = P * B_matrix1;
-        // print nb of rows and cols
-        Eigen::HouseholderQR<Eigen::MatrixXd> QR1(PB1);
-        Eigen::VectorXd feedforward_torque1(QR1.solve(y));
-        Eigen::VectorXd feedforward_torque_with_acceleration1(QR1.solve(y_with_acceleration));
-        Eigen::VectorXd feedforward_torque1_all_joints = Eigen::VectorXd::Zero(nb_joints_actuators);
-        feedforward_torque1_all_joints.head(nb_u/2) = feedforward_torque1.head(nb_u/2);
-        feedforward_torque1_all_joints.segment((nb_u)/2 + 1, (nb_u)/2) = feedforward_torque1.tail(nb_u/2);
 
-        gravity_torque = QR1.solve(P * data.g);
-        coriolis_torque = QR1.solve(P * data.C * q_vel);
-        inertia_torque = QR1.solve(P * data.M * q_acc);
+        Eigen::MatrixXd PB = P * B_matrix_;
+        Eigen::HouseholderQR<Eigen::MatrixXd> QR(PB);
+        Eigen::VectorXd feedforward_torque(QR.solve(y));
+        Eigen::VectorXd feedforward_torque_all_joints = Eigen::VectorXd::Zero(nb_joints_actuators_);
+        feedforward_torque_all_joints.head(nb_u_/2) = feedforward_torque.head(nb_u_/2);
+        feedforward_torque_all_joints.segment((nb_u_)/2 + 1, (nb_u_)/2) = feedforward_torque.tail(nb_u_/2);
+
+        // for debugging:
+        auto y_with_acceleration = P * data.g + P * data.C * q_vel + P * data.M * q_acc;
+        Eigen::VectorXd feedforward_torque_with_acceleration(QR.solve(y_with_acceleration));
+        gravity_torque = QR.solve(P * data.g);
+        coriolis_torque = QR.solve(P * data.C * q_vel);
+        inertia_torque = QR.solve(P * data.M * q_acc);
 
         // compute contact forces:
         Eigen::MatrixXd block_matrix_q_acc_and_lambda = Eigen::MatrixXd::Zero(model_.nv + 5, model_.nv + 5);
@@ -458,7 +450,7 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
         block_matrix_q_acc_and_lambda.block(0, model_.nv, model_.nv, 5) = -J_contacts.transpose();
 
         Eigen::VectorXd right_hand_side_q_lambda = Eigen::MatrixXd::Zero(model_.nv + 5, 1);
-        right_hand_side_q_lambda.head(model_.nv) = - data.g - data.C * q_vel + B_matrix1 * feedforward_torque_with_acceleration1;
+        right_hand_side_q_lambda.head(model_.nv) = - data.g - data.C * q_vel + B_matrix_ * feedforward_torque_with_acceleration;
         right_hand_side_q_lambda.tail(5) = -J_contacts_dot * q_vel;
 
         Eigen::HouseholderQR<Eigen::MatrixXd> QR_q_lambda(block_matrix_q_acc_and_lambda);
@@ -467,11 +459,12 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
         auto computed_q_acc = q_acc_and_lambda.head(model_.nv);
         // compute a_foot:
         a_foot_computed = J_contacts * computed_q_acc + J_contacts_dot * q_vel;
+
         for (auto &joint_state: joint_states)
         {
             auto joint_id = model_.getJointId(joint_state.name);
             auto joint = model_.joints[joint_id];
-            joint_state.effort = feedforward_torque1_all_joints[joint.idx_v() - 6];
+            joint_state.effort = feedforward_torque_all_joints[joint.idx_v() - 6];
         }
         for (int joint_idx = 0; joint_idx < model_.njoints; joint_idx++)
         {
