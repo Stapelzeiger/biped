@@ -190,7 +190,7 @@ private:
 
         if (timeout_for_no_feet_in_contact_ < 0)
         {
-            RCLCPP_ERROR(this->get_logger(), "No feet in contact for too long");
+            RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 1000, "No feet in contact for too long");
             if (state_ == "FOOT_IN_CONTACT")
             {
                 state_ = "INIT";
@@ -762,8 +762,8 @@ private:
         double swing_z_safe_box_max;
     } robot_params_;
 
-    bool foot_right_contact_;
-    bool foot_left_contact_;
+    bool foot_right_contact_ = false;
+    bool foot_left_contact_ = false;
 
     struct
     {
@@ -787,7 +787,7 @@ private:
 
     std::string state_;
 
-    double timeout_for_no_feet_in_contact_;
+    double timeout_for_no_feet_in_contact_ = 0.0;
 
     // init variables
     double t_init_traj_;
