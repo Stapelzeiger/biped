@@ -31,6 +31,9 @@ launch:
 - include:
     file: "$(find-pkg-share sim_mujoco)/sim.launch.yml"
 
+# - include:
+#     file: "$(find-pkg-share sim_mujoco)/pub_traj.launch.yml"
+
 - include:
     file: "$(find-pkg-share ik_biped)/launch/ik.launch.yml"
 
@@ -38,7 +41,5 @@ launch:
     file: "$(find-pkg-share kinematic_odometry)/launch/kinematic_odometry.launch.yml"
 
 - include:
-    file: "$(find-pkg-share capture_point)/launch/cp_sim.launch.yml"
+    file: "$(find-pkg-share capture_point)/launch/test_bodies.launch.yml"
 
-- include:
-    file: "$(find-pkg-share metrics)/metrics.launch.yml"
