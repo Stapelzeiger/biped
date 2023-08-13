@@ -39,10 +39,12 @@ class MujocoNode(Node):
         self.declare_parameter("sim_time_sec", rclpy.parameter.Parameter.Type.DOUBLE)
         self.declare_parameter("visualization_rate", rclpy.parameter.Parameter.Type.DOUBLE)
         self.declare_parameter("visualize_mujoco", rclpy.parameter.Parameter.Type.BOOL)
+        self.declare_parameter("publish_tf", rclpy.parameter.Parameter.Type.BOOL)
         self.visualize_mujoco = self.get_parameter("visualize_mujoco").get_parameter_value().bool_value
         mujoco_xml_path = self.get_parameter("mujoco_xml_path").get_parameter_value().string_value
         self.sim_time_sec = self.get_parameter("sim_time_sec").get_parameter_value().double_value
         self.visualization_rate = self.get_parameter("visualization_rate").get_parameter_value().double_value
+        self.publish_tf = self.get_parameter("publish_tf").get_parameter_value().bool_value
         self.initialization_done = False
         self.goal_pos = [0.0, 0.0]
         self.contact_states = {'R_FOOT': False,
@@ -233,14 +235,15 @@ class MujocoNode(Node):
         msg_odom.twist.twist.angular.z = self.data.qvel[5]
         self.odometry_base_pub.publish(msg_odom)
 
-        t = TransformStamped()
-        t.header = msg_odom.header
-        t.child_frame_id = msg_odom.child_frame_id
-        t.transform.translation.x = msg_odom.pose.pose.position.x
-        t.transform.translation.y = msg_odom.pose.pose.position.y
-        t.transform.translation.z = msg_odom.pose.pose.position.z
-        t.transform.rotation = msg_odom.pose.pose.orientation
-        self.tf_broadcaster.sendTransform(t)
+        if self.publish_tf:
+            t = TransformStamped()
+            t.header = msg_odom.header
+            t.child_frame_id = msg_odom.child_frame_id
+            t.transform.translation.x = msg_odom.pose.pose.position.x
+            t.transform.translation.y = msg_odom.pose.pose.position.y
+            t.transform.translation.z = msg_odom.pose.pose.position.z
+            t.transform.rotation = msg_odom.pose.pose.orientation
+            self.tf_broadcaster.sendTransform(t)
 
         self.read_contact_states()
         msg_contact_right = StampedBool()

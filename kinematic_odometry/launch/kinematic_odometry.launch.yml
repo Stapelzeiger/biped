@@ -1,10 +1,15 @@
 launch:
+  - arg:
+      name: "publish_tf"
+      default: "False"
   - node:
       pkg: kinematic_odometry
       exec: vel_estimation
       name: vel_estimation
       param:
         - from: $(find-pkg-share kinematic_odometry)/config/params.yaml
+        - name: publish_tf
+          value: '$(var publish_tf)'
       remap:
         - from: /vel_estimation/L_FOOT_CONTACT_contact
           to: /poll_L_FOOT/gpio
