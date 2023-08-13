@@ -267,6 +267,10 @@ void OptimizerTrajectory::compute_traj_pos_vel(double T_since_begin_step,
                                             Eigen::Vector3d &foot_vel,
                                             Eigen::Vector3d &foot_acc)
 {
+    foot_pos = initial_pos_;
+    foot_vel.setZero();
+    foot_acc.setZero();
+
     Eigen::Vector3d opt_weight_pos;
     opt_weight_pos << 5500, 5500, 55000;
     Eigen::Vector3d opt_weight_vel;
@@ -282,15 +286,21 @@ void OptimizerTrajectory::compute_traj_pos_vel(double T_since_begin_step,
     Eigen::Vector3d final_vel;
     final_vel << 0.0, 0.0, -lower_foot_impact_vel;
 
-    N_ = std::round((Ts_ - T_since_begin_step) / dt_);
-    nb_total_variables_per_coord_ = 3 * N_; // p, v, a
-    nb_total_variables_ = 3 * nb_total_variables_per_coord_; // px, vx, ax, py, vy, ay, pz, vz, az
 
     double T_remaining = Ts_ - T_since_begin_step; // for x and y
     double fraction = 10.0/100.0;
 
     if (T_remaining > fraction*Ts_ || !traj_opt_computed_)
     {
+        N_ = std::round((Ts_ - T_since_begin_step) / dt_);
+        nb_total_variables_per_coord_ = 3 * N_; // p, v, a
+        nb_total_variables_ = 3 * nb_total_variables_per_coord_; // px, vx, ax, py, vy, ay, pz, vz, az
+        if (N_ <= 0)
+        {
+            std::cout << "Optimization problem not solved because N <= 0" << std::endl;
+            return;
+        }
+
         int idx = std::round((T_since_begin_step - solution_opt_start_time_)/dt_);
         if (idx < (int)solution_opt_pos_.size() && idx >= 0)
         {
