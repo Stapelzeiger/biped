@@ -360,9 +360,9 @@ private:
     // if no contact, perform zero velocity updates
     if ((time_ - last_contact_velocity_update_).seconds() > zero_velocity_timeout_)
     {
-      if (!no_contact_zero_vel_update_active_) {
+      // if (!no_contact_zero_vel_update_active_) {
         ekf_.reset(q_IMU_to_BL_);
-      }
+      // }
       no_contact_zero_vel_update_active_ = true;
       // TODO we could put the base link position here
       RCLCPP_DEBUG_THROTTLE(this->get_logger(), *this->get_clock(), 100 /* [ms] */, "No contact, performing zero velocity update");
