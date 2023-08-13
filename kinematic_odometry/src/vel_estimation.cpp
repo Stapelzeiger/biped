@@ -177,6 +177,29 @@ class IMUPoseEKF
       h_cov_out = h_cov;
     }
 
+
+    // TODO this requires position to be tracked in filter state
+    void contact_height_measurement(const Eigen::Vector3d &pos_B, double height)
+    {
+      // // h(x) = (R * pos_B)[z] + pos_I[z]
+      // auto R = att_.toRotationMatrix();
+      // double h = (R * pos_B)[2] + pos_[2];
+      // // h = (R * R(delta_att) * pos_B)[z] + pos_I[z] =  R * (I + S(delta_att))[z] * pos_B + pos_I[z] + O(|delta_att|^2)
+      // Eigen::Matrix<double, 1, 12> H;
+      // H.setZero();
+      // // partial h / partial delta_vel_I = [0 0 0]
+      // // partial h / partial delta_att = (-R * S(pos_B))[row z]
+      // H.block(0, 3, 1, 3) = (-R * cross_product_matrix(pos_B)).row(2);
+      // // partial h / partial accel_bias = 0
+      // // partial h / partial delta_gyro_bias = 0
+      // // partial h / partial pos_I = [0 0 1]
+      // H.block(0, 12, 1, 3) = Eigen::Vector3d(0, 0, 1).transpose();
+      auto R = att_.toRotationMatrix();
+      double h = (R * pos_B)[2] + pos_[2];
+      pos_[2] += height - h;
+    }
+
+
     void get_state(Eigen::Vector3d &pos, Eigen::Vector3d &vel_I, Eigen::Quaterniond &att, Eigen::Vector3d &omega)
     {
       pos = pos_;
@@ -564,6 +587,8 @@ private:
       ekf_.zero_contact_vel_measurement_update(p_contact_IMU, v_contact_IMU, contact_vel_covariance_, _h, _h_cov);
       last_contact_velocity_update_ = rclcpp::Time(msg->header.stamp);
       // std::cout << "contact velocity update " << contact_joint_names_[i] << " v = " << v_contact_IMU.transpose() << std::endl;
+
+      ekf_.contact_height_measurement(p_contact_IMU, 0);
 
       // markers
       Eigen::Vector3d posIMU_I, velIMU_I, omegaIMU_IMU;
