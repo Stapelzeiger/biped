@@ -126,7 +126,16 @@ class IMUPoseEKF
       // std::cout << " vel_I: " << vel_I_.transpose() << std::endl;
     }
 
-    /* measures a contact zero velocity in imu frame */
+    /* contact velocity, B = imu frame */
+    Eigen::Vector3d compute_contact_residual(const Eigen::Vector3d &pos_B, const Eigen::Vector3d &vel_B) const
+    {
+      auto R = att_.toRotationMatrix();
+      Eigen::Vector3d vel_B_total = vel_B + omega_.cross(pos_B);
+      auto h = R * vel_B_total + vel_I_;
+      return -h;
+    }
+
+    /* measures a contact zero velocity, B = imu frame */
     void zero_contact_vel_measurement_update(const Eigen::Vector3d &pos_B, const Eigen::Vector3d &vel_B,
       const Eigen::Matrix3d &vel_B_noise_cov, Eigen::Vector3d &h_out, Eigen::Matrix3d &h_cov_out)
     {
@@ -212,6 +221,7 @@ public:
     this->declare_parameter<std::vector<std::string>>("contact_joint_names");
     contact_joint_names_ = this->get_parameter("contact_joint_names").as_string_array();
     contact_states_.resize(contact_joint_names_.size());
+    contact_states_debounce_.resize(contact_joint_names_.size());
 
     base_link_frame_id_ = this->declare_parameter<std::string>("base_link_frame_id", "base_link");
     odom_frame_id_ = this->declare_parameter<std::string>("odom_frame_id", "odom");
@@ -227,7 +237,8 @@ public:
     ekf_.acc_bias_random_walk_ = this->declare_parameter<double>("acc_bias_random_walk", 0.01);
     ekf_.gyro_bias_random_walk_ = this->declare_parameter<double>("gyro_bias_random_walk", 0.01);
 
-    contact_timeout_ = this->declare_parameter<double>("contact_timeout", 0.03);
+    contact_timeout_ = this->declare_parameter<double>("contact_timeout", 0.02);
+    contact_debounce_ = this->declare_parameter<double>("contact_debounce", 0.03);
     joint_state_timeout_ = this->declare_parameter<double>("joint_state_timeout", 0.03);
     zero_velocity_timeout_ = this->declare_parameter<double>("zero_velocity_timeout", 0.2);
     zero_vel_noise_cov_ = Eigen::Matrix3d::Identity() * this->declare_parameter<double>("zero_vel_noise_cov", 1.0);
@@ -495,6 +506,42 @@ private:
     pinocchio::computeJointJacobians(model_, data, q); // also computes forward kinematics
     pinocchio::updateFramePlacements(model_, data);
 
+
+    int smallest_residual_idx = -1;
+    double smallest_residual = std::numeric_limits<double>::max();
+    Eigen::Vector3d smallest_residual_p_contact; // in IMU frame
+    Eigen::Vector3d smallest_residual_v_contact; // in IMU frame
+    for (size_t i = 0; i < contact_states_.size(); i++) {
+      if (contact_states_[i].data == true) {  // if in contact
+        if ((time_ - rclcpp::Time(contact_states_[i].header.stamp)).seconds() > contact_timeout_) {
+          RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 100 /* [ms] */, "Contact state message time too old");
+          continue;
+        }
+        if ((rclcpp::Time(contact_states_[i].header.stamp) - contact_states_debounce_[i]).seconds() < contact_debounce_) {
+          continue;
+        }
+        Eigen::MatrixXd J(6, model_.nv); // contact frame jacobian in base_link (aligned with WORLD)
+        J.setZero();
+        auto frame_id = model_.getFrameId(contact_joint_names_[i]);
+        pinocchio::getFrameJacobian(model_, data, frame_id, pinocchio::LOCAL_WORLD_ALIGNED, J);
+        Eigen::Vector3d p_contact_BL = data.oMf[frame_id].translation();
+        Eigen::Vector3d v_contact_BL = J.block(0, 0, 3, model_.nv) * qvel; // velocity wrt base_link in base_link
+        // transform to IMU frame
+        auto R_BL_to_IMU = q_IMU_to_BL_.conjugate().toRotationMatrix();
+        Eigen::Vector3d p_contact_IMU = R_BL_to_IMU * (p_contact_BL - p_IMU_in_BL_);
+        Eigen::Vector3d v_contact_IMU = R_BL_to_IMU * v_contact_BL;
+        auto e = ekf_.compute_contact_residual(p_contact_IMU, v_contact_IMU);
+        double r = e.norm();
+        if (r < smallest_residual) {
+          smallest_residual = r;
+          smallest_residual_idx = i;
+          smallest_residual_p_contact = p_contact_IMU;
+          smallest_residual_v_contact = v_contact_IMU;
+        }
+      }
+    }
+
+
     visualization_msgs::msg::MarkerArray marker_array;
     visualization_msgs::msg::Marker marker;
     marker.header.frame_id = base_link_frame_id_;
@@ -507,64 +554,116 @@ private:
     marker.color.b = 0;
     marker.color.a = 1;
     marker.ns = "contact_vel";
-    for (size_t i = 0; i < contact_states_.size(); i++) {
-      if (contact_states_[i].data == true) {  // if in contact
-        if ((time_ - rclcpp::Time(contact_states_[i].header.stamp)).seconds() > contact_timeout_) {
-          RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 100 /* [ms] */, "Contact state message time too old");
-          continue;
-        }
-        RCLCPP_DEBUG_THROTTLE(this->get_logger(), *this->get_clock(), 100 /* [ms] */, "performing contact update for %s", contact_joint_names_[i].c_str());
-        Eigen::MatrixXd J(6, model_.nv); // contact frame jacobian in base_link (aligned with WORLD)
-        J.setZero();
-        auto frame_id = model_.getFrameId(contact_joint_names_[i]);
-        pinocchio::getFrameJacobian(model_, data, frame_id, pinocchio::LOCAL_WORLD_ALIGNED, J);
-        Eigen::Vector3d p_contact_BL = data.oMf[frame_id].translation();
-        Eigen::Vector3d v_contact_BL = J.block(0, 0, 3, model_.nv) * qvel; // velocity wrt base_link in base_link
-        // transform to IMU frame
-        auto R_BL_to_IMU = q_IMU_to_BL_.conjugate().toRotationMatrix();
-        Eigen::Vector3d p_contact_IMU = R_BL_to_IMU * (p_contact_BL - p_IMU_in_BL_);
-        Eigen::Vector3d v_contact_IMU = R_BL_to_IMU * v_contact_BL;
-        Eigen::Vector3d _h;
-        Eigen::Matrix3d _h_cov;
-        ekf_.zero_contact_vel_measurement_update(p_contact_IMU, v_contact_IMU, contact_vel_covariance_, _h, _h_cov);
-        last_contact_velocity_update_ = rclcpp::Time(msg->header.stamp);
-        // std::cout << "contact velocity update " << contact_joint_names_[i] << " v = " << v_contact_IMU.transpose() << std::endl;
 
-        // markers
-        Eigen::Vector3d posIMU_I, velIMU_I, omegaIMU_IMU;
-        Eigen::Quaterniond att_IMU_to_I;
-        ekf_.get_state(posIMU_I, velIMU_I, att_IMU_to_I, omegaIMU_IMU);
-        // h marker
-        marker.id = i;
-        marker.pose.position.x = p_contact_IMU(0);
-        marker.pose.position.y = p_contact_IMU(1);
-        marker.pose.position.z = p_contact_IMU(2);
-        Eigen::Vector3d h_IMU = att_IMU_to_I.conjugate() * _h;
-        double h_norm = h_IMU.norm();
-        // std::cout << "h_norm " << h_norm << std::endl;
-        // std::cout << "h_IMU " << h_IMU.transpose() << std::endl;
-        Eigen::Quaterniond h_dir = Eigen::Quaterniond::FromTwoVectors(Eigen::Vector3d::UnitX(), h_IMU);
-        marker.pose.orientation.w = h_dir.w();
-        marker.pose.orientation.x = h_dir.x();
-        marker.pose.orientation.y = h_dir.y();
-        marker.pose.orientation.z = h_dir.z();
-        marker.scale.x = h_norm;
-        marker.scale.y = 0.01 * h_norm;
-        marker.scale.z = 0.01 * h_norm;
-        marker.action = visualization_msgs::msg::Marker::ADD;
-        marker_array.markers.push_back(marker);
-      } else {
-        marker.id = i;
-        marker.action = visualization_msgs::msg::Marker::DELETE;
-        marker_array.markers.push_back(marker);
-      }
+    if (smallest_residual_idx != -1) {
+      RCLCPP_DEBUG_THROTTLE(this->get_logger(), *this->get_clock(), 100 /* [ms] */, "performing contact update for %s", contact_joint_names_[smallest_residual_idx].c_str());
+      auto p_contact_IMU = smallest_residual_p_contact;
+      auto v_contact_IMU = smallest_residual_v_contact;
+      Eigen::Vector3d _h;
+      Eigen::Matrix3d _h_cov;
+      ekf_.zero_contact_vel_measurement_update(p_contact_IMU, v_contact_IMU, contact_vel_covariance_, _h, _h_cov);
+      last_contact_velocity_update_ = rclcpp::Time(msg->header.stamp);
+      // std::cout << "contact velocity update " << contact_joint_names_[i] << " v = " << v_contact_IMU.transpose() << std::endl;
+
+      // markers
+      Eigen::Vector3d posIMU_I, velIMU_I, omegaIMU_IMU;
+      Eigen::Quaterniond att_IMU_to_I;
+      ekf_.get_state(posIMU_I, velIMU_I, att_IMU_to_I, omegaIMU_IMU);
+      // h marker
+      marker.id = 0;
+      marker.pose.position.x = p_contact_IMU(0);
+      marker.pose.position.y = p_contact_IMU(1);
+      marker.pose.position.z = p_contact_IMU(2);
+      Eigen::Vector3d h_IMU = att_IMU_to_I.conjugate() * _h;
+      double h_norm = h_IMU.norm();
+      // std::cout << "h_norm " << h_norm << std::endl;
+      // std::cout << "h_IMU " << h_IMU.transpose() << std::endl;
+      Eigen::Quaterniond h_dir = Eigen::Quaterniond::FromTwoVectors(Eigen::Vector3d::UnitX(), h_IMU);
+      marker.pose.orientation.w = h_dir.w();
+      marker.pose.orientation.x = h_dir.x();
+      marker.pose.orientation.y = h_dir.y();
+      marker.pose.orientation.z = h_dir.z();
+      marker.scale.x = h_norm;
+      marker.scale.y = 0.01 * h_norm;
+      marker.scale.z = 0.01 * h_norm;
+      marker.action = visualization_msgs::msg::Marker::ADD;
+      marker_array.markers.push_back(marker);
     }
+
+    // zero velocity measurement for all contacts
+    // for (size_t i = 0; i < contact_states_.size(); i++) {
+    //   if (contact_states_[i].data == true) {  // if in contact
+    //     if ((time_ - rclcpp::Time(contact_states_[i].header.stamp)).seconds() > contact_timeout_) {
+    //       RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 100 /* [ms] */, "Contact state message time too old");
+    //       continue;
+    //     }
+    //     // if ((rclcpp::Time(contact_states_[i].header.stamp) - contact_states_debounce_[i]).seconds() < contact_debounce_) {
+    //     //   marker.id = i;
+    //     //   marker.scale.x = 0;
+    //     //   marker.action = visualization_msgs::msg::Marker::DELETE;
+    //     //   marker_array.markers.push_back(marker);
+    //     //   continue;
+    //     // }
+    //     RCLCPP_DEBUG_THROTTLE(this->get_logger(), *this->get_clock(), 100 /* [ms] */, "performing contact update for %s", contact_joint_names_[i].c_str());
+    //     Eigen::MatrixXd J(6, model_.nv); // contact frame jacobian in base_link (aligned with WORLD)
+    //     J.setZero();
+    //     auto frame_id = model_.getFrameId(contact_joint_names_[i]);
+    //     pinocchio::getFrameJacobian(model_, data, frame_id, pinocchio::LOCAL_WORLD_ALIGNED, J);
+    //     Eigen::Vector3d p_contact_BL = data.oMf[frame_id].translation();
+    //     Eigen::Vector3d v_contact_BL = J.block(0, 0, 3, model_.nv) * qvel; // velocity wrt base_link in base_link
+    //     // transform to IMU frame
+    //     auto R_BL_to_IMU = q_IMU_to_BL_.conjugate().toRotationMatrix();
+    //     Eigen::Vector3d p_contact_IMU = R_BL_to_IMU * (p_contact_BL - p_IMU_in_BL_);
+    //     Eigen::Vector3d v_contact_IMU = R_BL_to_IMU * v_contact_BL;
+    //     Eigen::Vector3d _h;
+    //     Eigen::Matrix3d _h_cov;
+    //     ekf_.zero_contact_vel_measurement_update(p_contact_IMU, v_contact_IMU, contact_vel_covariance_, _h, _h_cov);
+    //     last_contact_velocity_update_ = rclcpp::Time(msg->header.stamp);
+    //     // std::cout << "contact velocity update " << contact_joint_names_[i] << " v = " << v_contact_IMU.transpose() << std::endl;
+
+    //     // markers
+    //     Eigen::Vector3d posIMU_I, velIMU_I, omegaIMU_IMU;
+    //     Eigen::Quaterniond att_IMU_to_I;
+    //     ekf_.get_state(posIMU_I, velIMU_I, att_IMU_to_I, omegaIMU_IMU);
+    //     // h marker
+    //     marker.id = i;
+    //     marker.pose.position.x = p_contact_IMU(0);
+    //     marker.pose.position.y = p_contact_IMU(1);
+    //     marker.pose.position.z = p_contact_IMU(2);
+    //     Eigen::Vector3d h_IMU = att_IMU_to_I.conjugate() * _h;
+    //     double h_norm = h_IMU.norm();
+    //     // std::cout << "h_norm " << h_norm << std::endl;
+    //     // std::cout << "h_IMU " << h_IMU.transpose() << std::endl;
+    //     Eigen::Quaterniond h_dir = Eigen::Quaterniond::FromTwoVectors(Eigen::Vector3d::UnitX(), h_IMU);
+    //     marker.pose.orientation.w = h_dir.w();
+    //     marker.pose.orientation.x = h_dir.x();
+    //     marker.pose.orientation.y = h_dir.y();
+    //     marker.pose.orientation.z = h_dir.z();
+    //     marker.scale.x = h_norm;
+    //     marker.scale.y = 0.01 * h_norm;
+    //     marker.scale.z = 0.01 * h_norm;
+    //     marker.action = visualization_msgs::msg::Marker::ADD;
+    //     marker_array.markers.push_back(marker);
+    //   } else {
+    //     marker.id = i;
+    //     marker.scale.x = 0;
+    //     marker.action = visualization_msgs::msg::Marker::DELETE;
+    //     marker_array.markers.push_back(marker);
+    //   }
+    // }
     ekf_innovations_marker_pub_->publish(marker_array);
   }
 
   void contact_cb(const biped_bringup::msg::StampedBool::SharedPtr msg, int joint_idx)
   {
     contact_states_[joint_idx] = *msg;
+    if (msg->data == true) {
+      if (contact_states_debounce_[joint_idx] == rclcpp::Time(0, 0, RCL_ROS_TIME)) {
+        contact_states_debounce_[joint_idx] = msg->header.stamp;
+      }
+    } else {
+      contact_states_debounce_[joint_idx] = rclcpp::Time(0, 0, RCL_ROS_TIME);
+    }
   }
 
   rclcpp::Time time_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
@@ -582,8 +681,10 @@ private:
 
   std::vector<std::string> contact_joint_names_;
   std::vector<biped_bringup::msg::StampedBool> contact_states_;
+  std::vector<rclcpp::Time> contact_states_debounce_;
 
   double contact_timeout_;
+  double contact_debounce_;
   double joint_state_timeout_;
   double zero_velocity_timeout_;
   bool no_contact_zero_vel_update_active_ = false;

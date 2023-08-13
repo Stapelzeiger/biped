@@ -7,6 +7,7 @@
       - L_FOOT_CONTACT
       - R_FOOT_CONTACT
     contact_timeout: 0.03
+    contact_debounce: 0.00
     joint_state_timeout: 0.03
     zero_velocity_timeout: 0.5
 
