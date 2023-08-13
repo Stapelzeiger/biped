@@ -468,13 +468,15 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
         }
         for (int joint_idx = 0; joint_idx < model_.njoints; joint_idx++)
         {
-            JointState joint_state_for_EL_eq;
             const auto &joint = model_.joints[joint_idx];
-            joint_state_for_EL_eq.name = model_.names[joint_idx];
-            joint_state_for_EL_eq.position = q_[joint.idx_q()];
-            joint_state_for_EL_eq.velocity = q_vel[joint.idx_v()];
-            joint_state_for_EL_eq.acceleration = q_acc[joint.idx_v()];
-            joint_states_for_EL_eq.push_back(joint_state_for_EL_eq);
+            if (joint.nq() == 1 && joint.idx_q() != -1) {
+                JointState joint_state_for_EL_eq;
+                joint_state_for_EL_eq.name = model_.names[joint_idx];
+                joint_state_for_EL_eq.position = q_[joint.idx_q()];
+                joint_state_for_EL_eq.velocity = q_vel[joint.idx_v()];
+                joint_state_for_EL_eq.acceleration = q_acc[joint.idx_v()];
+                joint_states_for_EL_eq.push_back(joint_state_for_EL_eq);
+            }
         }
     }
     else
