@@ -63,7 +63,6 @@ public:
         state_ = "INIT";
         initialization_done_ = false;
         t_init_traj_ = 0.0;
-        a_adapt_ << 0.001, 0.001;
         swing_foot_traj_ = OptimizerTrajectory(robot_params_.dt_ctrl, robot_params_.t_step);
 
         r_foot_frame_id_ = this->declare_parameter<std::string>("r_foot_frame_id", "R_FOOT");
@@ -293,8 +292,6 @@ private:
 
             time_since_last_step_ = 0.0;
             dcm_at_step_STF_ = dcm_STF_;
-            a_adapt_ << 0.001, 0.001; // restart at every step
-
         }
 
         Eigen::Vector3d swing_foot_BF = get_eigen_transform(swing_foot_name, base_link_frame_id_).translation();
@@ -331,29 +328,8 @@ private:
         auto next_dcm_STF_predicted = dcm_STF_ * exp(robot_params_.omega * remaining_time_in_step_);
         auto error_dcm_STF = next_dcm_STF_predicted - dcm_desired_STF;
 
-        Eigen::Matrix2d Phi_adapt;
-        Phi_adapt << 1.0, 0.0, 0.0, 1.0;
-        Eigen::Matrix2d P0;
-        P0 << 0.1, 0.0, 0.0, 0.1;
-        a_adapt_ += P0 * Phi_adapt.transpose() * error_dcm_STF.head(2) * robot_params_.dt_ctrl;
-
-        // limit a adapt:
-        if (a_adapt_(0) > 0.1) {
-            a_adapt_(0) = 0.1;
-        } else if (a_adapt_(0) < -0.1) {
-            a_adapt_(0) = -0.1;
-        }
-
-        if (a_adapt_(1) > 0.1) {
-            a_adapt_(1) = 0.1;
-        } else if (a_adapt_(1) < -0.1) {
-            a_adapt_(1) = -0.1;
-        }
-
-        std::cout << "a_adapt_ " << a_adapt_ << std::endl;
         Eigen::Vector3d next_footstep_STF;
         next_footstep_STF = -dcm_desired_STF + dcm_STF_ * exp(robot_params_.omega * remaining_time_in_step_);
-        next_footstep_STF.head(2) = next_footstep_STF.head(2) + Phi_adapt * a_adapt_; // integral control
 
         Eigen::Vector3d vec_STF_to_next_CP = next_footstep_STF - Eigen::Vector3d(0.0, 0.0, 0.0);
         auto norm_vec_STF_to_next_CP = sqrt(vec_STF_to_next_CP(0) * vec_STF_to_next_CP(0) + vec_STF_to_next_CP(1) * vec_STF_to_next_CP(1));
@@ -407,7 +383,7 @@ private:
             des_contact_msg.data = true;
             pub_desired_left_contact_->publish(des_contact_msg);
 
-            if (fabs(error_dcm_STF(1)) < 0.4) {
+            if (fabs(error_dcm_STF(1)) < 0.3 || fabs(error_dcm_STF(0)) < 0.3)  {
                 publish_body_trajectories(frame_id, pos_body_level_STF, quat_body_level_STF, vel_base_link_STF, acc_body_level_STF,
                                                     pos_desired_swing_foot_STF, quat_desired_swing_foot_STF, vel_desired_swing_foot_STF, acc_desired_swing_foot_STF,
                                                     pos_desired_stance_foot_STF, quat_desired_stance_foot_STF, vel_desired_stance_foot_STF, acc_desired_stance_foot_STF);
@@ -423,7 +399,7 @@ private:
             des_contact_msg.data = true;
             pub_desired_right_contact_->publish(des_contact_msg);
 
-            if (fabs(error_dcm_STF(1)) < 0.4) {
+            if (fabs(error_dcm_STF(1)) < 0.3 || fabs(error_dcm_STF(0)) < 0.3) {
                 publish_body_trajectories(frame_id, pos_body_level_STF, quat_body_level_STF, vel_base_link_STF, acc_body_level_STF,
                                                     pos_desired_stance_foot_STF, quat_desired_stance_foot_STF, vel_desired_stance_foot_STF, acc_desired_stance_foot_STF,
                                                     pos_desired_swing_foot_STF, quat_desired_swing_foot_STF, vel_desired_swing_foot_STF, acc_desired_swing_foot_STF);
@@ -814,7 +790,6 @@ private:
     double t_init_traj_;
     bool initialization_done_;
 
-    Eigen::Vector2d a_adapt_;
     OptimizerTrajectory swing_foot_traj_;
     Eigen::Vector3d start_opt_pos_swing_foot_, start_opt_vel_swing_foot_;
 
