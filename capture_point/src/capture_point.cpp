@@ -192,6 +192,7 @@ private:
         }
 
         if (state_ == "INIT") {
+            t_init_traj_ = 0;
             swing_foot_is_left_ = true;
             auto swing_foot_name = l_foot_frame_id_;
             set_position_limits_for_foot_in_optimization(swing_foot_name);
@@ -326,7 +327,8 @@ private:
         dcm_STF_(2) = 0;
 
         auto next_dcm_STF_predicted = dcm_STF_ * exp(robot_params_.omega * remaining_time_in_step_);
-        auto error_dcm_STF = next_dcm_STF_predicted - dcm_desired_STF;
+        Eigen::Vector3d error_dcm_STF = next_dcm_STF_predicted - dcm_desired_STF;
+        error_dcm_STF(2) = 0.0;
 
         Eigen::Vector3d next_footstep_STF;
         next_footstep_STF = -dcm_desired_STF + dcm_STF_ * exp(robot_params_.omega * remaining_time_in_step_);
@@ -383,12 +385,10 @@ private:
             des_contact_msg.data = true;
             pub_desired_left_contact_->publish(des_contact_msg);
 
-            if (fabs(error_dcm_STF(1)) < 0.3 || fabs(error_dcm_STF(0)) < 0.3)  {
+            if (error_dcm_STF.squaredNorm() < 0.3)  {
                 publish_body_trajectories(frame_id, pos_body_level_STF, quat_body_level_STF, vel_base_link_STF, acc_body_level_STF,
                                                     pos_desired_swing_foot_STF, quat_desired_swing_foot_STF, vel_desired_swing_foot_STF, acc_desired_swing_foot_STF,
                                                     pos_desired_stance_foot_STF, quat_desired_stance_foot_STF, vel_desired_stance_foot_STF, acc_desired_stance_foot_STF);
-            } else {
-                state_ == "INIT";
             }
 
         } else {
@@ -399,12 +399,10 @@ private:
             des_contact_msg.data = true;
             pub_desired_right_contact_->publish(des_contact_msg);
 
-            if (fabs(error_dcm_STF(1)) < 0.3 || fabs(error_dcm_STF(0)) < 0.3) {
+            if (error_dcm_STF.squaredNorm() < 0.3)  {
                 publish_body_trajectories(frame_id, pos_body_level_STF, quat_body_level_STF, vel_base_link_STF, acc_body_level_STF,
                                                     pos_desired_stance_foot_STF, quat_desired_stance_foot_STF, vel_desired_stance_foot_STF, acc_desired_stance_foot_STF,
                                                     pos_desired_swing_foot_STF, quat_desired_swing_foot_STF, vel_desired_swing_foot_STF, acc_desired_swing_foot_STF);
-            } else {
-                state_ == "INIT";
             }
         }
 
