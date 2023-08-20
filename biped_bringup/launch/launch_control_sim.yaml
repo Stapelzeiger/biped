@@ -48,7 +48,7 @@ launch:
         value: "$(eval 'not $(var use_sim_tf)')"
 
 - include:
-    file: "$(find-pkg-share capture_point)/launch/cp_sim.launch.yml"
+    file: "$(find-pkg-share capture_point)/launch/cp.launch.yml"
 
 - include:
     file: "$(find-pkg-share metrics)/metrics.launch.yml"
