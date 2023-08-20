@@ -37,7 +37,7 @@ class JoyNode(Node):
     def joy_cb(self, msg):
         with self.lock:
             self.joy = msg
-   
+
     def timer_cb(self):
         with self.lock:
             joy = self.joy
