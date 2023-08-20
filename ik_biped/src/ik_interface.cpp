@@ -218,35 +218,35 @@ private:
 
             joint_states_for_EL_eq_pub_->publish(joint_states_for_EL_eq_msg);
 
-            //pub gravity torque
-            std_msgs::msg::Float64MultiArray gravity_torque_msg;
-            gravity_torque_msg.data.resize(gravity_torque.size());
-            for (unsigned int i = 0; i < gravity_torque.size(); i++) {
-                gravity_torque_msg.data[i] = gravity_torque[i];
-            }
-            gravity_torque_pub_->publish(gravity_torque_msg);
-            // pub coriolis torque
-            std_msgs::msg::Float64MultiArray coriolis_torque_msg;
-            coriolis_torque_msg.data.resize(coriolis_torque.size());
-            for (unsigned int i = 0; i < coriolis_torque.size(); i++) {
-                coriolis_torque_msg.data[i] = coriolis_torque[i];
-            }
-            corriolis_torque_pub_->publish(coriolis_torque_msg);
-            // pub inertia torque
-            std_msgs::msg::Float64MultiArray inertia_torque_msg;
-            inertia_torque_msg.data.resize(inertia_torque.size());
-            for (unsigned int i = 0; i < inertia_torque.size(); i++) {
-                inertia_torque_msg.data[i] = inertia_torque[i];
-            }
-            inertia_torque_pub_->publish(inertia_torque_msg);
+            // //pub gravity torque
+            // std_msgs::msg::Float64MultiArray gravity_torque_msg;
+            // gravity_torque_msg.data.resize(gravity_torque.size());
+            // for (unsigned int i = 0; i < gravity_torque.size(); i++) {
+            //     gravity_torque_msg.data[i] = gravity_torque[i];
+            // }
+            // gravity_torque_pub_->publish(gravity_torque_msg);
+            // // pub coriolis torque
+            // std_msgs::msg::Float64MultiArray coriolis_torque_msg;
+            // coriolis_torque_msg.data.resize(coriolis_torque.size());
+            // for (unsigned int i = 0; i < coriolis_torque.size(); i++) {
+            //     coriolis_torque_msg.data[i] = coriolis_torque[i];
+            // }
+            // corriolis_torque_pub_->publish(coriolis_torque_msg);
+            // // pub inertia torque
+            // std_msgs::msg::Float64MultiArray inertia_torque_msg;
+            // inertia_torque_msg.data.resize(inertia_torque.size());
+            // for (unsigned int i = 0; i < inertia_torque.size(); i++) {
+            //     inertia_torque_msg.data[i] = inertia_torque[i];
+            // }
+            // inertia_torque_pub_->publish(inertia_torque_msg);
 
-            // pub a_foot_computed
-            std_msgs::msg::Float64MultiArray a_foot_computed_msg;
-            a_foot_computed_msg.data.resize(a_foot_computed.size());
-            for (unsigned int i = 0; i < a_foot_computed.size(); i++) {
-                a_foot_computed_msg.data[i] = a_foot_computed[i];
-            }
-            acc_foot_computed_pub_->publish(a_foot_computed_msg);
+            // // pub a_foot_computed
+            // std_msgs::msg::Float64MultiArray a_foot_computed_msg;
+            // a_foot_computed_msg.data.resize(a_foot_computed.size());
+            // for (unsigned int i = 0; i < a_foot_computed.size(); i++) {
+            //     a_foot_computed_msg.data[i] = a_foot_computed[i];
+            // }
+            // acc_foot_computed_pub_->publish(a_foot_computed_msg);
 
             out_msg.joint_names.resize(joint_states.size());
             for (size_t i = 0; i < joint_states.size(); i++) {
@@ -274,62 +274,44 @@ private:
 
             if (markers_pub_->get_subscription_count() > 0) {
                 visualization_msgs::msg::MarkerArray marker_array_msg;
-                marker_array_msg.markers.resize(body_positions_solution.size() * 3);
+                marker_array_msg.markers.resize(body_positions_solution.size() * 2);
                 assert(body_positions_solution.size() == bodies.size());
                 assert(body_positions_solution.size() == pt.transforms.size());
                 for (unsigned i = 0; i < body_positions_solution.size(); i++)
                 {
                     marker_array_msg.markers[i].header = msg->header;
-                    marker_array_msg.markers[i].ns = bodies[i].name;
+                    marker_array_msg.markers[i].ns = bodies[i].name + "_solution";
                     marker_array_msg.markers[i].id = pt_idx;
-                    marker_array_msg.markers[i].type = visualization_msgs::msg::Marker::SPHERE;
+                    marker_array_msg.markers[i].type = visualization_msgs::msg::Marker::CUBE;
                     marker_array_msg.markers[i].action = visualization_msgs::msg::Marker::ADD;
                     marker_array_msg.markers[i].pose.position.x = body_positions_solution[i][0];
                     marker_array_msg.markers[i].pose.position.y = body_positions_solution[i][1];
                     marker_array_msg.markers[i].pose.position.z = body_positions_solution[i][2];
                     marker_array_msg.markers[i].pose.orientation.w = 1.0;
-                    marker_array_msg.markers[i].scale.x = 0.05;
-                    marker_array_msg.markers[i].scale.y = 0.05;
-                    marker_array_msg.markers[i].scale.z = 0.05;
-                    marker_array_msg.markers[i].color.a = 1.0;
+                    marker_array_msg.markers[i].scale.x = 0.03;
+                    marker_array_msg.markers[i].scale.y = 0.03;
+                    marker_array_msg.markers[i].scale.z = 0.03;
+                    marker_array_msg.markers[i].color.a = 0.8;
                     marker_array_msg.markers[i].color.r = 0.0;
                     marker_array_msg.markers[i].color.g = 1.0; // green blob
                     marker_array_msg.markers[i].color.b = 0.0;
 
                     marker_array_msg.markers[i + body_positions_solution.size()].header = msg->header;
-                    marker_array_msg.markers[i + body_positions_solution.size()].ns = bodies[i].name + "_desired";
+                    marker_array_msg.markers[i + body_positions_solution.size()].ns = bodies[i].name + "_input";
                     marker_array_msg.markers[i + body_positions_solution.size()].id = pt_idx;
-                    marker_array_msg.markers[i + body_positions_solution.size()].type = visualization_msgs::msg::Marker::SPHERE;
+                    marker_array_msg.markers[i + body_positions_solution.size()].type = visualization_msgs::msg::Marker::CUBE;
                     marker_array_msg.markers[i + body_positions_solution.size()].action = visualization_msgs::msg::Marker::ADD;
-                    marker_array_msg.markers[i + body_positions_solution.size()].pose.position.x = pt.transforms[i].translation.x;
-                    marker_array_msg.markers[i + body_positions_solution.size()].pose.position.y = pt.transforms[i].translation.y;
-                    marker_array_msg.markers[i + body_positions_solution.size()].pose.position.z = pt.transforms[i].translation.z;
+                    marker_array_msg.markers[i + body_positions_solution.size()].pose.position.x = bodies[i].position[0];
+                    marker_array_msg.markers[i + body_positions_solution.size()].pose.position.y = bodies[i].position[1];
+                    marker_array_msg.markers[i + body_positions_solution.size()].pose.position.z = bodies[i].position[2];
                     marker_array_msg.markers[i + body_positions_solution.size()].pose.orientation.w = 1.0;
                     marker_array_msg.markers[i + body_positions_solution.size()].scale.x = 0.05;
                     marker_array_msg.markers[i + body_positions_solution.size()].scale.y = 0.05;
                     marker_array_msg.markers[i + body_positions_solution.size()].scale.z = 0.05;
-                    marker_array_msg.markers[i + body_positions_solution.size()].color.a = 1.0;
-                    marker_array_msg.markers[i + body_positions_solution.size()].color.r = 1.0; // red blob
+                    marker_array_msg.markers[i + body_positions_solution.size()].color.a = 0.6;
+                    marker_array_msg.markers[i + body_positions_solution.size()].color.r = 0.0;
                     marker_array_msg.markers[i + body_positions_solution.size()].color.g = 0.0;
-                    marker_array_msg.markers[i + body_positions_solution.size()].color.b = 0.0;
-
-
-                    marker_array_msg.markers[i + 2*body_positions_solution.size()].header = msg->header;
-                    marker_array_msg.markers[i + 2*body_positions_solution.size()].ns = bodies[i].name + "_input";
-                    marker_array_msg.markers[i + 2*body_positions_solution.size()].id = pt_idx;
-                    marker_array_msg.markers[i + 2*body_positions_solution.size()].type = visualization_msgs::msg::Marker::SPHERE;
-                    marker_array_msg.markers[i + 2*body_positions_solution.size()].action = visualization_msgs::msg::Marker::ADD;
-                    marker_array_msg.markers[i + 2*body_positions_solution.size()].pose.position.x = bodies[i].position[0];
-                    marker_array_msg.markers[i + 2*body_positions_solution.size()].pose.position.y = bodies[i].position[1];
-                    marker_array_msg.markers[i + 2*body_positions_solution.size()].pose.position.z = bodies[i].position[2];
-                    marker_array_msg.markers[i + 2*body_positions_solution.size()].pose.orientation.w = 1.0;
-                    marker_array_msg.markers[i + 2*body_positions_solution.size()].scale.x = 0.05;
-                    marker_array_msg.markers[i + 2*body_positions_solution.size()].scale.y = 0.05;
-                    marker_array_msg.markers[i + 2*body_positions_solution.size()].scale.z = 0.05;
-                    marker_array_msg.markers[i + 2*body_positions_solution.size()].color.a = 1.0;
-                    marker_array_msg.markers[i + 2*body_positions_solution.size()].color.r = 0.0;
-                    marker_array_msg.markers[i + 2*body_positions_solution.size()].color.g = 0.0;
-                    marker_array_msg.markers[i + 2*body_positions_solution.size()].color.b = 1.0; // blue blob
+                    marker_array_msg.markers[i + body_positions_solution.size()].color.b = 1.0; // blue blob
 
                 }
                 markers_pub_->publish(marker_array_msg);

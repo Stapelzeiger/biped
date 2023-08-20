@@ -14,7 +14,7 @@
 #include <iomanip>
 
 const double eps = 1e-3;
-const int IT_MAX = 100;
+const int IT_MAX = 400;
 const double DT = 0.1;
 const double damp = 1e-5;
 
