@@ -21,6 +21,8 @@ launch:
           to: /joint_states
         - from: /vel_estimation/odom
           to: /odometry
+        - from: /vel_estimation/reset
+          to: /e_stop
       # args: "--ros-args --log-level DEBUG"
       output: screen
       # print GDB backtrace:

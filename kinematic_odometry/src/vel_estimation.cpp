@@ -12,6 +12,7 @@
 #include "visualization_msgs/msg/marker_array.hpp"
 
 #include "std_msgs/msg/string.hpp"
+#include "std_msgs/msg/bool.hpp"
 #include "biped_bringup/msg/stamped_bool.hpp"
 #include "eigen3/Eigen/Dense"
 #include "tf2_ros/transform_listener.h"
@@ -283,6 +284,9 @@ public:
     joint_state_sub_ = this->create_subscription<sensor_msgs::msg::JointState>(
       "~/joint_states", 10, std::bind(&KinematicOdometry::joint_state_cb, this, _1));
 
+    reset_sub_ = this->create_subscription<std_msgs::msg::Bool>(
+      "~/reset", 10, std::bind(&KinematicOdometry::reset_cb, this, _1));
+
     for (size_t i = 0; i < contact_joint_names_.size(); i++)
     {
       auto name = contact_joint_names_[i];
@@ -324,6 +328,14 @@ private:
     model_loaded_ = true;
   }
 
+  void reset_cb(const std_msgs::msg::Bool::SharedPtr msg)
+  {
+    if (msg->data)
+    {
+      RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 1000 /* ms */, "Resetting estimator");
+      ekf_.reset(q_IMU_to_BL_);
+    }
+  }
 
   void imu_cb(const sensor_msgs::msg::Imu::SharedPtr msg)
   {
@@ -383,9 +395,9 @@ private:
     // if no contact, perform zero velocity updates
     if ((time_ - last_contact_velocity_update_).seconds() > zero_velocity_timeout_)
     {
-      // if (!no_contact_zero_vel_update_active_) {
+      if (!no_contact_zero_vel_update_active_) {
         ekf_.reset(q_IMU_to_BL_);
-      // }
+      }
       no_contact_zero_vel_update_active_ = true;
       // TODO we could put the base link position here
       RCLCPP_DEBUG_THROTTLE(this->get_logger(), *this->get_clock(), 100 /* [ms] */, "No contact, performing zero velocity update");
@@ -723,6 +735,7 @@ private:
   rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_state_sub_;
   std::vector<rclcpp::Subscription<biped_bringup::msg::StampedBool>::SharedPtr> contact_subs_;
   rclcpp::Subscription<std_msgs::msg::String>::SharedPtr robot_desc_sub_;
+  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr reset_sub_;
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
   std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr ekf_innovations_marker_pub_;
