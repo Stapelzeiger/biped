@@ -219,7 +219,7 @@ private:
                     joint_list_str += ", ";
                 }
             }
-            RCLCPP_WARN_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 500 /* [ms] */,
+            RCLCPP_WARN_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 100 /* [ms] */,
                 "Joints not responding: " << joint_list_str);
         }
     }
