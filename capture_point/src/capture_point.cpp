@@ -226,10 +226,10 @@ private:
             broadcast_transform("BLF", "STF", T_STF_to_BLF_.translation(), Eigen::Quaterniond(T_STF_to_BLF_.rotation()));
 
             Eigen::Vector3d fin_swing_foot_pos_STF;
-            fin_swing_foot_pos_STF = Eigen::Vector3d(0.0, 0.1, 0.10);
+            fin_swing_foot_pos_STF = Eigen::Vector3d(0.0, 0.1, 0.1);
 
             Eigen::Vector3d fin_baselink_pos_STF;
-            fin_baselink_pos_STF = Eigen::Vector3d(0.0, -0.05, robot_params_.robot_height);
+            fin_baselink_pos_STF = Eigen::Vector3d(0.0, 0.0, robot_params_.robot_height);
 
             std::string frame_id = "STF";
             publish_body_trajectories(frame_id, fin_baselink_pos_STF, Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0), Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero(),  // todo fix this so it takes the init orientation of the robot
@@ -320,9 +320,9 @@ private:
         Eigen::Vector3d dcm_desired_STF;
         dcm_desired_STF << 1.0/robot_params_.omega*vel_d_[0], 0.0, 0.0;
         if (swing_foot_is_left_) {
-            dcm_desired_STF(1) = 1.0/robot_params_.omega * (-0.16 + vel_d_[1]);
+            dcm_desired_STF(1) = -0.036 + 1.0/robot_params_.omega * vel_d_[1];
         } else {
-            dcm_desired_STF(1) = 1.0/robot_params_.omega * (0.16 + vel_d_[1]);
+            dcm_desired_STF(1) = 0.036 + 1.0/robot_params_.omega * vel_d_[1];
         }
 
         geometry_msgs::msg::Vector3Stamped dcm_desired_STF_msg;
