@@ -81,6 +81,7 @@ class MujocoNode(Node):
         self.q_joints = {}
         for i in self.name_joints:
             self.q_joints[i] = {
+                'timestamp': 0.0,
                 'actual_pos': 0.0,
                 'actual_vel': 0.0,
                 'actual_acc': 0.0,
@@ -111,6 +112,8 @@ class MujocoNode(Node):
         self.odometry_base_pub = self.create_publisher(Odometry, '~/odometry', 10)
         self.contact_right_pub = self.create_publisher(StampedBool, '~/contact_foot_right', 10)
         self.contact_left_pub = self.create_publisher(StampedBool, '~/contact_foot_left', 10)
+
+        self.stop_pub = self.create_publisher(Bool, '~/stop', 10)
 
         self.joint_states_pub = self.create_publisher(JointState, 'joint_states', 10)
         self.imu_pub = self.create_publisher(Imu, '~/imu', 10)
@@ -159,6 +162,7 @@ class MujocoNode(Node):
         self.model.eq_active[0] = 1
         mj.mj_step(self.model, self.data)
         self.initialization_done = False
+        self.initialization_timeout = 0.2
         self.get_logger().info("initialize")
 
     def timer_cb(self):
@@ -182,7 +186,12 @@ class MujocoNode(Node):
 
     def step(self):
         if not self.initialization_done:
+            msg_stop_controller = Bool()
+            msg_stop_controller.data = (self.initialization_timeout > 0)
+            self.stop_pub.publish(msg_stop_controller)
+
             self.model.eq_data[0][2] -= 0.5 * self.dt
+            self.initialization_timeout -= self.dt
 
         self.read_contact_states()
         if self.contact_states['R_FOOT'] or self.contact_states['L_FOOT']:
