@@ -103,6 +103,10 @@ public:
         vel_cmd_sub_ = this->create_subscription<geometry_msgs::msg::TwistStamped>(
             "~/vel_cmd", 10, std::bind(&CapturePoint::vel_cmd_cb, this, _1));
 
+        e_stop_sub_ = this->create_subscription<std_msgs::msg::Bool>(
+            "~/e_stop", 10, std::bind(&CapturePoint::e_stop_cb, this, _1));
+        e_stop_ = false;
+
         std::chrono::duration<double> period = robot_params_.dt_ctrl * 1s;
         timer_ = rclcpp::create_timer(this, this->get_clock(), period, std::bind(&CapturePoint::timer_callback, this));
     }
@@ -140,6 +144,11 @@ private:
         swing_foot_traj_.set_position_limits(swing_x_safe_box_min_max, swing_y_safe_box_min_max, swing_z_safe_box_min_max);
     }
 
+    void e_stop_cb(const std_msgs::msg::Bool::SharedPtr msg)
+    {
+        e_stop_ = msg->data;
+    }
+
     void odometry_callback(nav_msgs::msg::Odometry::SharedPtr msg)
     {
         base_link_odom_.stamp = rclcpp::Time(msg->header.stamp);
@@ -172,6 +181,11 @@ private:
         if (!tf_buffer_->canTransform(base_link_frame_id_, r_foot_frame_id_, tf2::TimePointZero) ||
             !tf_buffer_->canTransform(base_link_frame_id_, l_foot_frame_id_, tf2::TimePointZero)) {
             RCLCPP_INFO(this->get_logger(), "Waiting for TFs for R_FOOT and L_FOOT...");
+            return;
+        }
+
+        if (e_stop_) {
+            RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 1000, "E-STOP is active");
             return;
         }
 
@@ -721,6 +735,9 @@ private:
     rclcpp::Subscription<biped_bringup::msg::StampedBool>::SharedPtr contact_right_sub_;
     rclcpp::Subscription<biped_bringup::msg::StampedBool>::SharedPtr contact_left_sub_;
     rclcpp::Subscription<geometry_msgs::msg::TwistStamped>::SharedPtr vel_cmd_sub_;
+
+    rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr e_stop_sub_;
+    bool e_stop_;
 
     std::shared_ptr<tf2_ros::TransformListener> tf_listener_{nullptr};
     std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
