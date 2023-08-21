@@ -466,6 +466,8 @@ private:
     if (fabs((rclcpp::Time(msg->header.stamp) - time_).seconds()) > joint_state_timeout_)
     {
       RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 100 /* [ms] */, "Joint state message time too far from imu time");
+      RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 100 /* [ms] */, "Joint state time: %f", rclcpp::Time(msg->header.stamp).seconds());
+      RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 100 /* [ms] */, "IMU time: %f", time_.seconds());
       return;
     }
     if (model_loaded_ == false) {
