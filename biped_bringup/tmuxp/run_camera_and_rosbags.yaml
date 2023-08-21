@@ -4,6 +4,6 @@ windows:
   shell_command_before:
   - source $ROS_WS/install/local_setup.bash
   panes:
-  - ros2 launch flir_spinnaker_ros2 blackfly_s.launch.py camera_name:=blackfly_0 serial:="'20538718'"
+  - ros2 launch flir_spinnaker_ros2 blackfly_s.launch.py camera_name:=external_cam serial:="'20538718'"
   - ros2 launch logging_biped logging.launch.yml \
   - clear

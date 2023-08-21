@@ -1,13 +1,14 @@
 import launch
 import time
-from launch.substitutions import LaunchConfiguration
-from launch.actions import DeclareLaunchArgument
+# from launch.substitutions import LaunchConfiguration
+# from launch.actions import DeclareLaunchArgument, RegisterEventHandler
+# from launch.event_handlers import OnExecutionComplete
 
-timestr = time.strftime("%Y%m%d-%H-%M-%S")
 
 list_of_topics = ['/joy',
                 '/imu',
                 '/odometry',
+                '/vel_estimation/ekf_innovations',
                 '/joint_states',
                 '/body_trajectories',
                 '/poll_L_FOOT/gpio',
@@ -25,22 +26,32 @@ list_of_topics = ['/joy',
                 '/capture_point/markers_stance_foot_BF',
                 '/ik_interface/markers',
                 '/rosout',
-                '/blackfly_0/image_raw/compressed']
+                '/external_cam/image_raw/compressed',
+                '/e_stop']
 
 
 def generate_launch_description():
 
-    test_name = LaunchConfiguration('test_name')
-    test_name_launch_arg = DeclareLaunchArgument(
-        'test_name',
-        default_value='test_name'
-    )
+    # test_name = LaunchConfiguration('test_name')
+    # test_name_launch_arg = DeclareLaunchArgument(
+    #     'test_name',
+    #     default_value='test'
+    # )
+    timestr = time.strftime("%Y%m%d-%H-%M-%S")
+    rosbag_dir = '/home/sorina/Documents/code/biped_hardware/bags/'
+    rosbag_name = timestr + '.bag'
+    rosbag_file = rosbag_dir + rosbag_name
 
-
-    return launch.LaunchDescription([
-        test_name_launch_arg,
-        launch.actions.ExecuteProcess(
-            cmd=['ros2', 'bag', 'record', *list_of_topics, '--output=/home/sorina/Documents/code/biped_hardware/bags/' + timestr + "_"],
+    run_rosbag_record = launch.actions.ExecuteProcess(
+            cmd=['ros2', 'bag', 'record', *list_of_topics, '--output='+rosbag_file],
             output='screen'
         )
+    create_symlink = launch.actions.ExecuteProcess(
+            cmd=['ln', '-s', '-fn', rosbag_file, rosbag_dir + 'latest.bag'],
+            output='screen'
+        )
+    return launch.LaunchDescription([
+        # test_name_launch_arg,
+        run_rosbag_record,
+        create_symlink,
     ])
