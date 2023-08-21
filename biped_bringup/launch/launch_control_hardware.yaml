@@ -24,6 +24,9 @@ launch:
 
 - include:
     file: "$(find-pkg-share kinematic_odometry)/launch/kinematic_odometry.launch.yml"
+    arg:
+      - name: publish_tf
+        value: "True"
 
 - include:
-    file: "$(find-pkg-share metrics)/launch/metrics.launch.yml"
+    file: "$(find-pkg-share metrics)/metrics.launch.yml"
