@@ -246,6 +246,10 @@ public:
     contact_joint_names_ = this->get_parameter("contact_joint_names").as_string_array();
     contact_states_.resize(contact_joint_names_.size());
     contact_states_debounce_.resize(contact_joint_names_.size());
+    for (size_t i = 0; i < contact_joint_names_.size(); i++)
+    {
+      contact_states_debounce_[i] = rclcpp::Time(0, 0, RCL_ROS_TIME);
+    }
 
     base_link_frame_id_ = this->declare_parameter<std::string>("base_link_frame_id", "base_link");
     odom_frame_id_ = this->declare_parameter<std::string>("odom_frame_id", "odom");
