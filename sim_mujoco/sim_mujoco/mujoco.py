@@ -159,7 +159,11 @@ class MujocoNode(Node):
         self.data.qpos[1] = p[1]
         self.data.qpos[2] = self.model.eq_data[0][2]
 
-        self.model.eq_active[0] = 1
+        # https://mujoco.readthedocs.io/en/stable/changelog.html
+        # self.model.eq_active[0] = 1
+        self.data.eq_active[0] = 1
+        # or
+        # self.model.eq_active0 = 1
         mj.mj_step(self.model, self.data)
         self.initialization_done = False
         self.initialization_timeout = 0.2
@@ -199,7 +203,9 @@ class MujocoNode(Node):
                 self.get_logger().info("init done")
                 self.initialization_done = True
                 self.data.qvel = [0.0]* self.model.nv
-                self.model.eq_active[0] = 0 # let go of the robot
+                # self.model.eq_active[0] = 0 # let go of the robot
+                # self.model.eq_active0 = 0 # let go of the robot
+                self.data.eq_active[0] = 0 # let go of the robot
 
         
         if self.visualize_mujoco is True:
