@@ -1,6 +1,10 @@
 launch:
 
 - arg:
+    name: "use_sim_tf"
+    default: "False"
+
+- arg:
     name: "use_sim_time"
     default: "True"
 
@@ -30,13 +34,24 @@ launch:
 
 - include:
     file: "$(find-pkg-share sim_mujoco)/sim.launch.yml"
+    arg:
+      - name: "publish_tf"
+        value: '$(var use_sim_tf)'
 
 - include:
     file: "$(find-pkg-share ik_biped)/launch/ik.launch.yml"
 
 - include:
     file: "$(find-pkg-share kinematic_odometry)/launch/kinematic_odometry.launch.yml"
+    arg:
+      - name: "publish_tf"
+        value: "$(eval 'not $(var use_sim_tf)')"
 
 - include:
-    file: "$(find-pkg-share capture_point)/launch/cp_sim.launch.yml"
+    file: "$(find-pkg-share capture_point)/launch/cp.launch.yml"
 
+- include:
+    file: "$(find-pkg-share metrics)/metrics.launch.yml"
+
+- include:
+    file: "$(find-pkg-share pos_ctrl)/pos_ctrl.launch.yml"

@@ -6,10 +6,12 @@ launch:
     param: 
       - from: $(find-pkg-share moteus_drv)/config/params.yaml
     remap:
-      - from: "/moteus/joint_states"
-        to: "/joint_states"
-      - from: "/moteus/joint_traj"
-        to: "/joint_trajectory"
+      - from: /moteus/joint_states
+        to: /joint_states
+      - from: /moteus/joint_traj
+        to: /joint_trajectory
+      - from: /moteus/e_stop
+        to: /e_stop
     output: screen
     # print GDB backtrace:
     launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args

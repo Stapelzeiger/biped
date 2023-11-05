@@ -37,3 +37,20 @@ sudo make install
 pip3 install mujoco
 pip3 install mujoco-python-viewer
 ```
+
+# Running
+
+Raspberry IP setup:
+Ethernet: 10.0.1.2
+
+login: root@biped-raspi.local
+
+check timesync:
+```
+chronyc sources
+```
+
+force time sync:
+```
+chronyc -a makestep
+```

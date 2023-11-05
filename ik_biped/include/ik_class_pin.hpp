@@ -8,6 +8,7 @@
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wtype-limits"
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #include "pinocchio/algorithm/joint-configuration.hpp"
 #pragma GCC diagnostic pop
 
@@ -39,7 +40,7 @@ public:
         ContraintType type;
         Eigen::Vector3d align_axis;  // in the body frame, only used if type == POS_AXIS
         bool in_contact;
-
+        BodyState() {}
         BodyState(const std::string& name, const Eigen::Vector3d& position, const Eigen::Quaterniond& orientation)
             : name(name), position(position), orientation(orientation) {
             linear_velocity.setConstant(std::numeric_limits<double>::quiet_NaN());
@@ -55,12 +56,23 @@ public:
     IKRobot();
     void build_model(const std::string urdf_filename);
     bool has_model() const;
-    std::vector<JointState> solve(const std::vector<BodyState>& body_states, std::vector<Eigen::Vector3d> &body_positions_solution);
+    std::vector<IKRobot::JointState> solve(const std::vector<IKRobot::BodyState>& body_states,
+                                                    IKRobot::BodyState odom_baselink,
+                                                    std::vector<IKRobot::JointState> &encoder_joint_states,
+                                                    std::vector<Eigen::Vector3d> &body_positions_solution,
+                                                    std::vector<IKRobot::JointState> &joint_states_for_EL_eq,
+                                                    Eigen::VectorXd &gravity_torque,
+                                                    Eigen::VectorXd &coriolis_torque,
+                                                    Eigen::VectorXd &inertia_torque,
+                                                    Eigen::VectorXd &a_foot_computed);
+
 private:
 
     pinocchio::Model model_;
     Eigen::VectorXd q_;
     Eigen::MatrixXd B_matrix_;
+    int nb_joints_actuators_;
+    int nb_u_;
 };
 
 #endif

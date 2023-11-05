@@ -1,7 +1,3 @@
 __pycache__
 .vscode
-.~*
-runs
-videos
-sim_mujoco/sim_mujoco/data
-sim_mujoco/sim_mujoco_learning/data
+*.csv

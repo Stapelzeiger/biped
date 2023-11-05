@@ -4,6 +4,19 @@
 #include <iostream>
 #include "eigen3/Eigen/Dense"
 
+class SplineTrajectory
+{
+    // a0 + a1*t + a2*t^2 + a3*t^3
+    public:
+        SplineTrajectory();
+        ~SplineTrajectory();
+
+        Eigen::Vector4d get_spline_coef(double tf, double qi, double qi_dot, double qf, double qf_dot);
+        double get_q(Eigen::Vector4d coeff, double t);
+        double get_q_dot(Eigen::Vector4d coeff, double t);
+        double get_q_ddot(Eigen::Vector4d coeff, double t);
+};
+
 class FootTrajectory
 {
 
@@ -25,20 +38,16 @@ public:
     bool coeff_xy_computed_ = false;
     double coeff_xy_timestamp_ = 0.0;
     int state_in_traj_;
+    SplineTrajectory spline_;
 
 public:
-    FootTrajectory();
-    FootTrajectory(double T_step, double dt);
+    FootTrajectory(double T_step = 0.3, double dt = 0.01);
     ~FootTrajectory();
 
     void set_desired_end_position(Eigen::Vector3d desired_end_position);
     void set_initial_position(Eigen::Vector3d initial_position);
     void integrate_trajectory_forward(Eigen::Vector3d foot_position, Eigen::Vector3d foot_velocity, Eigen::Vector3d foot_acceleration);
     void get_traj_foot_pos_vel(double T_since_begin_step, Eigen::Vector3d &foot_pos, Eigen::Vector3d &foot_vel, Eigen::Vector3d &foot_acc);
-    Eigen::Vector<double, 4> get_spline_coef(double tf, double qi, double qi_dot, double qf, double qf_dot);
-    double get_q(Eigen::Vector<double, 4> coeff, double t);
-    double get_q_dot(Eigen::Vector<double, 4> coeff, double t);
-    double get_q_ddot(Eigen::Vector<double, 4> coeff, double t);
 };
 
 

@@ -42,10 +42,12 @@ class MujocoNode(Node):
         self.declare_parameter("sim_time_sec", rclpy.parameter.Parameter.Type.DOUBLE)
         self.declare_parameter("visualization_rate", rclpy.parameter.Parameter.Type.DOUBLE)
         self.declare_parameter("visualize_mujoco", rclpy.parameter.Parameter.Type.BOOL)
+        self.declare_parameter("publish_tf", rclpy.parameter.Parameter.Type.BOOL)
         self.visualize_mujoco = self.get_parameter("visualize_mujoco").get_parameter_value().bool_value
         mujoco_xml_path = self.get_parameter("mujoco_xml_path").get_parameter_value().string_value
         self.sim_time_sec = self.get_parameter("sim_time_sec").get_parameter_value().double_value
         self.visualization_rate = self.get_parameter("visualization_rate").get_parameter_value().double_value
+        self.publish_tf = self.get_parameter("publish_tf").get_parameter_value().bool_value
         self.initialization_done = False
         self.goal_pos = [0.0, 0.0]
         self.contact_states = {'R_FOOT': False,
@@ -91,8 +93,10 @@ class MujocoNode(Node):
         self.q_joints = {}
         for i in self.name_joints:
             self.q_joints[i] = {
+                'timestamp': 0.0,
                 'actual_pos': 0.0,
                 'actual_vel': 0.0,
+                'actual_acc': 0.0,
                 'desired_pos': 0.0,
                 'desired_vel': 0.0,
                 'feedforward_torque': 0.0
@@ -120,6 +124,8 @@ class MujocoNode(Node):
         self.odometry_base_pub = self.create_publisher(Odometry, '~/odometry', 10)
         self.contact_right_pub = self.create_publisher(StampedBool, '~/contact_foot_right', 10)
         self.contact_left_pub = self.create_publisher(StampedBool, '~/contact_foot_left', 10)
+
+        self.stop_pub = self.create_publisher(Bool, '~/stop', 10)
 
         self.joint_states_pub = self.create_publisher(JointState, 'joint_states', 10)
         self.imu_pub = self.create_publisher(Imu, '~/imu', 10)
@@ -156,7 +162,11 @@ class MujocoNode(Node):
             self.num_input_state = 3
             self.policy_bc_NN = PolicyBC(self.policy_input_size, action_size, self.num_input_state)
             self.list_policy_inputs = []
-        self.timer = self.create_timer(self.dt, self.timer_cb)
+
+        self.timer = self.create_timer(self.dt, self.timer_cb, clock=rclpy.clock.Clock(clock_type=rclpy.clock.ClockType.STEADY_TIME))
+
+        # for prev model
+        # self.previous_q_vel = np.zeros(self.model.nv)
 
     def swing_foot_BF_cb(self, msg):
         self.swing_foot_BF_pos = np.array([msg.vector.x, msg.vector.y, msg.vector.z])
@@ -197,6 +207,7 @@ class MujocoNode(Node):
         self.model.eq_active[0] = 1
         mj.mj_step(self.model, self.data)
         self.initialization_done = False
+        self.initialization_timeout = 0.2
         self.get_logger().info("initialize")
 
     def timer_cb(self):
@@ -220,7 +231,12 @@ class MujocoNode(Node):
 
     def step(self):
         if not self.initialization_done:
+            msg_stop_controller = Bool()
+            msg_stop_controller.data = (self.initialization_timeout > 0)
+            self.stop_pub.publish(msg_stop_controller)
+
             self.model.eq_data[0][2] -= 0.5 * self.dt
+            self.initialization_timeout -= self.dt
 
         self.read_contact_states()
         if self.contact_states['R_FOOT'] or self.contact_states['L_FOOT']:
@@ -287,14 +303,15 @@ class MujocoNode(Node):
         msg_odom.twist.twist.angular.z = self.data.qvel[5]
         self.odometry_base_pub.publish(msg_odom)
 
-        t = TransformStamped()
-        t.header = msg_odom.header
-        t.child_frame_id = msg_odom.child_frame_id
-        t.transform.translation.x = msg_odom.pose.pose.position.x
-        t.transform.translation.y = msg_odom.pose.pose.position.y
-        t.transform.translation.z = msg_odom.pose.pose.position.z
-        t.transform.rotation = msg_odom.pose.pose.orientation
-        self.tf_broadcaster.sendTransform(t)
+        if self.publish_tf:
+            t = TransformStamped()
+            t.header = msg_odom.header
+            t.child_frame_id = msg_odom.child_frame_id
+            t.transform.translation.x = msg_odom.pose.pose.position.x
+            t.transform.translation.y = msg_odom.pose.pose.position.y
+            t.transform.translation.z = msg_odom.pose.pose.position.z
+            t.transform.rotation = msg_odom.pose.pose.orientation
+            self.tf_broadcaster.sendTransform(t)
 
         msg_contact_right = StampedBool()
         msg_contact_left = StampedBool()
@@ -311,10 +328,6 @@ class MujocoNode(Node):
         msg_joint_states.header.stamp.sec = int(self.time)
         msg_joint_states.header.stamp.nanosec = int((self.time - clock_msg.clock.sec) * 1e9)
         for key, value in self.q_joints.items():
-            id_joint_mj = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_JOINT, key)
-            value['actual_pos'] = self.data.qpos[self.model.jnt_qposadr[id_joint_mj]]
-            value['actual_vel'] = self.data.qvel[self.model.jnt_dofadr[id_joint_mj]]
-            value['actual_acc'] = self.data.qacc[self.model.jnt_dofadr[id_joint_mj]]
             msg_joint_states.name.append(key)
             msg_joint_states.position.append(value['actual_pos'])
             msg_joint_states.velocity.append(value['actual_vel'])
@@ -392,8 +405,26 @@ class MujocoNode(Node):
                     value['feedforward_torque'] = tau_ff[cnt]
                 cnt += 1
 
+        # non NN model:
+        # for key, value in self.q_joints.items():
+        #     id_joint_mj = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_JOINT, key)
+        #     value['actual_pos'] = self.data.qpos[self.model.jnt_qposadr[id_joint_mj]]
+        #     value['actual_vel'] = self.data.qvel[self.model.jnt_dofadr[id_joint_mj]]
+        #     actual_acc = (self.data.qvel[self.model.jnt_dofadr[id_joint_mj]] - self.previous_q_vel[self.model.jnt_dofadr[id_joint_mj]])/self.dt
+        #     value['actual_acc'] = actual_acc
+        #     if key in self.joint_traj_msg.joint_names:
+        #         id_joint_msg = self.joint_traj_msg.joint_names.index(key)
+        #         value['desired_pos'] = self.joint_traj_msg.points[0].positions[id_joint_msg]
+        #         if self.joint_traj_msg.points[0].velocities:
+        #             value['desired_vel'] = self.joint_traj_msg.points[0].velocities[id_joint_msg]
+        #         if self.joint_traj_msg.points[0].effort:
+        #             if math.isnan(self.joint_traj_msg.points[0].effort[id_joint_msg]) is False:
+        #                 value['feedforward_torque'] = self.joint_traj_msg.points[0].effort[id_joint_msg]
+        #             else:
+        #                 value['feedforward_torque'] = 0.0
+        # self.previous_q_vel = self.data.qvel.copy()
 
-        kp_moteus = 600.0
+        kp_moteus = 240.0
         Kp = (kp_moteus/(2*math.pi)) * np.ones(self.model.njnt - 1) # exclude root
 
         i = 0

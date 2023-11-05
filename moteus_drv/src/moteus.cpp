@@ -3,6 +3,7 @@
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "sensor_msgs/msg/temperature.hpp"
 #include "std_msgs/msg/float32.hpp"
+#include "std_msgs/msg/bool.hpp"
 #include "trajectory_msgs/msg/joint_trajectory.hpp"
 #include "moteus_drv/msg/stamped_sensors.hpp"
 #include <stdexcept>
@@ -67,6 +68,8 @@ public:
             "~/joint_traj", 10, std::bind(&MoteusServo::traj_cb, this, std::placeholders::_1));
 
         sensors_pub_ = this->create_publisher<moteus_drv::msg::StampedSensors>("~/motor_sensors", 10);
+        e_stop_sub_ = this->create_subscription<std_msgs::msg::Bool>(
+            "~/e_stop", 10, std::bind(&MoteusServo::e_stop_cb, this, std::placeholders::_1));
 
         // const int r = ::mlockall(MCL_CURRENT | MCL_FUTURE);
         // if (r < 0) {
@@ -117,6 +120,10 @@ private:
             moteus_command_buf_[joint_idx].position.kp_scale = this->get_parameter(joint_names_[joint_idx] + "/kp_scale").as_double();
             moteus_command_buf_[joint_idx].position.kd_scale = this->get_parameter(joint_names_[joint_idx] + "/kd_scale").as_double();
             moteus_command_buf_[joint_idx].query = query;
+
+            if (e_stop_) {
+                continue;
+            }
 
             if (joint_traj_[joint_idx].points.size() > 0) {
                 // check for timeout and index in trajectory
@@ -212,7 +219,7 @@ private:
                     joint_list_str += ", ";
                 }
             }
-            RCLCPP_WARN_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 500 /* [ms] */,
+            RCLCPP_WARN_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 100 /* [ms] */,
                 "Joints not responding: " << joint_list_str);
         }
     }
@@ -250,6 +257,16 @@ private:
         }
     }
 
+    void e_stop_cb(const std_msgs::msg::Bool::SharedPtr msg)
+    {
+        if (msg->data) {
+            RCLCPP_INFO_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 500 /* [ms] */, "E-stop active");
+        } else if (e_stop_) {
+            RCLCPP_INFO_STREAM(this->get_logger(), "E-stop cleared");
+        }
+        e_stop_ = msg->data;
+    }
+
     static size_t servo_uid(int bus, int id)
     {
         return (bus << 8) + id;
@@ -262,6 +279,7 @@ private:
     std::map<size_t, size_t> joint_uid_to_joint_index_;
     double joint_state_timeout_;
     double joint_command_timeout_;
+    bool e_stop_ = false;
 
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_pub_;
     rclcpp::Publisher<moteus_drv::msg::StampedSensors>::SharedPtr sensors_pub_;
@@ -269,6 +287,7 @@ private:
     rclcpp::Subscription<trajectory_msgs::msg::JointTrajectory>::SharedPtr joint_sub_;
     std::vector<trajectory_msgs::msg::JointTrajectory> joint_traj_;
     rclcpp::TimerBase::SharedPtr timer_;
+    rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr e_stop_sub_;
 
     std::vector<moteus::Pi3HatMoteusInterface::ServoCommand> moteus_command_buf_;
     std::vector<moteus::Pi3HatMoteusInterface::ServoReply> moteus_reply_buf_;

@@ -16,6 +16,8 @@ class JoyNode(Node):
         self.pub_step_sim = self.create_publisher(Float64, "~/step_sim", 1)
         self.pub_pause_sim = self.create_publisher(Bool, "~/pause_sim", 1)
         self.pub_reset_sim = self.create_publisher(Empty, "~/reset_sim", 1)
+        self.pub_stop = self.create_publisher(Bool, "~/stop", 1)
+
         self.subscription = self.create_subscription(
             Joy,
             '/joy',
@@ -40,6 +42,8 @@ class JoyNode(Node):
         if self.use_joystick == False:
             msg = Empty()
             self.pub_reset_sim.publish(msg)
+
+        self.stopped_state = False
 
     def joy_cb(self, msg):
         with self.lock:
@@ -81,7 +85,7 @@ class JoyNode(Node):
             msg_twist = TwistStamped()
             msg_twist.header.stamp = self.get_clock().now().to_msg()
             msg_twist.header.frame_id = "base_link"
-            msg_twist.twist.linear.x = 0.1 * joy.axes[1]
+            msg_twist.twist.linear.x = 0.5 * joy.axes[1]
             msg_twist.twist.linear.y = 0.1 * joy.axes[0]
             msg_twist.twist.linear.z = 0.0
             msg_twist.twist.angular.x = 0.0
@@ -117,6 +121,22 @@ class JoyNode(Node):
             msg = Empty()
             self.pub_reset_sim.publish(msg)
         self.counter += 1
+
+        if self.joy.buttons[4]: # L1
+            print('stop_experiment')
+            self.stopped_state = True
+
+        if self.joy.buttons[6]: # tiny left button
+            print('start_experiment')
+            self.stopped_state = False
+            msg = Bool()
+            msg.data = self.stopped_state
+            self.pub_stop.publish(msg)
+
+        if self.stopped_state:
+            msg = Bool()
+            msg.data = self.stopped_state
+            self.pub_stop.publish(msg)
 
 def main(args=None):
     rclpy.init(args=args)

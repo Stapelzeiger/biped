@@ -7,7 +7,8 @@ windows:
   - ros2 launch biped_bringup launch_control_hardware.yaml
   - rviz2 -d src/biped/biped_bringup/rviz/biped.rviz
   - ros2 run joy joy_node
+  - python3 src/biped/sim_mujoco/sim_mujoco/joynode_drive.py --ros-args --remap /joy_command/pause_sim:=/mujoco_sim/pause --remap /joy_command/step_sim:=/mujoco_sim/step --remap /joy_command/reset_sim:=/mujoco_sim/reset --remap /joy_command/commanded_twist:=/vel_cmd --remap /joy_command/stop:=/e_stop
   - clear
   - ros2 launch src/biped/biped_bringup/launch/rosbag_record.py \
   - ros2 launch capture_point cp.launch.yml \
-  - ros2 launch flir_spinnaker_ros2 blackfly_s.launch.py camera_name:=blackfly_0 serial:="'20538718'"
+  - ros2 launch flir_spinnaker_ros2 blackfly_s.launch.py camera_name:=external_cam serial:="'20538718'"

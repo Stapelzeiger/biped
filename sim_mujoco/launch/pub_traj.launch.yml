@@ -1,0 +1,12 @@
+launch:
+- node:
+    pkg: sim_mujoco
+    exec: joint_publisher
+    name: joint_publisher_fake
+    param:
+      - name: sim_time_sec
+        value: $(var sim_time_sec)
+    output: screen
+    # print GDB backtrace:
+    # launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args
+

@@ -1,4 +1,7 @@
 launch:
+- arg:
+    name: "publish_tf"
+    default: "False"
 - node:
     pkg: sim_mujoco
     exec: mujoco
@@ -12,11 +15,15 @@ launch:
         value: $(var sim_time_sec)
       - name: visualization_rate
         value: $(var visualization_rate)
+      - name: publish_tf
+        value: '$(var publish_tf)'
     remap:
-      - from: "/mujoco_sim/contact_foot_right"
-        to: "/poll_R_FOOT/gpio"
-      - from: "/mujoco_sim/contact_foot_left"
-        to: "/poll_L_FOOT/gpio"
+      - from: /mujoco_sim/contact_foot_right
+        to: /poll_R_FOOT/gpio
+      - from: /mujoco_sim/contact_foot_left
+        to: /poll_L_FOOT/gpio
+      - from: /mujoco_sim/stop
+        to: /e_stop
       - from: /mujoco_sim/imu
         to: /imu
       - from: /mujoco_sim/swing_foot_BF

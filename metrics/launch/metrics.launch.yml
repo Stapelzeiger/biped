@@ -1,0 +1,11 @@
+launch:
+- node:
+    pkg: metrics
+    exec: metrics
+    name: metrics
+    param:
+      - name: use_sim_time
+        value: '$(var use_sim_time)'
+    output: screen
+    # print GDB backtrace:
+    # launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args
