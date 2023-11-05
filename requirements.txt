@@ -1,0 +1,5 @@
+torchvision
+torchaudio
+tqdm
+tensorboard
+scikit-learn

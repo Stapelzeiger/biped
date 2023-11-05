@@ -54,3 +54,10 @@ force time sync:
 ```
 chronyc -a makestep
 ```
+
+# Running in Sim
+In the ROS2 workspace,
+```
+colcon build --symlink-install --continue-on-error --cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo #--event-handlers console_direct+
+tmuxp load src/biped/biped_bringup/tmuxp/run_ctrl_in_sim.yaml
+```

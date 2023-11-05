@@ -96,7 +96,7 @@ public:
         pub_stance_foot_BF_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("~/stance_foot_BF", 10);
         pub_dcm_desired_BF_ = this->create_publisher<geometry_msgs::msg::TwistStamped>("~/dcm_desired_BF", 10);
 
-        pub_state_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("~/state", 10);
+        // pub_state_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("~/state", 10);
 
         odometry_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
             "/odometry", 10, std::bind(&CapturePoint::odometry_callback, this, _1));
