@@ -1,0 +1,9 @@
+session_name: biped_visualizer
+windows:
+- layout: tiled
+  # shell_command_before:
+  # - source $ROS_WS/install/local_setup.bash
+  panes:
+  - cd src/biped/biped_robot_description/urdf && ros2 run robot_state_publisher robot_state_publisher custom_robot.urdf
+  - rviz2 -d src/biped/biped_bringup/rviz/biped.rviz --ros-args --param use_sim_time:=true
+  - ros2 run joint_state_publisher_gui joint_state_publisher_gui
