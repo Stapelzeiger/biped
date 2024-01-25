@@ -1,0 +1,6 @@
+numpy
+gym
+gym[classic_control]
+tqdm
+# Install pytorch manually.
+scikit-learn
