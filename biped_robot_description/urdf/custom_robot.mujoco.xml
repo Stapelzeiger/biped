@@ -1,6 +1,5 @@
 <mujoco model="biped">
-  <compiler angle="radian" meshdir="../meshes/"/>
-  <size njmax="10000" nconmax="10000"/>
+  <compiler angle="radian" meshdir="../meshes/" autolimits="true"/>
   <option integrator="RK4"/>
   <default/>
   <asset>
