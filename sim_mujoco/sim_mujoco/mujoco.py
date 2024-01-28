@@ -14,16 +14,16 @@ from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
 from scipy.spatial.transform import Rotation as R
 
+import mujoco.viewer
 import mujoco as mj
-import mujoco_viewer
 import numpy as np
 import sys
 import json
 import time
 from sim_mujoco.submodules.pid import pid as pid_ctrl
-
 from threading import Lock
 import math 
+
 
 def setup_pid(control_rate, kp, ki, kd):
     pid = pid_ctrl()
@@ -31,10 +31,10 @@ def setup_pid(control_rate, kp, ki, kd):
     pid.pid_set_gains(kp, ki, kd)
     return pid
 
-
 class MujocoNode(Node):
     def __init__(self):
         super().__init__('mujoco_sim')
+        self.get_logger().info("Start Sim!")
         self.declare_parameter("mujoco_xml_path", rclpy.parameter.Parameter.Type.STRING)
         self.declare_parameter("sim_time_sec", rclpy.parameter.Parameter.Type.DOUBLE)
         self.declare_parameter("visualize_mujoco", rclpy.parameter.Parameter.Type.BOOL)
@@ -49,8 +49,14 @@ class MujocoNode(Node):
                                'L_FOOT': False}
 
         self.model = mj.MjModel.from_xml_path(mujoco_xml_path)
-        mj.mj_printModel(self.model, 'robot_information.txt')
         self.data = mj.MjData(self.model)
+
+        if self.visualize_mujoco is True:
+            self.get_logger().info("Start visualization!")
+            self.viewer = mujoco.viewer.launch_passive(self.model, self.data)
+
+        mj.mj_printModel(self.model, 'robot_information.txt')
+
         self.lock = Lock()
 
         self.time = time.time()
@@ -67,12 +73,6 @@ class MujocoNode(Node):
         self.gyro_bias_noise_std = self.gyro_bias_random_walk * np.sqrt(self.dt)
         self.accel_bias = np.random.normal(0, self.accel_bias_random_walk * np.sqrt(100), 3)
         self.gyro_bias = np.random.normal(0, self.gyro_bias_random_walk * np.sqrt(100), 3)
-
-        if self.visualize_mujoco == True:
-            self.viewer = mujoco_viewer.MujocoViewer(self.model, self.data)
-            self.viewer.cam.azimuth = 90
-            self.viewer.cam.elevation = -25
-            self.viewer.render()
 
         self.name_joints = self.get_joint_names()
 
@@ -186,6 +186,9 @@ class MujocoNode(Node):
         with self.lock:
             self.paused = msg.data
 
+    def stop_viz(self):
+        self.viewer.close()
+
     def step(self):
         if not self.initialization_done:
             msg_stop_controller = Bool()
@@ -194,7 +197,6 @@ class MujocoNode(Node):
 
             self.model.eq_data[0][2] -= 0.5 * self.dt
             self.initialization_timeout -= self.dt
-
         self.read_contact_states()
         if self.contact_states['R_FOOT'] or self.contact_states['L_FOOT']:
             if not self.initialization_done:
@@ -205,17 +207,14 @@ class MujocoNode(Node):
                 # self.model.eq_active0 = 0 # let go of the robot
                 self.data.eq_active[0] = 0 # let go of the robot
 
-        
-        if self.visualize_mujoco is True:
-            vis_update_downsampling = int(round(1.0/self.visualization_rate/self.sim_time_sec/10))
-            if self.counter % vis_update_downsampling == 0:
-                self.viewer.render()
-
         for _ in range(2):
             self.run_joint_controllers()
             self.ankle_foot_spring('L_ANKLE')
             self.ankle_foot_spring('R_ANKLE')
             mj.mj_step(self.model, self.data)
+            if self.visualize_mujoco is True:
+                if self.viewer.is_running():
+                    self.viewer.sync()
             self.time += self.dt
             self.counter += 1
 
@@ -406,6 +405,7 @@ def main(args=None):
     rclpy.init(args=args)
     sim_node = MujocoNode()
     rclpy.spin(sim_node)
+    sim_node.stop_viz()
     sim_node.destroy_node()
     rclpy.shutdown()
 
