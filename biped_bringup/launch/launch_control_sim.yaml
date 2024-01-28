@@ -12,11 +12,6 @@ launch:
     name: "sim_time_sec"
     default: "0.001"
 
-- arg:
-    name: "visualization_rate"
-    default: "10.0"
-
-
 - node:
     pkg: robot_state_publisher
     exec: robot_state_publisher
