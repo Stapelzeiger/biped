@@ -102,9 +102,7 @@ class MujocoNode(Node):
                 self.model, mj.mjtObj.mjOBJ_JOINT, name)]
         
         self.counter = 0
-
-        self.init([0.0, 0.0, 0.0])
-
+        self.init(p=[0.0, 0.0, 0.0])
         self.clock_pub = self.create_publisher(Clock, '/clock', 10)
 
         self.odometry_base_pub = self.create_publisher(Odometry, '~/odometry', 10)
