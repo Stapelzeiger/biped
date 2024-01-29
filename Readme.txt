@@ -20,10 +20,9 @@ optional
 sudo apt install ros-humble-pinocchio
 ```
 
-## MuJoCo Viewer
+# Mujoco 3.1
 ```
 pip3 install mujoco
-pip3 install mujoco-python-viewer
 ```
 
 ## OSQP
