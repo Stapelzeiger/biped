@@ -193,7 +193,7 @@ class BC_Agent(nn.Module):
         self.action_mean = nn.Parameter(torch.Tensor(exp_action_mean).to(self.device), requires_grad=False)
         self.action_std = nn.Parameter(torch.Tensor(exp_action_std).to(self.device), requires_grad=False)
 
-    staticmethod
+    @staticmethod
     def _gen_policy(policy_arch):
         """Generates a torch.nn Sequential model from the policy architecture
 
