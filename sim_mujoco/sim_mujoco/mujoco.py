@@ -51,6 +51,7 @@ class MujocoNode(Node):
         self.model = mj.MjModel.from_xml_path(mujoco_xml_path)
         self.data = mj.MjData(self.model)
 
+        # self.visualize_mujoco = False
         if self.visualize_mujoco is True:
             self.get_logger().info("Start visualization!")
             self.viewer = mujoco.viewer.launch_passive(self.model, self.data)
@@ -141,7 +142,7 @@ class MujocoNode(Node):
     def init(self, p, q=[1.0, 0.0, 0.0, 0.0]):
         self.model.eq_data[0][0] = p[0]
         self.model.eq_data[0][1] = p[1]
-        self.model.eq_data[0][2] = 1.5 # one meter above gnd
+        self.model.eq_data[0][2] = 1.0 # one meter above gnd
 
         self.data.qpos = [0.0] * self.model.nq
         self.data.qpos[3] = q[0]
@@ -155,11 +156,7 @@ class MujocoNode(Node):
         self.data.qpos[1] = p[1]
         self.data.qpos[2] = self.model.eq_data[0][2]
 
-        # https://mujoco.readthedocs.io/en/stable/changelog.html
-        # self.model.eq_active[0] = 1
         self.data.eq_active[0] = 1
-        # or
-        # self.model.eq_active0 = 1
         mj.mj_step(self.model, self.data)
         self.initialization_done = False
         self.initialization_timeout = 0.2
@@ -201,8 +198,7 @@ class MujocoNode(Node):
                 self.get_logger().info("init done")
                 self.initialization_done = True
                 self.data.qvel = [0.0]* self.model.nv
-                # self.model.eq_active[0] = 0 # let go of the robot
-                # self.model.eq_active0 = 0 # let go of the robot
+                self.model.eq_active0 = 0 # let go of the robot
                 self.data.eq_active[0] = 0 # let go of the robot
 
         for _ in range(2):
