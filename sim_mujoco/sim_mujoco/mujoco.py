@@ -26,7 +26,7 @@ import math
 
 import csv
 import os
-sys.path.insert(0, '/home/sorina/Documents/code/biped_hardware/ros2_ws/src/biped/sim_mujoco/sim_mujoco/')
+sys.path.insert(0, '/home/leo/biped_ws/src/biped/sim_mujoco/sim_mujoco/')
 from bc_controller import PolicyBC
 
 def setup_pid(control_rate, kp, ki, kd):
@@ -141,7 +141,7 @@ class MujocoNode(Node):
         self.stance_foot_BF_sub = self.create_subscription(Vector3Stamped, "~/stance_foot_BF", self.stance_foot_BF_cb, 10)
         self.dcm_desired_BF_sub = self.create_subscription(TwistStamped, "~/dcm_desired_BF", self.dcm_desired_BF_cb, 10)
 
-        self.paused = True
+        self.paused = False
         self.step_sim_sub = self.create_subscription(Float64, "~/step", self.step_cb, 1)
         self.pause_sim_sub = self.create_subscription(Bool, "~/pause", self.pause_cb, 1)
 
@@ -372,6 +372,7 @@ class MujocoNode(Node):
             print('running expert, elapsed time:', duration - self.counter)
 
             # running the expert policy
+            # Go through all the joints and update each joint value per tick.
             for key, value in self.q_joints.items():
                 id_joint_mj = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_JOINT, key)
                 value['actual_pos'] = self.data.qpos[self.model.jnt_qposadr[id_joint_mj]]
@@ -404,6 +405,7 @@ class MujocoNode(Node):
                     value['desired_vel'] = desired_vel[cnt]
                     value['feedforward_torque'] = tau_ff[cnt]
                 cnt += 1
+        # print(policy_NN)
 
         # non NN model:
         # for key, value in self.q_joints.items():

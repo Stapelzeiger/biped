@@ -1,13 +1,15 @@
 import numpy as np
 import torch
 
+import sys
+sys.path.append("/home/leo/biped_ws/src/biped/sim_mujoco/imit_learning_setup/behavioral_cloning/")
 from bc import BC_Agent
 
 class PolicyBC:
     def __init__(self, state_size, action_size, num_input_states):
         self.state_size = state_size
         self.action_size = action_size
-        self.folder = '/home/sorina/Documents/code/biped_hardware/ros2_ws/src/biped/sim_mujoco/imit_learning_setup/behavioral_cloning/' # todo fix this so it's not hardcoded
+        self.folder = '/home/leo/biped_ws/src/biped/sim_mujoco/imit_learning_setup/behavioral_cloning/' # todo fix this so it's not hardcoded
         # self.policy_name = 'bc_policy_4_500e_no_spectral_norm'
         self.policy_name = 'bc_policy_4_500e'
 

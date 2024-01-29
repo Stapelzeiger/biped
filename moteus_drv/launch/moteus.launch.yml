@@ -14,7 +14,7 @@ launch:
         to: /e_stop
     output: screen
     # print GDB backtrace:
-    launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args
+    # launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args
 
 # Auto reload parameters when parameter file is written
 - executable:

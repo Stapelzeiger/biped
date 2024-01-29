@@ -410,7 +410,7 @@ void OptimizerTrajectory::compute_traj_pos_vel(double T_since_begin_step,
 //         full_traj_acc.push_back(foot_acc);
     
 //         std::string file_name;
-//         file_name = "/home/sorina/Documents/code/biped_hardware/ros2_ws/src/biped/capture_point/test/output_traj_cpp_" + std::to_string(i) + ".csv";
+//         file_name = "/home/leo/biped_ws/src/biped/capture_point/test/output_traj_cpp_" + std::to_string(i) + ".csv";
 //         std::ofstream file(file_name);
 //         file << "Position_X,Position_Y,Position_Z,Velocity_X,Velocity_Y,Velocity_Z,Acceleration_X,Acceleration_Y,Acceleration_Z\n";
 //         for (unsigned int i = 0; i < opt.solution_opt_pos_.size(); i++)
@@ -422,7 +422,7 @@ void OptimizerTrajectory::compute_traj_pos_vel(double T_since_begin_step,
 //         file.close();
 //         T_since_beginning_of_step = T_since_beginning_of_step + dt;
 //     }
-//     std::string file_name = "/home/sorina/Documents/code/biped_hardware/ros2_ws/src/biped/capture_point/test/full_traj.csv";
+//     std::string file_name = "/home/leo/biped_ws/src/biped/capture_point/test/full_traj.csv";
 //     std::ofstream file(file_name);
 //     file << "Position_X,Position_Y,Position_Z,Velocity_X,Velocity_Y,Velocity_Z,Acceleration_X,Acceleration_Y,Acceleration_Z\n";
 //     for (unsigned int i = 0; i < full_traj_pos.size(); i++)

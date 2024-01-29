@@ -28,7 +28,7 @@ class JoyNode(Node):
         self.joy = None
 
         self.pause_btn = False
-        self.paused = True
+        self.paused = False
         self.step_btn = False
         self.speed_step_cnt = 0
         self.counter = 0.0
