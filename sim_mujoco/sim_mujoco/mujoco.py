@@ -51,7 +51,6 @@ class MujocoNode(Node):
         self.model = mj.MjModel.from_xml_path(mujoco_xml_path)
         self.data = mj.MjData(self.model)
 
-        # self.visualize_mujoco = False
         if self.visualize_mujoco is True:
             self.get_logger().info("Start visualization!")
             self.viewer = mujoco.viewer.launch_passive(self.model, self.data)
