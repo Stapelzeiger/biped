@@ -10,11 +10,9 @@ launch:
       - name: mujoco_xml_path
         value: "$(find-pkg-share biped_robot_description)/urdf/custom_robot.mujoco.xml"
       - name: visualize_mujoco
-        value: False
+        value: true
       - name: sim_time_sec
         value: $(var sim_time_sec)
-      - name: visualization_rate
-        value: $(var visualization_rate)
       - name: publish_tf
         value: '$(var publish_tf)'
     remap:
