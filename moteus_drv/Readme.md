@@ -38,3 +38,21 @@ to save zero oputput:
 d cfg-set-output 0
 conf write
 
+
+### Notes on bandwidth
+
+default: 100 Hz
+pid_dq.kp: 0.02503
+pid_dq.ki: 57.4488
+
+default: 200 Hz
+pid_dq.kp: 0.049
+pid_dq.ki: 107.223
+
+default: 400 Hz
+pid_dq.kp: 0.099
+pid_dq.ki: 215.446
+
+
+
+
