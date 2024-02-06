@@ -46,6 +46,22 @@ sudo apt-get update
 sudo apt-get install gz-harmonic
 ```
 
+## OSQP-Eigen
+Make sure that Eigen and OSQP are installed, then follow: https://github.com/robotology/osqp-eigen?tab=readme-ov-file#%EF%B8%8F-build-from-source-advanced
+
+Eigen should be installed already in Ubuntu, but incase, run: `sudo apt install libeigen3-dev`
+```
+git clone https://github.com/robotology/osqp-eigen.git
+cd osqp-eigen
+mkdir build
+cd build
+cmake -DCMAKE_INSTALL_PREFIX:PATH=/opt/osqp_eigen ../
+make
+make install
+```
+Then add `export OsqpEigen_DIR="/opt/osqp_eigen"` to your `~/.bashrc` file (or anywhere where you set environment variables).
+
+
 # Running
 
 Raspberry IP setup:
