@@ -304,7 +304,7 @@ private:
             foot_traj_list_STF_.clear(); // used for markers
             swing_foot_traj_.set_initial_pos_vel(start_opt_pos_swing_foot_, start_opt_vel_swing_foot_);
             set_position_limits_for_foot_in_optimization(swing_foot_name);
-
+            swing_foot_traj_.enable_lowering_foot_after_opt_solved(true);
             time_since_last_step_ = 0.0;
             dcm_at_step_STF_ = dcm_STF_;
         }

@@ -194,7 +194,7 @@ void OptimizerTrajectory::get_linear_matrix_and_bounds(Eigen::Vector3d initial_p
         j = j + 1;
     }
 
-    double foot_height_keep = 0.1;
+    double foot_height_keep = desired_foot_raise_height_;
     Eigen::MatrixXd l_keep_foot = foot_height_keep * Eigen::MatrixXd::Ones(n_keep, 1);
     Eigen::MatrixXd u_keep_foot = foot_height_keep * Eigen::MatrixXd::Ones(n_keep, 1);
 
@@ -249,6 +249,11 @@ bool OptimizerTrajectory::solve_optimization_pb(Eigen::VectorXd &qp_sol)
     return true;
 }
 
+void OptimizerTrajectory::set_desired_foot_raise_height(double desired_foot_raise_height)
+{
+    desired_foot_raise_height_ = desired_foot_raise_height;
+}
+
 void OptimizerTrajectory::set_initial_pos_vel(Eigen::Vector3d initial_pos,
                                                 Eigen::Vector3d initial_vel)
 {
@@ -259,6 +264,11 @@ void OptimizerTrajectory::set_initial_pos_vel(Eigen::Vector3d initial_pos,
     solution_opt_vel_.clear();
     solution_opt_acc_.clear();
     traj_opt_computed_ = false;
+}
+
+void OptimizerTrajectory::enable_lowering_foot_after_opt_solved(bool enable)
+{
+    enable_lower_foot_after_opt_solved_ = enable;
 }
 
 void OptimizerTrajectory::compute_traj_pos_vel(double T_since_begin_step,
@@ -285,7 +295,6 @@ void OptimizerTrajectory::compute_traj_pos_vel(double T_since_begin_step,
     double lower_foot_impact_vel = 0.3;
     Eigen::Vector3d final_vel;
     final_vel << 0.0, 0.0, -lower_foot_impact_vel;
-
 
     double T_remaining = Ts_ - T_since_begin_step; // for x and y
     double fraction = 10.0/100.0;
@@ -356,17 +365,20 @@ void OptimizerTrajectory::compute_traj_pos_vel(double T_since_begin_step,
             foot_pos = solution_opt_pos_[idx];
             foot_vel = solution_opt_vel_[idx];
             foot_acc = solution_opt_acc_[idx];
-        }
-        else{
-            // continue lowering
+        } else {
             idx = solution_opt_pos_.size() - 1;
-            foot_pos << solution_opt_pos_[idx](0), solution_opt_pos_[idx](1), solution_opt_pos_[idx](2) - lower_foot_impact_vel * (T_since_begin_step - Ts_);
-            foot_vel << 0.0, 0.0, -lower_foot_impact_vel;
+            if (enable_lower_foot_after_opt_solved_ == true)
+            {
+                foot_pos << solution_opt_pos_[idx](0), solution_opt_pos_[idx](1), solution_opt_pos_[idx](2) - lower_foot_impact_vel * (T_since_begin_step - Ts_);
+                foot_vel << 0.0, 0.0, -lower_foot_impact_vel;
+            } else {
+                foot_pos << solution_opt_pos_[idx](0), solution_opt_pos_[idx](1), solution_opt_pos_[idx](2);
+                foot_vel << 0.0, 0.0, 0.0;
+            }
             foot_acc << 0.0, 0.0, 0.0;
         }
     }
 }
-
 
 // int main()
 // {
