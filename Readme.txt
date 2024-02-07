@@ -61,6 +61,10 @@ make install
 ```
 Then add `export OsqpEigen_DIR="/opt/osqp_eigen"` to your `~/.bashrc` file (or anywhere where you set environment variables).
 
+## rviz (optional, if want visualization)
+```
+sudo apt install ros-humble-rviz-2d-overlay-plugins
+```
 
 # Running
 
