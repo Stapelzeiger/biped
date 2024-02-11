@@ -2,6 +2,8 @@
   ros__parameters:
     update_rate: 300.0
     global_max_torque: 2.0
+    joint_state_timeout: 0.03
+    joint_command_timeout: 0.1
     # joints: ['test1']
     # joints: ['R_YAW', 'L_YAW']
     joints: ['R_YAW', 'R_HAA', 'R_HFE', 'R_KFE', 'L_YAW', 'L_HAA', 'L_HFE', 'L_KFE']
@@ -12,22 +14,26 @@
     
     R_YAW/can_id: 10
     R_YAW/can_bus: 3
-    R_YAW/offset: -0.05
+    # R_YAW/offset: -0.05
+    R_YAW/encoder_ambiguity: 3.0
     R_YAW/reverse: False
 
     R_HAA/can_id: 11
     R_HAA/can_bus: 5
-    R_HAA/offset: 0.0
+    # R_HAA/offset: 0.0
+    R_HAA/encoder_ambiguity: 6.0
     R_HAA/reverse: True
 
     R_HFE/can_id: 12
     R_HFE/can_bus: 5
-    R_HFE/offset: 0.368
+    # R_HFE/offset: 0.368
+    R_HFE/encoder_ambiguity: 6.0
     R_HFE/reverse: False
 
     R_KFE/can_id: 14
     R_KFE/can_bus: 5
-    R_KFE/offset: 0.31
+    # R_KFE/offset: 0.31
+    R_KFE/encoder_ambiguity: 9.0 # 6.0 x 1.5
     R_KFE/reverse: False
     R_KFE/kp_scale: 1.0
 
@@ -36,22 +42,26 @@
 
     L_YAW/can_id: 20
     L_YAW/can_bus: 3
-    L_YAW/offset: 0.1
+    # L_YAW/offset: 0.1
+    L_YAW/encoder_ambiguity: 3.0
     L_YAW/reverse: False
 
     L_HAA/can_id: 21
     L_HAA/can_bus: 4
-    L_HAA/offset: 0.0
+    # L_HAA/offset: 0.0
+    L_HAA/encoder_ambiguity: 6.0
     L_HAA/reverse: True
 
     L_HFE/can_id: 22
     L_HFE/can_bus: 4
-    L_HFE/offset: 0.263
+    # L_HFE/offset: 0.263
+    L_HFE/encoder_ambiguity: 6.0
     L_HFE/reverse: True
 
     L_KFE/can_id: 23
     L_KFE/can_bus: 4
-    L_KFE/offset: 0.075
+    # L_KFE/offset: 0.075
+    L_KFE/encoder_ambiguity: 9.0 # 6.0 x 1.5
     L_KFE/reverse: True
 
     L_ANKLE/can_id: 4 # dummy number

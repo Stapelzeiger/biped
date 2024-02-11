@@ -36,14 +36,13 @@ public:
         this->declare_parameter<double>("global_max_torque", 1e9);
         joint_traj_.resize(nb_joints_);
         moteus_query_res_.resize(nb_joints_);
-        joint_offsets_.resize(nb_joints_);
         joint_signs_.resize(nb_joints_);
+        joint_encoder_ambiguities_.resize(nb_joints_);
 
         // Moteus buffers
         moteus_command_buf_.clear();
         for (size_t joint_idx = 0; joint_idx < nb_joints_; joint_idx++) {
             auto joint_name = joint_names_[joint_idx];
-            this->declare_parameter<double>(joint_name + "/offset", 0);
             this->declare_parameter<bool>(joint_name + "/reverse", false);
             this->declare_parameter<double>(joint_name + "/kp_scale", 1);
             this->declare_parameter<double>(joint_name + "/kd_scale", 1);
@@ -55,9 +54,27 @@ public:
             moteus_command_buf_.back().id = id;
             moteus_command_buf_.back().bus = bus;
             joint_uid_to_joint_index_[servo_uid(bus, id)] = joint_idx;
+
+            double encoder_ambiguity = this->get_parameter(joint_name + "/encoder_ambiguity").as_double();
+            joint_encoder_ambiguities_[joint_idx] = encoder_ambiguity;
+
             RCLCPP_INFO_STREAM(this->get_logger(), "Adding joint: " << joint_name << ", CAN bus: " << bus << ", id " << id);
         }
         moteus_reply_buf_.resize(moteus_command_buf_.size() * 2); // larger in case there's addition messages
+
+        // Set the offsets (p + k * n = output; k*n is the offset)
+        for (size_t joint_idx = 0; joint_idx < nb_joints_; joint_idx++) {
+            auto res = std::get<0>(moteus_query_res_[joint_idx]);
+            if (!std::isfinite(res.position)) {
+                RCLCPP_WARN_STREAM(this->get_logger(), "Joint " << joint_names_[joint_idx] << " not responding");
+                continue;
+            }
+            auto output = res.position * 2 * M_PI;
+            double p = 0; // TODO make a param
+            double k = std::round((output - p) / joint_encoder_ambiguities_[joint_idx]);
+            joint_offsets_[joint_idx] = k * joint_encoder_ambiguities_[joint_idx];
+            RCLCPP_INFO_STREAM(this->get_logger(), "Joint " << joint_names_[joint_idx] << " offset: " << joint_offsets_[joint_idx]);
+        }
 
         moteus::Pi3HatMoteusInterface::Options interface_options;
         interface_options.cpu = 1; // TODO make param
@@ -99,6 +116,7 @@ private:
         double global_max_torque = this->get_parameter("global_max_torque").as_double();
         for (size_t joint_idx = 0; joint_idx < nb_joints_; joint_idx++)
         {
+
             joint_offsets_[joint_idx] = this->get_parameter(joint_names_[joint_idx] + "/offset").as_double();
             bool rev = this->get_parameter(joint_names_[joint_idx] + "/reverse").as_bool();
             if (rev) {
@@ -274,8 +292,9 @@ private:
 
     std::vector<std::string> joint_names_;
     size_t nb_joints_;
-    std::vector<double> joint_offsets_;
+    std::vector<double> joint_encoder_ambiguities_;
     std::vector<double> joint_signs_;
+    std::vector<double> joint_offsets_;
     std::map<size_t, size_t> joint_uid_to_joint_index_;
     double joint_state_timeout_;
     double joint_command_timeout_;
