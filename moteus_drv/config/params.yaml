@@ -15,7 +15,7 @@
     R_YAW/can_id: 10
     R_YAW/can_bus: 3
     # R_YAW/offset: -0.05
-    R_YAW/encoder_ambiguity: 3.0
+    R_YAW/encoder_ambiguity: 5.0
     R_YAW/reverse: False
 
     R_HAA/can_id: 11
@@ -43,7 +43,7 @@
     L_YAW/can_id: 20
     L_YAW/can_bus: 3
     # L_YAW/offset: 0.1
-    L_YAW/encoder_ambiguity: 3.0
+    L_YAW/encoder_ambiguity: 5.0
     L_YAW/reverse: False
 
     L_HAA/can_id: 21

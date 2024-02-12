@@ -47,6 +47,7 @@ public:
             this->declare_parameter<double>(joint_name + "/kp_scale", 1);
             this->declare_parameter<double>(joint_name + "/kd_scale", 1);
             this->declare_parameter<double>(joint_name + "/max_torque", 1e9);
+            this->declare_parameter<double>(joint_name + "/encoder_ambiguity", 0.0);
             
             int id = this->declare_parameter<int64_t>(joint_name + "/can_id", can_id++);
             int bus = this->declare_parameter<int64_t>(joint_name + "/can_bus", 1);
@@ -62,18 +63,11 @@ public:
         }
         moteus_reply_buf_.resize(moteus_command_buf_.size() * 2); // larger in case there's addition messages
 
-        // Set the offsets (p + k * n = output; k*n is the offset)
+        calibration_done_ = false;
+        // Initialize offsets to 0.0
+        joint_offsets_.resize(nb_joints_);
         for (size_t joint_idx = 0; joint_idx < nb_joints_; joint_idx++) {
-            auto res = std::get<0>(moteus_query_res_[joint_idx]);
-            if (!std::isfinite(res.position)) {
-                RCLCPP_WARN_STREAM(this->get_logger(), "Joint " << joint_names_[joint_idx] << " not responding");
-                continue;
-            }
-            auto output = res.position * 2 * M_PI;
-            double p = 0; // TODO make a param
-            double k = std::round((output - p) / joint_encoder_ambiguities_[joint_idx]);
-            joint_offsets_[joint_idx] = k * joint_encoder_ambiguities_[joint_idx];
-            RCLCPP_INFO_STREAM(this->get_logger(), "Joint " << joint_names_[joint_idx] << " offset: " << joint_offsets_[joint_idx]);
+            joint_offsets_[joint_idx] = 0.0;
         }
 
         moteus::Pi3HatMoteusInterface::Options interface_options;
@@ -116,8 +110,6 @@ private:
         double global_max_torque = this->get_parameter("global_max_torque").as_double();
         for (size_t joint_idx = 0; joint_idx < nb_joints_; joint_idx++)
         {
-
-            joint_offsets_[joint_idx] = this->get_parameter(joint_names_[joint_idx] + "/offset").as_double();
             bool rev = this->get_parameter(joint_names_[joint_idx] + "/reverse").as_bool();
             if (rev) {
                 joint_signs_[joint_idx] = -1;
@@ -143,26 +135,28 @@ private:
                 continue;
             }
 
-            if (joint_traj_[joint_idx].points.size() > 0) {
-                // check for timeout and index in trajectory
-                if ((now - joint_traj_[joint_idx].header.stamp).seconds() > joint_command_timeout_) {
-                    joint_traj_[joint_idx].points.clear();
-                    RCLCPP_WARN_STREAM(this->get_logger(), "Joint " << joint_names_[joint_idx] << " timed out");
-                } else {
-                    const double revolutions = 1/(2*M_PI);
-                    size_t traj_idx = 0; // TODO: handle multiple traj points
-                    moteus_command_buf_[joint_idx].mode = moteus::Mode::kPosition;
-                    if (joint_traj_[joint_idx].points[traj_idx].positions.size() == 1) {
-                        double p = joint_traj_[joint_idx].points[traj_idx].positions[0];
-                        moteus_command_buf_[joint_idx].position.position = revolutions * ((p + joint_offsets_[joint_idx]) * joint_signs_[joint_idx]);
-                    }
-                    if (joint_traj_[joint_idx].points[traj_idx].velocities.size() == 1) {
-                        double v = joint_traj_[joint_idx].points[traj_idx].velocities[0];
-                        moteus_command_buf_[joint_idx].position.velocity = revolutions * v * joint_signs_[joint_idx];
-                    }
-                    if (joint_traj_[joint_idx].points[traj_idx].effort.size() == 1) {
-                        double t = joint_traj_[joint_idx].points[traj_idx].effort[0];
-                        moteus_command_buf_[joint_idx].position.feedforward_torque = t * joint_signs_[joint_idx];
+            if (calibration_done_ == true){
+                if (joint_traj_[joint_idx].points.size() > 0) {
+                    // check for timeout and index in trajectory
+                    if ((now - joint_traj_[joint_idx].header.stamp).seconds() > joint_command_timeout_) {
+                        joint_traj_[joint_idx].points.clear();
+                        RCLCPP_WARN_STREAM(this->get_logger(), "Joint " << joint_names_[joint_idx] << " timed out");
+                    } else {
+                        const double revolutions = 1/(2*M_PI);
+                        size_t traj_idx = 0; // TODO: handle multiple traj points
+                        moteus_command_buf_[joint_idx].mode = moteus::Mode::kPosition;
+                        if (joint_traj_[joint_idx].points[traj_idx].positions.size() == 1) {
+                            double p = joint_traj_[joint_idx].points[traj_idx].positions[0];
+                            moteus_command_buf_[joint_idx].position.position = revolutions * ((p + joint_offsets_[joint_idx]) * joint_signs_[joint_idx]);
+                        }
+                        if (joint_traj_[joint_idx].points[traj_idx].velocities.size() == 1) {
+                            double v = joint_traj_[joint_idx].points[traj_idx].velocities[0];
+                            moteus_command_buf_[joint_idx].position.velocity = revolutions * v * joint_signs_[joint_idx];
+                        }
+                        if (joint_traj_[joint_idx].points[traj_idx].effort.size() == 1) {
+                            double t = joint_traj_[joint_idx].points[traj_idx].effort[0];
+                            moteus_command_buf_[joint_idx].position.feedforward_torque = t * joint_signs_[joint_idx];
+                        }
                     }
                 }
             }
@@ -199,6 +193,35 @@ private:
             std::get<0>(moteus_query_res_[joint_idx]) = moteus_reply_buf_[i].result;
             std::get<1>(moteus_query_res_[joint_idx]) = now;
         }
+
+        if (calibration_done_ == false) {
+            // calibrate
+            // Set the offsets (p + k * n = output; k * n is the offset)
+            size_t counter_joints = 0;
+            for (size_t joint_idx = 0; joint_idx < nb_joints_; joint_idx++) {
+                auto res = std::get<0>(moteus_query_res_[joint_idx]);
+                if (!std::isfinite(res.position)) {
+                    RCLCPP_WARN_STREAM(this->get_logger(), "Joint " << joint_names_[joint_idx] << " not responding");
+                    continue;
+                }
+                auto output = res.position * 2 * M_PI;
+                std::cout << "output: " << output << std::endl;
+                double p = 0; // TODO make a param
+                double k = std::round((output - p) / (1/joint_encoder_ambiguities_[joint_idx]));
+                std::cout << "k: " << k << std::endl;
+                joint_offsets_[joint_idx] = k * (1.0 /joint_encoder_ambiguities_[joint_idx]);
+                RCLCPP_INFO_STREAM(this->get_logger(), "Joint " << joint_names_[joint_idx] << " offset: " << joint_offsets_[joint_idx]);
+                counter_joints++;
+            }
+            if (counter_joints == nb_joints_) {
+                calibration_done_ = true;
+                RCLCPP_INFO_STREAM(this->get_logger(), "Calibration done for all" << nb_joints_ << " joints");
+            } else {
+                RCLCPP_WARN_STREAM(this->get_logger(), "Calibration done for " << counter_joints << " joints out of " << nb_joints_);
+                RCLCPP_WARN_STREAM(this->get_logger(), "Re-attempting calibration!");
+            }
+        }
+
         // publish joint states
         sensor_msgs::msg::JointState msg;
         msg.header.stamp = now;
@@ -299,6 +322,7 @@ private:
     double joint_state_timeout_;
     double joint_command_timeout_;
     bool e_stop_ = false;
+    bool calibration_done_ = false;
 
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_pub_;
     rclcpp::Publisher<moteus_drv::msg::StampedSensors>::SharedPtr sensors_pub_;
