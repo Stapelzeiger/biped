@@ -244,7 +244,7 @@ private:
         auto timeout = 3s;
         auto start = this->now();
         moteus::Pi3HatMoteusInterface::Data moteus_io_data;
-        // For each motor, compute the ambiguity offset
+        // For each motor, compute the ambiguity offset:
         for (size_t joint_idx = 0; joint_idx < nb_joints_; joint_idx++) {
             while (this->now() - start < timeout){
 
@@ -261,21 +261,21 @@ private:
                 const auto rx_count = current_values.query_result_size;
 
                 for (size_t i = 0; i < rx_count; i++)
-                    {
-                        int bus = moteus_reply_buf_[i].bus;
-                        int id = moteus_reply_buf_[i].id;
-                        size_t joint_idx = joint_uid_to_joint_index_[servo_uid(bus, id)];
-                        if (moteus_reply_buf_[i].result.mode == moteus::Mode::kFault) {
-                            RCLCPP_ERROR_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 500 /* [ms] */,
-                                "Fault joint: " << joint_names_[joint_idx] << ", fault code: " << moteus_reply_buf_[i].result.fault);
-                        }
-                        if (moteus_reply_buf_[i].result.mode == moteus::Mode::kPositionTimeout) {
-                            RCLCPP_ERROR_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 500 /* [ms] */,
-                                "Position timeout joint: " << joint_names_[joint_idx]);
-                        }
-                        std::get<0>(moteus_query_res_[joint_idx]) = moteus_reply_buf_[i].result;
-                        std::get<1>(moteus_query_res_[joint_idx]) = now;
+                {
+                    int bus = moteus_reply_buf_[i].bus;
+                    int id = moteus_reply_buf_[i].id;
+                    size_t joint_idx = joint_uid_to_joint_index_[servo_uid(bus, id)];
+                    if (moteus_reply_buf_[i].result.mode == moteus::Mode::kFault) {
+                        RCLCPP_ERROR_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 500 /* [ms] */,
+                            "Fault joint: " << joint_names_[joint_idx] << ", fault code: " << moteus_reply_buf_[i].result.fault);
                     }
+                    if (moteus_reply_buf_[i].result.mode == moteus::Mode::kPositionTimeout) {
+                        RCLCPP_ERROR_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 500 /* [ms] */,
+                            "Position timeout joint: " << joint_names_[joint_idx]);
+                    }
+                    std::get<0>(moteus_query_res_[joint_idx]) = moteus_reply_buf_[i].result;
+                    std::get<1>(moteus_query_res_[joint_idx]) = now;
+                }
 
                 auto res = std::get<0>(moteus_query_res_[joint_idx]);
                 if (!std::isfinite(res.position)) {
