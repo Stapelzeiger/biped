@@ -205,17 +205,19 @@ private:
                     continue;
                 }
                 auto output = res.position * 2 * M_PI;
-                std::cout << "output: " << output << std::endl;
-                double p = 0; // TODO make a param
-                double k = std::round((output - p) / (1/joint_encoder_ambiguities_[joint_idx]));
+                auto output_deg = output * 180 / M_PI;
+                std::cout << "output_deg: " << output_deg << std::endl;
+                double p_deg = 0; // TODO make a param
+                double k = std::round((output_deg - p_deg) / joint_encoder_ambiguities_[joint_idx]);
                 std::cout << "k: " << k << std::endl;
-                joint_offsets_[joint_idx] = k * (1.0 /joint_encoder_ambiguities_[joint_idx]);
+                auto offset_deg = (k - 1) * joint_encoder_ambiguities_[joint_idx];
+                joint_offsets_[joint_idx] = offset_deg * M_PI / 180;
                 RCLCPP_INFO_STREAM(this->get_logger(), "Joint " << joint_names_[joint_idx] << " offset: " << joint_offsets_[joint_idx]);
                 counter_joints++;
             }
             if (counter_joints == nb_joints_) {
                 calibration_done_ = true;
-                RCLCPP_INFO_STREAM(this->get_logger(), "Calibration done for all" << nb_joints_ << " joints");
+                RCLCPP_INFO_STREAM(this->get_logger(), "Calibration done for all " << nb_joints_ << " joints");
             } else {
                 RCLCPP_WARN_STREAM(this->get_logger(), "Calibration done for " << counter_joints << " joints out of " << nb_joints_);
                 RCLCPP_WARN_STREAM(this->get_logger(), "Re-attempting calibration!");
