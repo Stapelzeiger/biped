@@ -14,25 +14,25 @@
     
     R_YAW/can_id: 10
     R_YAW/can_bus: 3
-    R_YAW/offset: 0.0
+    R_YAW/offset: 0.0911
     R_YAW/encoder_ambiguity: 5.0
     R_YAW/reverse: False
 
     R_HAA/can_id: 11
     R_HAA/can_bus: 5
-    R_HAA/offset: 0.0
+    R_HAA/offset: 0.103
     R_HAA/encoder_ambiguity: 6.0
     R_HAA/reverse: True
 
     R_HFE/can_id: 12
     R_HFE/can_bus: 5
-    R_HFE/offset: 0.0
+    R_HFE/offset: -0.015
     R_HFE/encoder_ambiguity: 6.0
     R_HFE/reverse: False
 
     R_KFE/can_id: 14
     R_KFE/can_bus: 5
-    R_KFE/offset: 0.0
+    R_KFE/offset: 0.223
     R_KFE/encoder_ambiguity: 9.0 # 6.0 x 1.5
     R_KFE/reverse: False
     R_KFE/kp_scale: 1.0
@@ -42,25 +42,25 @@
 
     L_YAW/can_id: 20
     L_YAW/can_bus: 3
-    L_YAW/offset: 0.0
+    L_YAW/offset: -0.586
     L_YAW/encoder_ambiguity: 5.0
     L_YAW/reverse: False
 
     L_HAA/can_id: 21
     L_HAA/can_bus: 4
-    L_HAA/offset: 0.0
+    L_HAA/offset: 0.287
     L_HAA/encoder_ambiguity: 6.0
     L_HAA/reverse: True
 
     L_HFE/can_id: 22
     L_HFE/can_bus: 4
-    L_HFE/offset: 0.0
+    L_HFE/offset: 0.01
     L_HFE/encoder_ambiguity: 6.0
     L_HFE/reverse: True
 
     L_KFE/can_id: 23
     L_KFE/can_bus: 4
-    L_KFE/offset: 0.0
+    L_KFE/offset: 1.11
     L_KFE/encoder_ambiguity: 9.0 # 6.0 x 1.5
     L_KFE/reverse: True
 

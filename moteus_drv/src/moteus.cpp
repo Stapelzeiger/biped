@@ -37,6 +37,7 @@ public:
         joint_traj_.resize(nb_joints_);
         moteus_query_res_.resize(nb_joints_);
         joint_signs_.resize(nb_joints_);
+        joint_offsets_.resize(nb_joints_);
         joint_encoder_ambiguities_.resize(nb_joints_);
         joint_has_resolved_ambiguity_.resize(nb_joints_);
         joint_offset_from_encoder_ambiguity_.resize(nb_joints_);
@@ -93,9 +94,8 @@ public:
 
 private:
 
-    void timer_cb()
+    void set_moteus_command_buf()
     {
-        auto now = this->now();
         moteus::PositionResolution cmd_res;
         cmd_res.position = moteus::Resolution::kInt16;
         cmd_res.velocity = moteus::Resolution::kInt16;
@@ -131,7 +131,17 @@ private:
             moteus_command_buf_[joint_idx].position.kp_scale = this->get_parameter(joint_names_[joint_idx] + "/kp_scale").as_double();
             moteus_command_buf_[joint_idx].position.kd_scale = this->get_parameter(joint_names_[joint_idx] + "/kd_scale").as_double();
             moteus_command_buf_[joint_idx].query = query;
+        }
+    }
 
+
+    void timer_cb()
+    {
+        auto now = this->now();
+        set_moteus_command_buf();
+
+        for (size_t joint_idx = 0; joint_idx < nb_joints_; joint_idx++)
+        {
             if (e_stop_) {
                 continue;
             }
@@ -162,7 +172,6 @@ private:
             }
         }
 
-        // TODO: make the following a function
         moteus::Pi3HatMoteusInterface::Data moteus_io_data;
         moteus_io_data.commands = { moteus_command_buf_.data(), moteus_command_buf_.size() };
         moteus_io_data.replies = { moteus_reply_buf_.data(), moteus_reply_buf_.size() };
@@ -242,12 +251,15 @@ private:
     void resolve_encoder_ambiguity()
     {
         auto timeout = 3s;
-        auto start = this->now();
+        set_moteus_command_buf();
+
         moteus::Pi3HatMoteusInterface::Data moteus_io_data;
         // For each motor, compute the ambiguity offset:
         for (size_t joint_idx = 0; joint_idx < nb_joints_; joint_idx++) {
+            auto start = this->now();
             while (this->now() - start < timeout){
 
+                moteus_io_data.commands = { moteus_command_buf_.data(), moteus_command_buf_.size() };
                 moteus_io_data.replies = { moteus_reply_buf_.data(), moteus_reply_buf_.size() };
                 auto promise = std::make_shared<std::promise<moteus::Pi3HatMoteusInterface::Output>>();
                 moteus_interface_->Cycle(
@@ -268,25 +280,31 @@ private:
                     if (moteus_reply_buf_[i].result.mode == moteus::Mode::kFault) {
                         RCLCPP_ERROR_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 500 /* [ms] */,
                             "Fault joint: " << joint_names_[joint_idx] << ", fault code: " << moteus_reply_buf_[i].result.fault);
+                            break;
                     }
                     if (moteus_reply_buf_[i].result.mode == moteus::Mode::kPositionTimeout) {
                         RCLCPP_ERROR_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 500 /* [ms] */,
                             "Position timeout joint: " << joint_names_[joint_idx]);
+                            break;
                     }
                     std::get<0>(moteus_query_res_[joint_idx]) = moteus_reply_buf_[i].result;
-                    std::get<1>(moteus_query_res_[joint_idx]) = now;
                 }
+                std::this_thread::sleep_for(100ms);
 
                 auto res = std::get<0>(moteus_query_res_[joint_idx]);
                 if (!std::isfinite(res.position)) {
-                    RCLCPP_WARN_STREAM(this->get_logger(), "Joint " << joint_names_[joint_idx] << " not responding");
+                    RCLCPP_WARN_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 500 /* [ms] */,
+                            "Joint " << joint_names_[joint_idx] << " not responding");
                     continue;
                 }
                 auto output = res.position;
+                std::cout << "Joint " << joint_names_[joint_idx] << " position: " << output << std::endl;
                 double p = 0; // TODO param
                 double k = std::round((output - p) * joint_encoder_ambiguities_[joint_idx]);
-                joint_offset_from_encoder_ambiguity_[joint_idx] = k / joint_encoder_ambiguities_[joint_idx];
+                joint_offset_from_encoder_ambiguity_[joint_idx] = k / joint_encoder_ambiguities_[joint_idx] * 2 * M_PI;
+                std::cout << "joint_offset_from_encoder_ambiguity_ = " << joint_offset_from_encoder_ambiguity_[joint_idx] << std::endl;
                 joint_has_resolved_ambiguity_[joint_idx] = true;
+                break;
             }
             if (joint_has_resolved_ambiguity_[joint_idx] == false) {
                 RCLCPP_ERROR_STREAM(this->get_logger(), "Joint " << joint_names_[joint_idx] << " did not resolve ambiguity");
