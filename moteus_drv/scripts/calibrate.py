@@ -4,35 +4,96 @@ import rclpy
 from rclpy.node import Node
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 import numpy as np
+import threading
 
-class JointTrajectoryPublisher(Node):
-
+class JointCalibration(Node):
     def __init__(self):
-        super().__init__('joint_publisher')
-        self.publisher_ = self.create_publisher(JointTrajectory, 'joint_trajectory', 10)
-        self.timer_period = 0.01  # seconds
-        self.t = 0.0
+        super().__init__('joint_calibration_publisher')
+        self.pub_trajectory = self.create_publisher(JointTrajectory, 'joint_trajectory', 10)
+        self.joint_states_sub = self.create_subscription(JointTrajectory, 'joint_states', self.joint_states_callback, 10)
+        self.timer_period = 0.01 # seconds
+
+        self.joints_dictionary = { # TODO populate this dict from the config params.yaml
+            'joint_names': ['test_motor'],
+            'is_calibrated': [False],
+            'joint_pos': [],
+            'joint_vel': [],
+            'center_pos': [],
+            'upper_limit': [],
+            'lower_limit': [],
+        }
+        self.calibrated_joints = []
+        self.counter = 0
+        self.all_motors_calibrated = False
+        self.velocity_max = 0.01
+        self.joint_states = None
+        self.lock = threading.Lock()
         self.timer = self.create_timer(self.timer_period, self.timer_callback)
-        self.joint_names = ['R_YAW', 'R_HAA', 'R_HFE', 'R_KFE', 'L_YAW', 'L_HAA', 'L_HFE', 'L_KFE']
+        # self.joint_names = ['R_YAW', 'R_HAA', 'R_HFE', 'R_KFE', 'L_YAW', 'L_HAA', 'L_HFE', 'L_KFE']
+
+    def joint_states_callback(self, msg):
+        with self.lock:
+            for i, joint in enumerate(self.joints_dictionary['joint_names']):
+                if joint in msg.joint_names:
+                    idx = msg.joint_names.index(joint)
+                    self.joints_dictionary['joint_pos'].append(msg.points[idx].positions[0])
+                    self.joints_dictionary['joint_vel'].append(msg.points[idx].velocities[0])
+
+    def calibrate_motor(self, joint, idx):
+        setpt_pos = self.velocity_max*self.counter
+        setpt_vel = self.velocity_max
+
+        joint_vel = self.joints_dictionary['joint_vel'][idx]
+        if (np.abs(setpt_vel - joint_vel) > 0.01 and self.velocity_max > 0): # going forward
+            self.get_logger().info(f'Joint {joint} is not moving, record position')
+            self.joints_dictionary['upper_limit'].append(self.joints_dictionary['joint_pos'][idx])
+            print('Upper Limit', self.joints_dictionary['upper_limit'])
+            self.velocity_max = -self.velocity_max
+            self.counter = 0
+
+        if (np.abs(setpt_vel - joint_vel) > 0.01 and self.velocity_max < 0): # going backward
+            self.get_logger().info(f'Joint {joint} is not moving, record position')
+            self.joints_dictionary['lower_limit'].append(self.joints_dictionary['joint_pos'][idx])
+            print('Lower Limit', self.joints_dictionary['lower_limit'])
+            self.velocity_max = -self.velocity_max
+            self.joints_dictionary['is_calibrated'][idx] = True
+            self.joints_dictionary['center_pos'].append((self.joints_dictionary['upper_limit'][idx] + self.joints_dictionary['lower_limit'][idx])/2)
+            self.counter = 0
+
+        msg = JointTrajectory()
+        msg.joint_names = joint
+        setpt_pos = self.velocity_max*self.counter
+        setpt_vel = self.velocity_max
+        point = JointTrajectoryPoint()
+        point.positions = [setpt_pos]
+        point.velocities = [setpt_vel]
+        msg.points.append(point)
+        self.pub_trajectory.publish(msg)
+        self.get_logger().info(f'Published joint trajectory for {joint} with setpt_pos: {setpt_pos} and setpt_vel: {setpt_vel}')
 
     def timer_callback(self):
-        msg = JointTrajectory()
-        msg.joint_names = self.joint_names
-        r_kfe_traj = np.sin(2*np.pi*self.t)
-        l_kfe_traj = np.cos(2*np.pi*self.t)
-        r_kfe_vel = 2*np.pi*np.cos(2*np.pi*self.t)
-        l_kfe_vel = -2*np.pi*np.sin(2*np.pi*self.t)
-        point = JointTrajectoryPoint()
-        point.positions = [0.0, 0.0, 0.0, r_kfe_traj, 0.0, 0.0, 0.0, l_kfe_traj]
-        point.velocities = [0.0, 0.0, 0.0, r_kfe_vel, 0.0, 0.0, 0.0, l_kfe_vel]
-        msg.points.append(point)
-        self.publisher_.publish(msg)
-        self.t += self.timer_period
+        if self.joints_dictionary['is_calibrated'] == [True]*len(self.joints_dictionary['joint_names']):
+            self.all_motors_calibrated = True
+            self.get_logger().info('All motors are calibrated')
+            return
+
+        if self.joints_dictionary['joint_states'] == []:
+            self.get_logger().info('No joint states received yet')
+            return
+
+        # take the first uncalibrated joint and calibrate it
+        for i, joint in enumerate(self.joints_dictionary['joint_names']):
+            if self.joints_dictionary['is_calibrated'][i] == False:
+                self.get_logger().info(f'Calibrating joint {joint}')
+                self.calibrate_motor(joint, i)
+                break
+
+        self.counter += self.timer_period
         self.get_logger().info('Published joint trajectory')
 
 def main(args=None):
     rclpy.init(args=args)
-    joint_trajectory_publisher = JointTrajectoryPublisher()
+    joint_trajectory_publisher = JointCalibration()
     rclpy.spin(joint_trajectory_publisher)
     joint_trajectory_publisher.destroy_node()
     rclpy.shutdown()
