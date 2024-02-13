@@ -2,3 +2,4 @@ __pycache__
 .vscode
 *.csv
 COLCON_IGNORE
+.DS_Store
