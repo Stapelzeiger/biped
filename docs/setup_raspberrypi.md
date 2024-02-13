@@ -25,7 +25,8 @@ if (result == NULL || (*(result + strlen(result) + 1) == '*'))
 #### Post installation
 1. Set static ip
     1. Create a new file: `/etc/netplan/99_config.yaml`
-    1. ```
+    1. Set this:
+```
 network:
   version: 2
   ethernets:
@@ -34,7 +35,7 @@ network:
       addresses:
         - 10.0.1.3/24
       optional: true
-    ```
+```
     1. Change `10.0.1.3` to whatever IP you want.
 1. Set static hostname
     1. Modify `/etc/hosts` to include: `10.0.1.3 bipedraspi`
