@@ -41,5 +41,17 @@ network:
     1. Modify `/etc/hosts` to include: `10.0.1.3 bipedraspi`
     1. Change `10.0.1.3` to the same IP as above and `bipedraspi` can be changed to anything. It is the same that will be used to redirect.
 
+1. Set static hostname for computer that will SSH in. Set it different than the IP above. So, create: `/etc/netplan/99_config.yaml` again:
+```
+network:
+  version: 2
+  ethernets:
+    [ETHERNET_NAME]:
+      dhcp4: false
+      addresses:
+        - [IP]/24
+      optional: true
+```
+where IP is your IP and ETHERNET_NAME is your ethernet name, can be obtained from `ifconfig`
 
 
