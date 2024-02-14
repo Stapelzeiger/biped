@@ -289,7 +289,7 @@ private:
                     }
                     std::get<0>(moteus_query_res_[joint_idx]) = moteus_reply_buf_[i].result;
                 }
-                std::this_thread::sleep_for(100ms);
+                // std::this_thread::sleep_for(100ms);
 
                 auto res = std::get<0>(moteus_query_res_[joint_idx]);
                 if (!std::isfinite(res.position)) {
