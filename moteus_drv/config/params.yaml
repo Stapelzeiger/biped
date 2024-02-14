@@ -9,6 +9,8 @@
     # joints: ['R_YAW', 'R_HAA', 'R_HFE', 'R_KFE', 'L_YAW', 'L_HAA', 'L_HFE', 'L_KFE']
     test1/can_id: 1
     test1/can_bus: 1
+    test1/offset: 0.103
+    test1/encoder_ambiguity: 6.0
     test2/can_id: 2
     test2/can_bus: 2
     
