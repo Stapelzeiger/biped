@@ -214,6 +214,8 @@ private:
             auto joint_name = joint_names_[joint_idx];
             auto res = std::get<0>(moteus_query_res_[joint_idx]);
             auto timestamp = std::get<1>(moteus_query_res_[joint_idx]);
+            // RCLCPP_INFO_STREAM(this->get_logger(), "now: " << now.seconds());
+            // RCLCPP_INFO_STREAM(this->get_logger(), "timestamp: " << timestamp.seconds());
             if (std::isfinite(res.position) && (now - timestamp).seconds() < joint_state_timeout_) {
                 msg.name.push_back(joint_name);
                 double p = res.position * 2 * M_PI;
@@ -257,7 +259,8 @@ private:
         // For each motor, compute the ambiguity offset:
         for (size_t joint_idx = 0; joint_idx < nb_joints_; joint_idx++) {
             auto start = this->now();
-            while (this->now() - start < timeout){
+            auto now = this->now();
+            while (now - start < timeout){
 
                 moteus_io_data.commands = { moteus_command_buf_.data(), moteus_command_buf_.size() };
                 moteus_io_data.replies = { moteus_reply_buf_.data(), moteus_reply_buf_.size() };
@@ -288,8 +291,10 @@ private:
                             break;
                     }
                     std::get<0>(moteus_query_res_[joint_idx]) = moteus_reply_buf_[i].result;
+                    std::get<1>(moteus_query_res_[joint_idx]) = now;
                 }
                 std::this_thread::sleep_for(100ms);
+                now = this->now();
 
                 auto res = std::get<0>(moteus_query_res_[joint_idx]);
                 if (!std::isfinite(res.position)) {
