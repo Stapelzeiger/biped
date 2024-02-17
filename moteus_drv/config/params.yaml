@@ -2,7 +2,7 @@
   ros__parameters:
     update_rate: 300.0
     global_max_torque: 2.0
-    joint_state_timeout: 0.03
+    joint_state_timeout: 0.04
     joint_command_timeout: 0.1
     joints: ['test1']
     # joints: ['R_YAW', 'L_YAW']
