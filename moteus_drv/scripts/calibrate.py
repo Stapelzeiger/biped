@@ -8,10 +8,10 @@ import numpy as np
 import threading
 
 TIME_PERIOD = 0.01
-VEL_MAX = 0.1
-MAX_TRIGGER_EFFORT = 1.5
+VEL_MAX = 0.5
+MAX_TRIGGER_EFFORT = 1.0
 COUNTER_TRIGGER = 20
-EPSILON = 0.0001
+EPSILON = 0.001
 
 class JointCalibration(Node):
     def __init__(self):
@@ -22,7 +22,7 @@ class JointCalibration(Node):
         self.timer_period = TIME_PERIOD # seconds
 
         # self.joint_names = ['R_YAW', 'R_HAA', 'R_HFE', 'R_KFE', 'L_YAW', 'L_HAA', 'L_HFE', 'L_KFE']
-        list_motors = ['test1']
+        list_motors = ['L_YAW']
         self.joints_dictionary = { # TODO populate this dict from the config params.yaml
             'joint_names': list_motors,
             'is_calibrated': [False]*len(list_motors),
@@ -98,7 +98,7 @@ class JointCalibration(Node):
             if self.joints_dictionary['center_pos'][idx] is not None:
                 if np.abs(self.joints_dictionary['joint_pos'][idx] - self.joints_dictionary['center_pos'][idx]) > EPSILON:
                     # drive the robot to the center position by ramping down position
-                    self.setpt_pos = self.velocity_max*self.counter_ramp_center*(TIME_PERIOD) + self.joints_dictionary["lower_limit"][idx]
+                    self.setpt_pos = self.velocity_max*self.counter_ramp_center*TIME_PERIOD + self.joints_dictionary["lower_limit"][idx]
                     self.setpt_vel = self.velocity_max
                     self.counter_ramp_center += 1
 
@@ -116,11 +116,13 @@ class JointCalibration(Node):
                     self.get_logger().info(f'Overshooting, stop the joint')
                     self.setpt_vel = 0
                     self.joints_dictionary['is_calibrated'][idx] = True
+                    self.get_logger().info(f'Joint position achieved: {self.joints_dictionary["joint_pos"][idx]}')
                     self.counter = 0
                     self.counter_ramp_center = 0
 
                 if self.velocity_max < 0 and self.joints_dictionary['joint_pos'][idx] < self.joints_dictionary['center_pos'][idx]:
                     self.get_logger().info(f'Overshooting, stop the joint')
+                    self.get_logger().info(f'Joint position achieved: {self.joints_dictionary["joint_pos"][idx]}')
                     self.setpt_vel = 0
                     self.joints_dictionary['is_calibrated'][idx] = True
                     self.counter = 0
