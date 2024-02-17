@@ -22,7 +22,7 @@ class JointCalibration(Node):
         self.timer_period = TIME_PERIOD # seconds
 
         # self.joint_names = ['R_YAW', 'R_HAA', 'R_HFE', 'R_KFE', 'L_YAW', 'L_HAA', 'L_HFE', 'L_KFE']
-        list_motors = ['L_YAW']
+        list_motors = self.declare_parameter('joints', rclpy.Parameter.Type.STRING_ARRAY).value
         self.joints_dictionary = { # TODO populate this dict from the config params.yaml
             'joint_names': list_motors,
             'is_calibrated': [False]*len(list_motors),
