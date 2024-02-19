@@ -63,6 +63,7 @@ public:
             double encoder_ambiguity = this->get_parameter(joint_name + "/encoder_ambiguity").as_double();
             joint_encoder_ambiguities_[joint_idx] = encoder_ambiguity;
             joint_offsets_[joint_idx] = this->get_parameter(joint_name + "/offset").as_double();
+            std::cout << "joint_offsets_ = " << joint_offsets_[joint_idx] << std::endl;
             joint_has_resolved_ambiguity_[joint_idx] = false;
 
             RCLCPP_INFO_STREAM(this->get_logger(), "Adding joint: " << joint_name << ", CAN bus: " << bus << ", id " << id);
@@ -110,7 +111,7 @@ private:
         double global_max_torque = this->get_parameter("global_max_torque").as_double();
         for (size_t joint_idx = 0; joint_idx < nb_joints_; joint_idx++)
         {
-            joint_offsets_[joint_idx] = this->get_parameter(joint_names_[joint_idx] + "/offset").as_double();
+            // joint_offsets_[joint_idx] = this->get_parameter(joint_names_[joint_idx] + "/offset").as_double();
             bool rev = this->get_parameter(joint_names_[joint_idx] + "/reverse").as_bool();
             if (rev) {
                 joint_signs_[joint_idx] = -1;

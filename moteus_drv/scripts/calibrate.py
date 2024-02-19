@@ -11,7 +11,7 @@ TIME_PERIOD = 0.01
 VEL_MAX = 0.5
 MAX_TRIGGER_EFFORT = 1.0
 COUNTER_TRIGGER = 20
-EPSILON = 0.001
+EPSILON = 0.01
 
 
 class JointCalibration(Node):
@@ -19,6 +19,7 @@ class JointCalibration(Node):
         super().__init__('joint_calibration_publisher')
 
         list_motors = self.declare_parameter('joints', rclpy.Parameter.Type.STRING_ARRAY).value
+        self.get_logger().info(f'List of motors: {list_motors}')
 
         self.joints_dictionary = { # TODO populate this dict from the config params.yaml
             'joint_names': list_motors,
@@ -32,11 +33,16 @@ class JointCalibration(Node):
             'initial_pos': [None]*len(list_motors),
         }
 
+        for i, joint_name in enumerate(self.joints_dictionary['joint_names']):
+            offset_param_str = f'{joint_name}/offset'
+            self.declare_parameter(offset_param_str, 0.0)
+
+
         self.lock = threading.Lock()
 
         self.counter = 0
         self.counter_ramp_center = 0
-        self.all_motors_calibrated = False
+        self.write_offsets = False
 
         self.velocity_max = VEL_MAX
         if self.velocity_max < 0:
@@ -96,13 +102,13 @@ class JointCalibration(Node):
                 # verify the center position was achieved
                 if np.abs(self.joints_dictionary['joint_pos'][idx] - self.joints_dictionary['center_pos'][idx]) < EPSILON:
                     self.joints_dictionary['is_calibrated'][idx] = True
-                    self.velocity_max = -self.velocity_max
+                    self.velocity_max = self.velocity_max
                     self.counter = 0
                     self.counter_ramp_center = 0
                     self.get_logger().info(f'Joint {joint} is calibrated')
                     self.get_logger().info(f'Center Position achieved: {self.joints_dictionary["joint_pos"][idx]}')
 
-                # check for overshooting
+                # check for overshooting (todo make this better)
                 if self.velocity_max > 0 and self.joints_dictionary['joint_pos'][idx] > self.joints_dictionary['center_pos'][idx]:
                     self.get_logger().info(f'Overshooting, stop the joint')
                     self.setpt_vel = 0
@@ -136,25 +142,27 @@ class JointCalibration(Node):
             return joint_traj_pt_msg
 
     def timer_callback(self):
-        if self.joints_dictionary['is_calibrated'] == [True]*len(self.joints_dictionary['joint_names']):
-            self.all_motors_calibrated = True
+        if self.joints_dictionary['is_calibrated'] == [True]*len(self.joints_dictionary['joint_names']) and self.write_offsets == False:
             self.get_logger().info('All motors are calibrated')
 
             self.get_logger().info('Writing offsets to file')
             for i, joint in enumerate(self.joints_dictionary['joint_names']):
                 self.get_logger().info('i: ' + str(i))
                 offset_param_str = f'{joint}/offset'
-                self.get_logger().info(f'Writing offset for joint {offset_param_str}')
-                self.declare_parameter(offset_param_str, self.joints_dictionary['center_pos'][i])
-                self.get_logger().info(f'Writing offset for joint {offset_param_str}')
-                my_param = self.get_parameter(offset_param_str).get_parameter_value()
-                my_new_param = rclpy.parameter.Parameter(offset_param_str,
+                offset_param = self.get_parameter(offset_param_str).get_parameter_value()
+                new_offset_param = rclpy.parameter.Parameter(offset_param_str,
                                                          rclpy.Parameter.Type.DOUBLE,
                                                          self.joints_dictionary['center_pos'][i])
+                self.set_parameters([new_offset_param])
+                new_param_value = self.get_parameter(offset_param_str).get_parameter_value().double_value
+                self.get_logger().info(f'New offset for {joint}: {new_param_value}')
 
+                file_name = '/home/biped-raspi/biped_ws/src/biped/moteus_drv/config/params.yaml'
+                with open(file_name, 'a') as output_file:
+                    output_file.write(f'    {joint}/offset: {new_param_value}\n')
 
-                self.set_parameters([my_new_param])
                 self.get_logger().info(f'Joint {joint} position after calibration: {self.joints_dictionary["joint_pos"][i]}')
+            self.write_offsets = True
 
             # exit ros
             # rclpy.shutdown()
