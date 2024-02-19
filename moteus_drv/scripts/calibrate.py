@@ -18,10 +18,6 @@ class JointCalibration(Node):
     def __init__(self):
         super().__init__('joint_calibration_publisher')
 
-        self.pub_trajectory = self.create_publisher(JointTrajectory, 'joint_trajectory', 10)
-        self.joint_states_sub = self.create_subscription(JointState, 'joint_states', self.joint_states_callback, 10)
-        self.timer_period = TIME_PERIOD # seconds
-
         list_motors = self.declare_parameter('joints', rclpy.Parameter.Type.STRING_ARRAY).value
 
         self.joints_dictionary = { # TODO populate this dict from the config params.yaml
@@ -36,8 +32,6 @@ class JointCalibration(Node):
             'initial_pos': [None]*len(list_motors),
         }
 
-        print('Calibrating the following joints:')
-        print(self.joints_dictionary)
         self.lock = threading.Lock()
 
         self.counter = 0
@@ -51,6 +45,10 @@ class JointCalibration(Node):
 
         self.setpt_pos = None
         self.setpt_vel = None
+
+        self.pub_trajectory = self.create_publisher(JointTrajectory, 'joint_trajectory', 10)
+        self.joint_states_sub = self.create_subscription(JointState, 'joint_states', self.joint_states_callback, 10)
+        self.timer_period = TIME_PERIOD # seconds
 
         self.timer = self.create_timer(self.timer_period, self.timer_callback)
 
@@ -142,17 +140,25 @@ class JointCalibration(Node):
             self.all_motors_calibrated = True
             self.get_logger().info('All motors are calibrated')
 
-            # write offsets to file
             self.get_logger().info('Writing offsets to file')
             for i, joint in enumerate(self.joints_dictionary['joint_names']):
+                self.get_logger().info('i: ' + str(i))
                 offset_param_str = f'{joint}/offset'
-                offset_param = self.declare_parameter(offset_param_str, 0.0)
-                offset_param.set(self.joints_dictionary['joint_pos'][i])
+                self.get_logger().info(f'Writing offset for joint {offset_param_str}')
+                self.declare_parameter(offset_param_str, self.joints_dictionary['center_pos'][i])
+                self.get_logger().info(f'Writing offset for joint {offset_param_str}')
+                my_param = self.get_parameter(offset_param_str).get_parameter_value()
+                my_new_param = rclpy.parameter.Parameter(offset_param_str,
+                                                         rclpy.Parameter.Type.DOUBLE,
+                                                         self.joints_dictionary['center_pos'][i])
+
+
+                self.set_parameters([my_new_param])
                 self.get_logger().info(f'Joint {joint} position after calibration: {self.joints_dictionary["joint_pos"][i]}')
 
             # exit ros
-            rclpy.shutdown()
-            return
+            # rclpy.shutdown()
+            # return
 
         if None in self.joints_dictionary['joint_pos'] or \
             None in self.joints_dictionary['joint_vel'] or \
