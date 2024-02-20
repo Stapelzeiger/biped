@@ -2,7 +2,7 @@ launch:
 - node:
     pkg: moteus_drv
     exec: calibrate.py
-    name: moteus
+    name: moteus_calibrate
     param: 
       - from: $(find-pkg-share moteus_drv)/config/params.yaml
     output: screen
@@ -10,10 +10,3 @@ launch:
     # launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args
     # launch-prefix: gdbserver localhost:3000
 
-# Auto reload parameters when parameter file is written
-- executable:
-    cmd: 'bash -c "while inotifywait -e close_write $PARAM_FILE ; do ros2 param load /moteus $PARAM_FILE ; done"'
-    env:
-      - name: PARAM_FILE
-        value: $(find-pkg-share moteus_drv)/config/params.yaml
-    output: screen
