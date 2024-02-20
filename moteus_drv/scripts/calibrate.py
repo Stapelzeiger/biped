@@ -146,6 +146,10 @@ class JointCalibration(Node):
             self.get_logger().info('All motors are calibrated')
 
             self.get_logger().info('Writing offsets to file')
+            file_name = '/root/ws/src/biped/moteus_drv/config/params.yaml'
+            with open(file_name, 'a') as output_file:
+                output_file.write('\n')
+
             for i, joint in enumerate(self.joints_dictionary['joint_names']):
                 self.get_logger().info('i: ' + str(i))
                 offset_param_str = f'{joint}/offset'
@@ -157,7 +161,6 @@ class JointCalibration(Node):
                 new_param_value = self.get_parameter(offset_param_str).get_parameter_value().double_value
                 self.get_logger().info(f'New offset for {joint}: {new_param_value}')
 
-                file_name = '/home/biped-raspi/biped_ws/src/biped/moteus_drv/config/params.yaml'
                 with open(file_name, 'a') as output_file:
                     output_file.write(f'    {joint}/offset: {new_param_value}\n')
 
