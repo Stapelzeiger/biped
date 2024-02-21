@@ -9,7 +9,7 @@ import threading
 
 TIME_PERIOD = 0.01
 VEL_MAX = 0.5
-MAX_TRIGGER_EFFORT = 1.0
+MAX_TRIGGER_EFFORT = 1.5
 COUNTER_TRIGGER = 20
 EPSILON = 0.01
 
@@ -149,6 +149,10 @@ class JointCalibration(Node):
             self.get_logger().info('All motors are calibrated')
 
             self.get_logger().info('Writing offsets to file')
+            file_name = '/root/ws/src/biped/moteus_drv/config/params.yaml'
+            with open(file_name, 'a') as output_file:
+                output_file.write('\n')
+
             for i, joint in enumerate(self.joints_dictionary['joint_names']):
                 self.get_logger().info('i: ' + str(i))
                 offset_param_str = f'{joint}/offset'
