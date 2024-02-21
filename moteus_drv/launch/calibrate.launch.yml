@@ -5,6 +5,8 @@ launch:
     name: moteus_calibrate
     param: 
       - from: $(find-pkg-share moteus_drv)/config/params.yaml
+      - name: install_folder
+        value: "$(find-pkg-share moteus_drv)"
     output: screen
     # print GDB backtrace:
     # launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args

@@ -17,6 +17,9 @@ EPSILON = 0.01
 class JointCalibration(Node):
     def __init__(self):
         super().__init__('joint_calibration_publisher')
+        # this will get moteus_drv share folder.
+        # on the rasberrypi: /home/biped-raspi/biped_ws/install/moteus_drv/share/moteus_drv
+        self.ws_share_folder = self.declare_parameter('install_folder').value
 
         list_motors = self.declare_parameter('joints', rclpy.Parameter.Type.STRING_ARRAY).value
         self.get_logger().info(f'List of motors: {list_motors}')
@@ -157,7 +160,8 @@ class JointCalibration(Node):
                 new_param_value = self.get_parameter(offset_param_str).get_parameter_value().double_value
                 self.get_logger().info(f'New offset for {joint}: {new_param_value}')
 
-                file_name = '/home/biped-raspi/biped_ws/src/biped/moteus_drv/config/params.yaml'
+                # this will save to share folder which is symlinked to the original file.
+                file_name = self.ws_share_folder + '/config/params.yaml'
                 with open(file_name, 'a') as output_file:
                     output_file.write(f'    {joint}/offset: {new_param_value}\n')
 
