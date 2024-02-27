@@ -1,0 +1,12 @@
+launch:
+- node:
+    pkg: moteus_drv
+    exec: rezero_relative_test.py
+    name: moteus_rezero
+    param: 
+      - from: $(find-pkg-share moteus_drv)/config/params.yaml
+    output: screen
+    # print GDB backtrace:
+    # launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args
+    # launch-prefix: gdbserver localhost:3000
+

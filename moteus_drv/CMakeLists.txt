@@ -62,6 +62,7 @@ install(TARGETS
 # Install Python executables
 install(PROGRAMS
   scripts/calibrate.py
+  scripts/rezero_relative_test.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
