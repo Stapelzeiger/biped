@@ -8,7 +8,7 @@ import numpy as np
 import threading
 
 TIME_PERIOD = 0.01
-VEL_MAX = 0.5
+VEL_MAX = 0.1
 MAX_TRIGGER_EFFORT = 1.5
 COUNTER_TRIGGER = 20
 EPSILON = 0.01
@@ -74,9 +74,15 @@ class JointCalibration(Node):
     def get_calibration_setpt_msg(self, joint, idx):
         with self.lock:
             joint_effort = self.joints_dictionary['joint_effort'][idx]
-            self.setpt_pos = self.velocity_max*self.counter*(TIME_PERIOD*0.1) + self.joints_dictionary['initial_pos'][idx]
-            self.setpt_vel = self.velos
-scity_max
+            # TODO: I want it to go to a specific position gotta figure out the trajectory
+            # Since once I force it to go a specific trajectory, I can see how different starting positions affect the motor.
+            if self.counter < 360:
+                self.setpt_pos = self.velocity_max*self.counter*(TIME_PERIOD*0.1) + self.joints_dictionary['initial_pos'][idx]
+                self.get_logger().info(f'setpt_pos: {self.setpt_pos}')
+                self.setpt_vel = self.velocity_max
+            else:
+                self.setpt_pos = self.joints_dictionary['initial_pos'][idx]
+                self.setpt_vel = 0.0
 
             joint_traj_pt_msg = JointTrajectoryPoint()
             joint_traj_pt_msg.positions.append(self.setpt_pos)
@@ -104,14 +110,6 @@ scity_max
                 msg.points.append(joint_traj_pt_msg)
                 break
 
-        for i, joint in enumerate(self.joints_dictionary['joint_names']):
-            if self.joints_dictionary['is_calibrated'][i] == True:
-                msg.joint_names.append(joint)
-                joint_traj_pt_msg = JointTrajectoryPoint()
-                joint_traj_pt_msg.positions.append(self.joints_dictionary['center_pos'][i])
-                joint_traj_pt_msg.velocities.append(0)
-                joint_traj_pt_msg.effort.append(0)
-                msg.points.append(joint_traj_pt_msg)
         self.pub_trajectory.publish(msg)
 
         self.counter += 1
