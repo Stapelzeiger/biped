@@ -17,6 +17,9 @@ EPSILON = 0.01
 class JointCalibration(Node):
     def __init__(self):
         super().__init__('joint_calibration_publisher')
+        # this will get moteus_drv share folder.
+        # on the rasberrypi: /home/biped-raspi/biped_ws/install/moteus_drv/share/moteus_drv
+        self.ws_share_folder = self.declare_parameter('install_folder', rclpy.Parameter.Type.STRING).value
 
         list_motors = self.declare_parameter('joints', rclpy.Parameter.Type.STRING_ARRAY).value
         self.get_logger().info(f'List of motors: {list_motors}')
@@ -31,11 +34,17 @@ class JointCalibration(Node):
             'upper_limit': [None]*len(list_motors),
             'lower_limit': [None]*len(list_motors),
             'initial_pos': [None]*len(list_motors),
+            'centering_factor': [None]*len(list_motors),
         }
 
         for i, joint_name in enumerate(self.joints_dictionary['joint_names']):
+            # offset param
             offset_param_str = f'{joint_name}/offset'
             self.declare_parameter(offset_param_str, 0.0)
+
+            # since not everything is centered at 0, we need to know the centering factor
+            self.joints_dictionary['centering_factor'][i] = self.declare_parameter(f'{joint_name}/centering_factor', rclpy.Parameter.Type.DOUBLE).value
+
 
 
         self.lock = threading.Lock()
@@ -87,7 +96,7 @@ class JointCalibration(Node):
                     self.get_logger().info(f'Lower Limit: {self.joints_dictionary["lower_limit"][idx]}')
                     self.velocity_max = -self.velocity_max
                     # set center position
-                    self.joints_dictionary['center_pos'][idx] = (self.joints_dictionary['upper_limit'][idx] + self.joints_dictionary['lower_limit'][idx])/2
+                    self.joints_dictionary['center_pos'][idx] = (self.joints_dictionary['upper_limit'][idx] + self.joints_dictionary['lower_limit'][idx])*self.joints_dictionary['centering_factor'][idx]
                     self.get_logger().info(f'Center Position: {self.joints_dictionary["center_pos"][idx]}')
                     self.counter = 0
 
@@ -146,9 +155,8 @@ class JointCalibration(Node):
             self.get_logger().info('All motors are calibrated')
 
             self.get_logger().info('Writing offsets to file')
-            file_name = '/root/ws/src/biped/moteus_drv/config/params.yaml'
-            with open(file_name, 'a') as output_file:
-                output_file.write('\n')
+            # this will save to share folder which is symlinked to the original file.
+            file_name = self.ws_share_folder + '/config/params.yaml'
 
             for i, joint in enumerate(self.joints_dictionary['joint_names']):
                 self.get_logger().info('i: ' + str(i))
@@ -161,8 +169,24 @@ class JointCalibration(Node):
                 new_param_value = self.get_parameter(offset_param_str).get_parameter_value().double_value
                 self.get_logger().info(f'New offset for {joint}: {new_param_value}')
 
-                with open(file_name, 'a') as output_file:
-                    output_file.write(f'    {joint}/offset: {new_param_value}\n')
+                with open(file_name, 'r+') as output_file:
+                    updated = False
+                    updated_line = f'    {joint}/offset: {new_param_value}\n'
+
+                    # keep in mind this assumes file is small which is true in our use case.
+                    lines = output_file.readlines()
+                    for line_i, line in enumerate(lines):
+                        if f"{joint}/offset" in line:
+                            lines[line_i] = updated_line
+                            updated = True
+                            break
+                    # if it doesn't exist, then create it at the end.
+                    if not updated:
+                        lines.append('\n')
+                        lines.append(updated_line)
+                    # move back to top of file & wrte
+                    output_file.seek(0)
+                    output_file.writelines(lines)
 
                 self.get_logger().info(f'Joint {joint} position after calibration: {self.joints_dictionary["joint_pos"][i]}')
             self.write_offsets = True
