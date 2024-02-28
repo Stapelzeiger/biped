@@ -34,11 +34,17 @@ class JointCalibration(Node):
             'upper_limit': [None]*len(list_motors),
             'lower_limit': [None]*len(list_motors),
             'initial_pos': [None]*len(list_motors),
+            'centering_factor': [None]*len(list_motors),
         }
 
         for i, joint_name in enumerate(self.joints_dictionary['joint_names']):
+            # offset param
             offset_param_str = f'{joint_name}/offset'
             self.declare_parameter(offset_param_str, 0.0)
+
+            # since not everything is centered at 0, we need to know the centering factor
+            self.joints_dictionary['centering_factor'][i] = self.declare_parameter(f'{joint_name}/centering_factor', rclpy.Parameter.Type.DOUBLE).value
+
 
 
         self.lock = threading.Lock()
@@ -90,7 +96,7 @@ class JointCalibration(Node):
                     self.get_logger().info(f'Lower Limit: {self.joints_dictionary["lower_limit"][idx]}')
                     self.velocity_max = -self.velocity_max
                     # set center position
-                    self.joints_dictionary['center_pos'][idx] = (self.joints_dictionary['upper_limit'][idx] + self.joints_dictionary['lower_limit'][idx])/2
+                    self.joints_dictionary['center_pos'][idx] = (self.joints_dictionary['upper_limit'][idx] + self.joints_dictionary['lower_limit'][idx])*self.joints_dictionary['centering_factor'][idx]
                     self.get_logger().info(f'Center Position: {self.joints_dictionary["center_pos"][idx]}')
                     self.counter = 0
 
