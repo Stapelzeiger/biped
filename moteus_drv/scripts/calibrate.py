@@ -171,7 +171,7 @@ class JointCalibration(Node):
 
                 with open(file_name, 'r+') as output_file:
                     updated = False
-                    updated_line = f'    {joint}/offset: {new_param_value}\n'
+                    updated_line = f'    {joint}/offset: {new_param_value}'
 
                     # keep in mind this assumes file is small which is true in our use case.
                     lines = output_file.readlines()
