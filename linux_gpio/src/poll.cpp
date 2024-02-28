@@ -42,7 +42,9 @@ public:
 
         chip_.open(chip_name);
         line_ = chip_.get_line(gpio_line);
-        line_.request({this->get_name(), gpiod::line_request::DIRECTION_INPUT, 0});
+        // for button: GPIOD_LINE_REQUEST_FLAG_BIAS_PULL_UP
+        // for magnetic switch: GPIOD_LINE_REQUEST_FLAG_OPEN_DRAIN
+        line_.request({this->get_name(), gpiod::line_request::DIRECTION_INPUT, GPIOD_LINE_REQUEST_FLAG_BIAS_PULL_UP});
     }
 private:
 
