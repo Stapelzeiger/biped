@@ -222,7 +222,7 @@ private:
                 double p = res.position * 2 * M_PI;
                 double sign = joint_signs_[joint_idx];
                 auto total_offset = joint_offset_from_encoder_ambiguity_[joint_idx] + joint_offsets_[joint_idx];
-                msg.position.push_back(p * sign - total_offset);
+                msg.position.push_back((p - total_offset) * sign);
                 msg.velocity.push_back(res.velocity * 2 * M_PI * sign);
                 msg.effort.push_back(res.torque * sign);
 
