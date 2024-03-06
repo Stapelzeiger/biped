@@ -4,7 +4,7 @@
 
   <mujoco>
         <compiler 
-        meshdir="../meshes/" 
+        meshdir="../meshes_v2/" 
         balanceinertia="false" 
         discardvisual="false" />
   </mujoco>
@@ -16,7 +16,6 @@
       <geometry>
       <box size="0.03 0.03 0.01"/>
       </geometry>
-      <material name="red"/>
     </visual>
 
     <inertial>

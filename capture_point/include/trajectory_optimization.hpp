@@ -16,9 +16,11 @@ public:
     std::vector<Eigen::Vector3d> solution_opt_vel_;
     std::vector<Eigen::Vector3d> solution_opt_acc_;
     double solution_opt_start_time_;
+    bool enable_lower_foot_after_opt_solved_;
 
     Eigen::Vector3d initial_pos_;
     Eigen::Vector3d initial_vel_;
+    double desired_foot_raise_height_;
 
     OsqpEigen::Solver solver_;
     bool run_optimization_;
@@ -63,6 +65,10 @@ public:
 
     void set_initial_pos_vel(Eigen::Vector3d initial_pos,
                              Eigen::Vector3d initial_vel);
+
+    void enable_lowering_foot_after_opt_solved(bool enable);
+
+    void set_desired_foot_raise_height(double desired_foot_raise_height);
 };
 
 #endif //OPTIMIZER_FOOT_TRAJECTORY_H
