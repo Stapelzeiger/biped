@@ -13,6 +13,8 @@ launch:
         value: false
       - name: sim_time_sec
         value: $(var sim_time_sec)
+      - name: visualization_rate
+        value: $(var visualization_rate)
       - name: publish_tf
         value: '$(var publish_tf)'
     remap:

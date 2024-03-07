@@ -24,4 +24,4 @@
     swing_y_safe_box_max: 0.4
     swing_z_safe_box_min: -0.1
     swing_z_safe_box_max: 0.3
-    mode: ONE_FOOT_SWING # options = ['WALK', 'ONE_FOOT_SWING']
+    mode: WALK # options = ['WALK', 'ONE_FOOT_SWING']

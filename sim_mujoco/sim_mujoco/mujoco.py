@@ -41,9 +41,11 @@ class MujocoNode(Node):
         self.get_logger().info("Start Sim!")
         self.declare_parameter("mujoco_xml_path", rclpy.parameter.Parameter.Type.STRING)
         self.declare_parameter("sim_time_sec", rclpy.parameter.Parameter.Type.DOUBLE)
+        self.declare_parameter("visualization_rate", rclpy.parameter.Parameter.Type.DOUBLE)
         self.declare_parameter("visualize_mujoco", rclpy.parameter.Parameter.Type.BOOL)
         self.declare_parameter("publish_tf", rclpy.parameter.Parameter.Type.BOOL)
         self.visualize_mujoco = self.get_parameter("visualize_mujoco").get_parameter_value().bool_value
+        self.visualization_rate = self.get_parameter("visualization_rate").get_parameter_value().double_value
         mujoco_xml_path = self.get_parameter("mujoco_xml_path").get_parameter_value().string_value
         self.sim_time_sec = self.get_parameter("sim_time_sec").get_parameter_value().double_value
         self.publish_tf = self.get_parameter("publish_tf").get_parameter_value().bool_value
@@ -138,7 +140,7 @@ class MujocoNode(Node):
         self.stance_foot_BF_sub = self.create_subscription(Vector3Stamped, "~/stance_foot_BF", self.stance_foot_BF_cb, 10)
         self.dcm_desired_BF_sub = self.create_subscription(TwistStamped, "~/dcm_desired_BF", self.dcm_desired_BF_cb, 10)
 
-        self.paused = True
+        self.paused = False
         self.step_sim_sub = self.create_subscription(Float64, "~/step", self.step_cb, 1)
         self.pause_sim_sub = self.create_subscription(Bool, "~/pause", self.pause_cb, 1)
 
@@ -249,7 +251,7 @@ class MujocoNode(Node):
         if self.visualize_mujoco is True:
             vis_update_downsampling = int(round(1.0/self.visualization_rate/self.sim_time_sec/10))
             if self.counter % vis_update_downsampling == 0:
-                self.viewer.render()
+                self.viewer.sync()
 
         if self.use_bc_policy == True:
             if self.initialization_done and self.dcm_desired_BF is not None:

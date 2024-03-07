@@ -183,7 +183,7 @@ class BC_Agent(nn.Module):
             if torch.backends.mps.is_available()
             else "cpu"
         )
-        self.policy = BC_Agent._gen_policy(policy_arch)
+        self.policy = BC_Agent._gen_policy(policy_arch).to(self.device)
 
         # Include mean/std of states/actions as parameters in the model
         # requires_grad=False will prevent these parameters from being changed during training

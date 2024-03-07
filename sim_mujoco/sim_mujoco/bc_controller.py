@@ -32,4 +32,5 @@ class PolicyBC:
 
     def __call__(self, input_state):
         policy_actions = self.policy.get_action(torch.tensor(input_state, dtype=torch.float32))
-        return policy_actions.detach().numpy()
+        # if on gpu, then convert back to cpu, if on cpu, then eh
+        return policy_actions.detach().to('cpu').numpy()
