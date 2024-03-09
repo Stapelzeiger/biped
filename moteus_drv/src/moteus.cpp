@@ -41,7 +41,6 @@ public:
         joint_encoder_ambiguities_.resize(nb_joints_);
         joint_has_resolved_ambiguity_.resize(nb_joints_);
         joint_offset_from_encoder_ambiguity_.resize(nb_joints_);
-        joint_offsets_from_calibration_.resize(nb_joints_);
 
         // Moteus buffers
         moteus_command_buf_.clear();
@@ -63,8 +62,16 @@ public:
 
             double encoder_ambiguity = this->get_parameter(joint_name + "/encoder_ambiguity").as_double();
             joint_encoder_ambiguities_[joint_idx] = encoder_ambiguity;
-            joint_offsets_[joint_idx] = this->get_parameter(joint_name + "/offset").as_double();
-            joint_offsets_from_calibration_[joint_idx] = joint_offsets_[joint_idx];
+            // joint_offsets_[joint_idx] = this->get_parameter(joint_name + "/offset").as_double();
+            // check if this param exists: this->get_parameter(joint_name + "/offset").as_double();
+            if (this->get_parameter(joint_name + "/offset").get_type() == rclcpp::PARAMETER_NOT_SET) {
+                // print not set
+                RCLCPP_INFO_STREAM(this->get_logger(), "Joint " << joint_name << " offset not set, using 0");
+                joint_offsets_[joint_idx] = 0.0;
+            } else {
+                joint_offsets_[joint_idx] = this->get_parameter(joint_name + "/offset").as_double();
+            }
+
             std::cout << "joint_offsets_ = " << joint_offsets_[joint_idx] << std::endl;
             joint_has_resolved_ambiguity_[joint_idx] = false;
             joint_offset_from_encoder_ambiguity_[joint_idx] = 0.0;
@@ -323,11 +330,11 @@ private:
                 double p = 0; // TODO param
                 double k = std::round((output - p) * joint_encoder_ambiguities_[joint_idx]);
                 joint_offset_from_encoder_ambiguity_[joint_idx] = k / joint_encoder_ambiguities_[joint_idx] * 2 * M_PI;
-                joint_offsets_[joint_idx] = joint_offset_from_encoder_ambiguity_[joint_idx] + joint_offsets_from_calibration_[joint_idx];
+                joint_offsets_[joint_idx] = joint_offset_from_encoder_ambiguity_[joint_idx];
                 std::cout << "New joint offset" << joint_offsets_[joint_idx] << std::endl;
                 std::cout << "joint_offset_from_encoder_ambiguity_ = " << joint_offset_from_encoder_ambiguity_[joint_idx] << std::endl;
                 joint_has_resolved_ambiguity_[joint_idx] = true;
-                
+
                 break;
             }
             if (joint_has_resolved_ambiguity_[joint_idx] == false) {
@@ -391,7 +398,6 @@ private:
     std::vector<double> joint_offsets_;
     std::vector<double> joint_offset_from_encoder_ambiguity_;
     std::vector<bool> joint_has_resolved_ambiguity_;
-    std::vector<double> joint_offsets_from_calibration_;
 
     std::map<size_t, size_t> joint_uid_to_joint_index_;
     double joint_state_timeout_;
