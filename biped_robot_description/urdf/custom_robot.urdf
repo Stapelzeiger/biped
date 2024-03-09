@@ -4,7 +4,7 @@
 
   <mujoco>
         <compiler 
-        meshdir="../meshes/" 
+        meshdir="../meshes_v2/" 
         balanceinertia="false" 
         discardvisual="false" />
   </mujoco>
