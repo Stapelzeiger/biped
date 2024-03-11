@@ -162,7 +162,9 @@ class MujocoNode(Node):
             self.policy_bc_NN = PolicyBC(self.policy_input_size, action_size, self.num_input_state)
             self.list_policy_inputs = []
 
-        self.timer = self.create_timer(self.dt, self.timer_cb, clock=rclpy.clock.Clock(clock_type=rclpy.clock.ClockType.STEADY_TIME))
+        self.previous_q_vel = np.zeros(self.model.nv)
+
+        self.timer = self.create_timer(self.dt*2, self.timer_cb, clock=rclpy.clock.Clock(clock_type=rclpy.clock.ClockType.STEADY_TIME))
 
         # for prev model
         # self.previous_q_vel = np.zeros(self.model.nv)
@@ -266,15 +268,16 @@ class MujocoNode(Node):
                 policy_input = np.array(self.list_policy_inputs)
                 self.policy_NN_output = self.policy_bc_NN(policy_input)
 
-        self.run_joint_controllers(self.policy_NN_output)
+        for _ in range(2):
+            self.run_joint_controllers(self.policy_NN_output)
 
-        mj.mj_step(self.model, self.data)
-        self.time += self.dt
-        self.counter += 1
+            mj.mj_step(self.model, self.data)
+            self.time += self.dt
+            self.counter += 1
 
-        self.read_contact_states()
-        self.ankle_foot_spring('L_ANKLE')
-        self.ankle_foot_spring('R_ANKLE')
+            self.read_contact_states()
+            self.ankle_foot_spring('L_ANKLE')
+            self.ankle_foot_spring('R_ANKLE')
 
         clock_msg = Clock()
         clock_msg.clock.sec = int(self.time)
@@ -378,7 +381,9 @@ class MujocoNode(Node):
                 id_joint_mj = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_JOINT, key)
                 value['actual_pos'] = self.data.qpos[self.model.jnt_qposadr[id_joint_mj]]
                 value['actual_vel'] = self.data.qvel[self.model.jnt_dofadr[id_joint_mj]]
-                value['actual_acc'] = self.data.qacc[self.model.jnt_dofadr[id_joint_mj]]
+                actual_acc = (self.data.qvel[self.model.jnt_dofadr[id_joint_mj]] - self.previous_q_vel[self.model.jnt_dofadr[id_joint_mj]])/self.dt
+                value['actual_acc'] = actual_acc
+                # value['actual_acc'] = self.data.qacc[self.model.jnt_dofadr[id_joint_mj]]
                 if key in self.joint_traj_msg.joint_names:
                     id_joint_msg = self.joint_traj_msg.joint_names.index(key)
                     value['desired_pos'] = self.joint_traj_msg.points[0].positions[id_joint_msg]
@@ -406,6 +411,8 @@ class MujocoNode(Node):
                     value['desired_vel'] = desired_vel[cnt]
                     value['feedforward_torque'] = tau_ff[cnt]
                 cnt += 1
+
+        self.previous_q_vel = self.data.qvel.copy()
 
         # non NN model:
         # for key, value in self.q_joints.items():
