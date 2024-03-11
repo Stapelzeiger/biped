@@ -231,7 +231,7 @@ private:
             auto T_BF_to_BLF = T_BLF_to_BF.inverse();
 
             Eigen::Vector3d stance_foot_BF = get_eigen_transform(r_foot_frame_id_, base_link_frame_id_).translation();
-            stace_foot_BF_saved_ = stance_foot_BF;
+            stance_foot_BF_saved_ = stance_foot_BF;
             Eigen::Vector3d stance_foot_BLF = T_BF_to_BLF * stance_foot_BF;
 
             T_STF_to_BLF_.linear() = Eigen::Matrix3d::Identity();
@@ -482,7 +482,7 @@ private:
             Eigen::Vector3d swing_foot_BF = get_eigen_transform(swing_foot_name, base_link_frame_id_).translation();
 
             auto swing_foot_BLF = T_BF_to_BLF * swing_foot_BF;
-            Eigen::Vector3d stance_foot_BLF = T_BF_to_BLF * stace_foot_BF_saved_;
+            Eigen::Vector3d stance_foot_BLF = T_BF_to_BLF * stance_foot_BF_saved_;
             T_STF_to_BLF_.linear() = Eigen::Matrix3d::Identity();
             T_STF_to_BLF_.translation() = stance_foot_BLF;
             auto swing_foot_STF = T_STF_to_BLF_.inverse() * swing_foot_BLF;
@@ -501,7 +501,7 @@ private:
         }
 
         Eigen::Vector3d swing_foot_BF = get_eigen_transform(swing_foot_name, base_link_frame_id_).translation();
-        Eigen::Vector3d stance_foot_BLF = T_BF_to_BLF * stace_foot_BF_saved_;
+        Eigen::Vector3d stance_foot_BLF = T_BF_to_BLF * stance_foot_BF_saved_;
         T_STF_to_BLF_.linear() = Eigen::Matrix3d::Identity();
         T_STF_to_BLF_.translation() = stance_foot_BLF; // todo figure out if i update TSTF
         broadcast_transform("BLF", "STF", T_STF_to_BLF_.translation(), Eigen::Quaterniond(T_STF_to_BLF_.rotation()));
@@ -549,7 +549,7 @@ private:
         marker_type = visualization_msgs::msg::Marker::SPHERE;
         publish_marker(marker_type, end_swing_pos_STF, "next_footstep", "STF", 1, Eigen::Vector3d(1.0, 0.0, 1.0), pub_marker_next_footstep_);
         publish_marker(marker_type, swing_foot_BF, "swing_foot", base_link_frame_id_, 5, Eigen::Vector3d(1.0, 1.0, 0.0), pub_marker_swing_foot_BF_);
-        publish_marker(marker_type, stace_foot_BF_saved_, "stance_foot", base_link_frame_id_, 6, Eigen::Vector3d(1.0, 1.0, 0.0), pub_marker_stance_foot_BF_);
+        publish_marker(marker_type, stance_foot_BF_saved_, "stance_foot", base_link_frame_id_, 6, Eigen::Vector3d(1.0, 1.0, 0.0), pub_marker_stance_foot_BF_);
         foot_traj_list_STF_.push_back(pos_desired_swing_foot_STF);
         foot_actual_traj_list_STF_.push_back(swing_foot_STF);
         publish_line_traj_markers(foot_traj_list_STF_, "foot_trajectory", "STF", 3, Eigen::Vector3d(1.0, 0.0, 1.0), pub_markers_foot_traj_);
@@ -927,7 +927,9 @@ private:
 
     OptimizerTrajectory swing_foot_traj_;
     Eigen::Vector3d start_opt_pos_swing_foot_, start_opt_vel_swing_foot_;
-    Eigen::Vector3d stace_foot_BF_saved_;
+    Eigen::Vector3d stance_foot_BF_saved_;
+
+    bool start_cmd_line_;
 
 };
 
