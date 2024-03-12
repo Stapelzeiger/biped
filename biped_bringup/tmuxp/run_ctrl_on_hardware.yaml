@@ -11,4 +11,4 @@ windows:
   - clear
   - ros2 launch src/biped/biped_bringup/launch/rosbag_record.py \
   - ros2 launch capture_point cp.launch.yml \
-  - ros2 launch spinnaker_camera_driver driver_node.launch.py camera_type:=blackfly_s serial:="'21148045'"
+  - ros2 launch spinnaker_camera_driver driver_node.launch.py camera_type:=blackfly_s serial:="'20538718'"
