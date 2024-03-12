@@ -59,11 +59,21 @@ public:
         robot_params_.swing_y_safe_box_max = this->declare_parameter<double>("swing_y_safe_box_max", 0.2);
         robot_params_.swing_z_safe_box_min = this->declare_parameter<double>("swing_z_safe_box_min", 0.0);
         robot_params_.swing_z_safe_box_max = this->declare_parameter<double>("swing_z_safe_box_max", 0.2);
+        robot_params_.walk_slow = this->declare_parameter<bool>("walk_slow", true);
 
         state_ = "INIT";
         initialization_done_ = false;
         t_init_traj_ = 0.0;
-        swing_foot_traj_ = OptimizerTrajectory(robot_params_.dt_ctrl, robot_params_.t_step);
+        start_cmd_line_ = false;
+
+        walk_slow_ = robot_params_.walk_slow;
+
+        if (walk_slow_ == true)
+        {
+            swing_foot_traj_ = OptimizerTrajectory(robot_params_.dt_ctrl, 4*robot_params_.t_step);
+        } else {
+            swing_foot_traj_ = OptimizerTrajectory(robot_params_.dt_ctrl, robot_params_.t_step);
+        }
 
         r_foot_frame_id_ = this->declare_parameter<std::string>("r_foot_frame_id", "R_FOOT");
         l_foot_frame_id_ = this->declare_parameter<std::string>("l_foot_frame_id", "L_FOOT");
@@ -221,7 +231,7 @@ private:
             if (mode_ == "WALK") {
                 swing_foot_traj_.set_desired_foot_raise_height(0.1);
             } else {
-                swing_foot_traj_.set_desired_foot_raise_height(0.2);
+                swing_foot_traj_.set_desired_foot_raise_height(0.15); // todo fix, this is strange
             }
             state_ = "RAMP_TO_STARTING_POS";
         }
@@ -324,7 +334,12 @@ private:
             foot_traj_list_STF_.clear(); // used for markers
             swing_foot_traj_.set_initial_pos_vel(start_opt_pos_swing_foot_, start_opt_vel_swing_foot_);
             set_position_limits_for_foot_in_optimization(swing_foot_name);
-            swing_foot_traj_.enable_lowering_foot_after_opt_solved(true);
+
+            if (walk_slow_ == true) {
+                swing_foot_traj_.enable_lowering_foot_after_opt_solved(false);
+            } else {
+                swing_foot_traj_.enable_lowering_foot_after_opt_solved(true);
+            }
             time_since_last_step_ = 0.0;
             dcm_at_step_STF_ = dcm_STF_;
         }
@@ -382,6 +397,14 @@ private:
         Eigen::Vector3d des_pos_foot_STF;
         des_pos_foot_STF << next_footstep_STF(0), next_footstep_STF(1), 0;
 
+        if (walk_slow_ == true) {
+            if (swing_foot_is_left_) {
+                des_pos_foot_STF << 0.01, 0.15, 0.0;
+            } else {
+                des_pos_foot_STF << 0.01, -0.15, 0.0;
+            }
+        }
+
         Eigen::Vector3d pos_desired_swing_foot_STF;
         Eigen::Vector3d vel_desired_swing_foot_STF;
         Eigen::Vector3d acc_desired_swing_foot_STF;
@@ -398,6 +421,13 @@ private:
         Eigen::Vector3d acc_body_level_STF = Eigen::Vector3d::Zero();
         acc_body_level_STF(0) = robot_params_.omega * robot_params_.omega * (pos_body_level_STF(0) + offset_com_baselink(0));
         acc_body_level_STF(1) = robot_params_.omega * robot_params_.omega * (pos_body_level_STF(1) + offset_com_baselink(1));
+
+        if (walk_slow_ == true) {
+            pos_body_level_STF << 0.0, 0.0, robot_params_.robot_height;
+            quat_body_level_STF = Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0);
+            acc_body_level_STF = Eigen::Vector3d::Zero();
+            vel_base_link_STF = Eigen::Vector3d::Zero();
+        }
 
         double dt = robot_params_.dt_ctrl;
         remaining_time_in_step_ = robot_params_.t_step - time_since_last_step_;
@@ -476,7 +506,7 @@ private:
         broadcast_transform(base_link_frame_id_, "BLF", T_BLF_to_BF.translation(), Eigen::Quaterniond(T_BLF_to_BF.rotation()));
         auto T_BF_to_BLF = T_BLF_to_BF.inverse();
 
-        double duration_foot_swing = 1.0;
+        double duration_foot_swing = 2.0;
         if (time_since_last_step_ > duration_foot_swing) { // todo: add if the foot reached the desired position
 
             Eigen::Vector3d swing_foot_BF = get_eigen_transform(swing_foot_name, base_link_frame_id_).translation();
@@ -534,7 +564,6 @@ private:
 
         std::string frame_id = "STF";
         if (swing_foot_name == r_foot_frame_id_) {
-
             publish_body_trajectories(frame_id, fin_baselink_pos_STF, Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0), Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero(),
                                                 pos_desired_swing_foot_STF, quat_desired_swing_foot_STF, vel_desired_swing_foot_STF, acc_desired_swing_foot_STF,
                                                 pos_desired_stance_foot_STF, quat_desired_stance_foot_STF, vel_desired_stance_foot_STF, acc_desired_stance_foot_STF);
@@ -888,6 +917,7 @@ private:
         double swing_y_safe_box_max;
         double swing_z_safe_box_min;
         double swing_z_safe_box_max;
+        bool walk_slow;
     } robot_params_;
 
     bool foot_right_contact_ = false;
@@ -930,6 +960,8 @@ private:
     Eigen::Vector3d stance_foot_BF_saved_;
 
     bool start_cmd_line_;
+    bool walk_slow_;
+
 
 };
 
