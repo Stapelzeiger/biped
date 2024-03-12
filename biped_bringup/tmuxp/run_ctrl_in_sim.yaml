@@ -10,6 +10,6 @@ windows:
   - python3 src/biped/sim_mujoco/sim_mujoco/joynode_drive.py --ros-args --remap /joy_command/pause_sim:=/mujoco_sim/pause --remap /joy_command/step_sim:=/mujoco_sim/step --remap /joy_command/reset_sim:=/mujoco_sim/reset --remap /joy_command/commanded_twist:=/vel_cmd --remap /joy_command/stop:=/e_stop
   - ros2 launch src/biped/biped_bringup/launch/rosbag_record.py \
   - clear
-  - ros2 launch flir_spinnaker_ros2 blackfly_s.launch.py camera_name:=external_cam serial:="'20538718'" 
+  - ros2 launch spinnaker_camera_driver driver_node.launch.py camera_type:=blackfly_s serial:="'20538718'"
 
   # - ros2 run plotjuggler plotjuggler

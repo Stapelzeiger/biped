@@ -4,14 +4,8 @@
     global_max_torque: 3.0
     joint_state_timeout: 0.04
     joint_command_timeout: 0.1
-    # joints: ['test1']
-    # joints: ['R_YAW', 'L_YAW', 'R_KFE', 'L_KFE', 'R_HAA', 'L_HAA']
-    # joints: ['L_KFE']
-    # joints: ['L_YAW', 'L_HAA', 'L_HFE', 'L_KFE']
-
-    # joints: ['L_KFE']
-    # joints: ['R_KFE']
     joints: ['R_YAW', 'R_HAA', 'R_HFE', 'R_KFE', 'L_YAW', 'L_HAA', 'L_HFE', 'L_KFE']
+    # joints: ['L_KFE', 'R_KFE']
     test1/can_id: 1
     test1/can_bus: 3
     test1/encoder_ambiguity: 1.0
@@ -34,6 +28,9 @@
     R_HAA/can_bus: 2
     R_HAA/encoder_ambiguity: 6.0
     R_HAA/reverse: True
+    # R_HAA/calib/centering_pos_deg: 20.0
+    # R_HAA/calib/trigger_effort: 2.0
+    # R_HAA/calib/direction: 1.0
     R_HAA/calib/centering_pos_deg: 30.0
     R_HAA/calib/trigger_effort: 2.5
     R_HAA/calib/direction: -1.0
@@ -70,6 +67,9 @@
     L_HAA/can_bus: 3
     L_HAA/encoder_ambiguity: 6.0
     L_HAA/reverse: True
+    # L_HAA/calib/centering_pos_deg: 20.0
+    # L_HAA/calib/trigger_effort: 2.0
+    # L_HAA/calib/direction: -1.0
     L_HAA/calib/centering_pos_deg: 30.0
     L_HAA/calib/trigger_effort: 2.5
     L_HAA/calib/direction: 1.0
@@ -79,7 +79,7 @@
     L_HFE/encoder_ambiguity: 6.0
     L_HFE/reverse: True
     L_HFE/calib/centering_pos_deg: 106.0
-    L_HFE/calib/trigger_effort: 2.5
+    L_HFE/calib/trigger_effort: 2.8
     L_HFE/calib/direction: 1.0
 
     L_KFE/can_id: 23
@@ -93,11 +93,11 @@
     L_ANKLE/can_id: 4 # dummy number
     L_ANKLE/can_bus: 1 # dummy number
 
-    R_YAW/offset: -0.5493598353577351
-    R_HAA/offset: -1.092436485408291
-    R_HFE/offset: -0.6681818508335089
-    R_KFE/offset: 1.7323440023594918
-    L_YAW/offset: 1.8292446824302169
-    L_HAA/offset: 0.0444011761707358
-    L_HFE/offset: 0.37922513987332795
-    L_KFE/offset: 1.162319468658144
+    R_YAW/offset: -2.826805069700096   
+    R_HAA/offset: 0.7420441847779092   
+    R_HFE/offset: 0.30159289474462014   
+    R_KFE/offset: 0.6459114495780615   
+    L_YAW/offset: 2.9970793915246627   
+    L_HAA/offset: 0.13320352851220724   
+    L_HFE/offset: -0.21048670779051615   
+    L_KFE/offset: 0.9135751436639118   
