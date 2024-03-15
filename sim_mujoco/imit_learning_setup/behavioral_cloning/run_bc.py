@@ -5,10 +5,11 @@ import pandas as pd
 from bc import bc
 
 data_rel_paths = [
-    "../../sim_mujoco/data/dataset_backwards.csv", "../../sim_mujoco/data/dataset_forward_sideways.csv", "../../sim_mujoco/data/dataset_misc.csv"
+    # "../../sim_mujoco/data/dataset_backwards.csv", "../../sim_mujoco/data/dataset_forward_sideways.csv", "../../sim_mujoco/data/dataset_misc.csv"
+    "../../sim_mujoco/data/in_place.csv"
 ]
 data_paths = [os.path.join(os.path.dirname(os.path.realpath(__file__)), pth) for pth in data_rel_paths]
-policy_name = "bc_policy_4_500e_no_spectral_norm"
+policy_name = "bc_policy_v3_in_place_dataset_100_epoch"
 # Fraction of data to train on. If you are going to test the policy on the biped in sim, use 1. (no reason to leave any data out)
 train_frac = 0.9
 
@@ -26,7 +27,7 @@ train_frac = 0.9
 #     "left_foot_pos_x_BF", "left_foot_pos_y_BF", "left_foot_pos_z_BF"
 # ]
 
-# "right_foot_pos_z_BF" is removed right now since it is always zero in current data.
+# "right_foot_pos_z_BF" & "right_foot_pos_x_BF" & "right_foot_pos_y_BF" is removed right now since it is always zero in current data.
 state_columns = [
     "L_YAW_pos", "L_HAA_pos", "L_HFE_pos", "L_KFE_pos", "L_ANKLE_pos",
     "R_YAW_pos", "R_HAA_pos", "R_HFE_pos", "R_KFE_pos", "R_ANKLE_pos",
@@ -34,8 +35,8 @@ state_columns = [
     "R_YAW_vel", "R_HAA_vel", "R_HFE_vel", "R_KFE_vel", "R_ANKLE_vel", 
     "vel_x_BF", "vel_y_BF", "vel_z_BF", "normal_vec_x_BF", "normal_vec_y_BF", "normal_vec_z_BF", 
     "omega_x", "omega_y", "omega_z", "vx_des_BF", "vy_des_BF", 
-    "right_foot_t_since_contact", "right_foot_t_since_no_contact", 
-    "right_foot_pos_x_BF", "right_foot_pos_y_BF",
+    # "right_foot_t_since_contact", "right_foot_t_since_no_contact", 
+    "right_foot_t_since_contact",
     "left_foot_t_since_contact", "left_foot_t_since_no_contact",
     "left_foot_pos_x_BF", "left_foot_pos_y_BF", "left_foot_pos_z_BF"
 ]
@@ -44,20 +45,21 @@ action_columns = [
     "R_YAW_tau_ff", "R_HAA_tau_ff", "R_HFE_tau_ff", "R_KFE_tau_ff", "R_ANKLE_tau_ff",
     "L_YAW_q_des", "L_HAA_q_des", "L_HFE_q_des", "L_KFE_q_des", "L_ANKLE_q_des",
     "R_YAW_q_des", "R_HAA_q_des", "R_HFE_q_des", "R_KFE_q_des", "R_ANKLE_q_des",
-    "L_YAW_q_vel des", "L_HAA_q_vel des", "L_HFE_q_vel des", "L_KFE_q_vel des", "L_ANKLE_q_vel des",
-    "R_YAW_q_vel des", "R_HAA_q_vel des", "R_HFE_q_vel des", "R_KFE_q_vel des", "R_ANKLE_q_vel des"
+    "L_YAW_q_vel_des", "L_HAA_q_vel_des", "L_HFE_q_vel_des", "L_KFE_q_vel_des", "L_ANKLE_q_vel_des",
+    "R_YAW_q_vel_des", "R_HAA_q_vel_des", "R_HFE_q_vel_des", "R_KFE_q_vel_des", "R_ANKLE_q_vel_des"
 ]
+use_spectral_norm = True
 num_input_states = 3 # Number of states to include in input
 policy_arch = [
-    {'Layer': 'Linear', 'Input': len(state_columns) * num_input_states, 'Output': 256, 'SpectralNorm': False},
+    {'Layer': 'Linear', 'Input': len(state_columns) * num_input_states, 'Output': 256, 'SpectralNorm': use_spectral_norm},
     {'Layer': 'ReLU'},
-    {'Layer': 'Linear', 'Input': 256, 'Output': 512, 'SpectralNorm': False},
+    {'Layer': 'Linear', 'Input': 256, 'Output': 512, 'SpectralNorm': use_spectral_norm},
     {'Layer': 'ReLU'},
-    {'Layer': 'Linear', 'Input': 512, 'Output': 256, 'SpectralNorm': False},
+    {'Layer': 'Linear', 'Input': 512, 'Output': 256, 'SpectralNorm': use_spectral_norm},
     {'Layer': 'ReLU'},
-    {'Layer': 'Linear', 'Input': 256, 'Output': len(action_columns), 'SpectralNorm': False}
+    {'Layer': 'Linear', 'Input': 256, 'Output': len(action_columns), 'SpectralNorm': use_spectral_norm}
 ]
-train_epochs = 500
+train_epochs = 100
 
 
 def main():
@@ -69,6 +71,10 @@ def main():
     num_steps = dataset.shape[0]
     states = dataset[state_columns].to_numpy(dtype=np.float64)
     actions = dataset[action_columns].to_numpy(dtype=np.float64)
+    # For debugging & finding std of each state and removing states with std of 0
+    # print(np.std(states,0))
+    # print(np.where(np.std(states,0) == 0.0))
+    # print(state_columns[32])
     
     # Stack states if more than one included in input
     states = np.hstack([states[ii: states.shape[0] - (num_input_states - ii - 1), :] for ii in range(num_input_states)])
