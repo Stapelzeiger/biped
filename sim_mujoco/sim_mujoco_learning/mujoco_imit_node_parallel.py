@@ -136,7 +136,7 @@ class MujocoImitNodeParallel:
         # self.stance_foot_BF_sub = self.create_subscription(Vector3Stamped, "~/stance_foot_BF", self.stance_foot_BF_cb, 10)
         # self.dcm_desired_BF_sub = self.create_subscription(TwistStamped, "~/dcm_desired_BF", self.dcm_desired_BF_cb, 10)
 
-        self.paused = True
+        self.paused = False
         # self.step_sim_sub = self.create_subscription(Float64, "~/step", self.step_cb, 1)
         # self.pause_sim_sub = self.create_subscription(Bool, "~/pause", self.pause_cb, 1)
 
