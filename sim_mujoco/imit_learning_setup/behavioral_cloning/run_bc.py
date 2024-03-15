@@ -6,10 +6,10 @@ from bc import bc
 
 data_rel_paths = [
     # "../../sim_mujoco/data/dataset_backwards.csv", "../../sim_mujoco/data/dataset_forward_sideways.csv", "../../sim_mujoco/data/dataset_misc.csv"
-    "../../sim_mujoco/data/in_place.csv"
+    "../../sim_mujoco/data/in_place.csv", "../../sim_mujoco/data/in_place_long.csv"
 ]
 data_paths = [os.path.join(os.path.dirname(os.path.realpath(__file__)), pth) for pth in data_rel_paths]
-policy_name = "bc_policy_v3_in_place_dataset_100_epoch"
+policy_name = "bc_policy_v4_in_place_dataset_long_10_epoch"
 # Fraction of data to train on. If you are going to test the policy on the biped in sim, use 1. (no reason to leave any data out)
 train_frac = 0.9
 
@@ -59,7 +59,7 @@ policy_arch = [
     {'Layer': 'ReLU'},
     {'Layer': 'Linear', 'Input': 256, 'Output': len(action_columns), 'SpectralNorm': use_spectral_norm}
 ]
-train_epochs = 100
+train_epochs = 10
 
 
 def main():
