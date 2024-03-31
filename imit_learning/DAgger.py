@@ -21,11 +21,12 @@ class DAgger:
         self.stopping_cond = stopping_cond  # Conditions on state to stop trajectory
         self.N = N                          # Number of trajectories to collect
         self.policy = policy                # policy network
+        self.dt = self.env.dt               # Time step of the environment
 
     def dagger_rollout(self) -> tuple:
         print(f"Collecting Rollouts {self.rollout_iters}")
         # Initialize memory for states and expert actions
-        state_memory = np.zeros((self.Tmax * self.N, self.env.xdim))
+        state_memory = np.zeros((self.Tmax * self.N, 2*self.env.xdim))
         expert_action_memory = np.zeros((self.Tmax * self.N, self.env.udim))
         # Grab the beta weighting expert vs. policy
         beta = self.beta_schedule[self.rollout_iters]
@@ -35,23 +36,38 @@ class DAgger:
         for _ in range(self.N):
             # Begin a trajectory
             traj_steps = 0
+
+            frequency = np.random.uniform(0.05, 0.10,)
+            def get_N_pt_traj(N, frequency, dt):
+                des_traj_pos = lambda t: np.cos(t*frequency)
+                pos_des = [des_traj_pos(i) for i in range(N)]
+                des_traj_vel = np.zeros(N)
+
+                for i in range(N - 1):
+                    des_traj_vel[i] = (pos_des[i+1] - pos_des[i])/dt
+                return pos_des, des_traj_vel
+
+            des_traj_pos, des_traj_vel = get_N_pt_traj(self.Tmax, frequency, self.dt)
+
             traj_over = False
             output_reset = self.env.reset() # Reset environment to random IC at beginning
-            obs_k = output_reset[0]
+            self.env.state = np.array([des_traj_pos[0], des_traj_vel[0]])
+            obs_k = self.env.state.copy()
             while traj_steps < self.Tmax:
                 # Get the expert action at the current state
-                des_reg_pt = np.zeros(2)
+                des_reg_pt = np.array([des_traj_pos[traj_steps], des_traj_vel[traj_steps]])
                 expert_action = self.expert(obs_k, des_reg_pt)
 
                 # Record the expert action and state in the memory
-                state_memory[sample_ind, :] = obs_k
+                state_memory[sample_ind, :] = np.concatenate((obs_k, des_reg_pt))
                 expert_action_memory[sample_ind, :] = expert_action
 
                 # Execute either the expert action or policy action in the environment
                 if random.random() < beta:
                     obs_k, _, _, _ = self.env.step(expert_action)
                 else:
-                    policy_action = self.policy.predict(obs_k)
+                    input_NN = np.concatenate((obs_k, des_reg_pt))
+                    policy_action = self.policy.predict(input_NN)
                     obs_k, _, _, _ = self.env.step(policy_action.detach().numpy()[0])
 
                 # # Check if the trajectory reached a termination condition 
@@ -74,13 +90,12 @@ class DAgger:
         Args:
             epochs (int): number of epochs to train
         """
-        train_states = np.zeros((0, self.env.xdim))
+        train_states = np.zeros((0, 2*self.env.xdim))
         train_actions = np.zeros((0, self.env.udim))
         # Run for a specific number of iterations
         for _ in range(epochs):
             # Perform a DAgger rollout
             states, expert_actions = self.dagger_rollout()
-            print(states.shape)
             # Append results to the set of data to train behaviour cloning
             train_states = np.vstack((train_states, states))
             train_actions = np.vstack((train_actions, expert_actions))
