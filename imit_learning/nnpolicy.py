@@ -32,7 +32,7 @@ class NNPolicy:
         # note actions / 2 since actions in [-2, 2] and final layer of output is tanh in [-1, 1]
         X_train, X_test, y_train, y_test = train_test_split(states, actions / 2, train_size=0.8, shuffle=True)
         X_train = torch.tensor(X_train, dtype=torch.float32)
-        y_train = torch.tensor(y_train, dtype=torch.float32).reshape(-1, 1)
+        y_train = torch.tensor(y_train, dtype=torch.float32)
         X_test = torch.tensor(X_test, dtype=torch.float32)
         y_test = torch.tensor(y_test, dtype=torch.float32).reshape(-1, 1)
 
@@ -56,8 +56,10 @@ class NNPolicy:
                     # take a batch
                     X_batch = X_train[start:start+batch_size]
                     y_batch = y_train[start:start+batch_size]
+                    y_batch = y_batch.reshape(-1, 1)
                     # forward pass
                     y_pred = self.model(X_batch)
+                    y_pred = y_pred.reshape(-1, 1)
                     loss = self.loss_fcn(y_pred, y_batch)
                     # backward pass
                     self.optimizer.zero_grad()
@@ -69,6 +71,7 @@ class NNPolicy:
             # evaluate accuracy at end of each epoch
             self.model.eval()
             y_pred = self.model(X_test)
+            y_pred = y_pred.reshape(-1, 1)
             mse = self.loss_fcn(y_pred, y_test)
             mse = float(mse)
             history.append(mse)
