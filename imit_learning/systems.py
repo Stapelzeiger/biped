@@ -19,6 +19,8 @@ class DoubleIntegrator:
     def step(self, action, des_pt=None):
         x, x_dot = self.state
         u = action
+        assert u.shape == (1,)
+        u = u[0]
 
         x = x + self.dt * x_dot
         x_dot = x_dot + self.dt * u
@@ -69,6 +71,8 @@ class DoubleIntegratorWithPerturbations:
     def step(self, action, des_pt=None):
         x, x_dot = self.state
         u = action
+        assert u.shape == (1,)
+        u = u[0]
 
         x = x + self.dt * x_dot
         x_dot = x_dot + self.dt * u - (np.sin(x/10))**2*self.dt
