@@ -64,7 +64,7 @@ class DoubleIntegratorWithPerturbations:
         self.udim = 1
         self.state = np.zeros(self.xdim)
         self.observation_space = np.zeros(self.udim)
-        self.action_space = np.zeros(1)
+        self.action_space = np.zeros(self.udim)
 
     def step(self, action, des_pt=None):
         x, x_dot = self.state
@@ -97,7 +97,7 @@ class DoubleIntegratorWithPerturbations:
         return self._get_obs(), -costs, done, False
     
     def _get_obs(self):
-        return self.state.reshape(2)
+        return self.state.reshape(self.xdim)
     
     
     def reset(self):
