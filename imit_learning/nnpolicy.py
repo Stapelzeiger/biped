@@ -15,20 +15,19 @@ class NNPolicy:
         for ii in range(len(net_arch)):
             layer = nn.Linear(net_arch[ii][0], net_arch[ii][1])
             # add spectral_norm
-            layer = nn.utils.spectral_norm(layer)
+            # layer = nn.utils.spectral_norm(layer)
             layers.append(layer)
             if ii < len(net_arch) - 1:
                 layers.append(nn.ReLU())
         self.model = nn.Sequential(*layers)
         self.loss_fcn = nn.MSELoss()
-        self.optimizer = optim.Adam(self.model.parameters(), lr=0.001)
+        self.optimizer = optim.Adam(self.model.parameters(), lr=0.01)
     
     def predict(self, obs):
         tensor_in = torch.tensor(obs, dtype=torch.float32)
         return self.model(tensor_in)
     
     def train(self, states, actions):
-        print("Training:")
         # Format training and testing data, use 20% for validation
         # note actions / 2 since actions in [-2, 2] and final layer of output is tanh in [-1, 1]
         X_train, X_test, y_train, y_test = train_test_split(states, actions / 2, train_size=0.8, shuffle=True)
@@ -38,7 +37,7 @@ class NNPolicy:
         y_test = torch.tensor(y_test, dtype=torch.float32).reshape(-1, 1)
 
         # training parameters
-        n_epochs = 4   # number of epochs to run
+        n_epochs = 30   # number of epochs to run
         batch_size = 32  # size of each batch
         batch_start = torch.arange(0, len(X_train), batch_size)
         
@@ -49,7 +48,7 @@ class NNPolicy:
         
         # training loop
         for epoch in range(n_epochs):
-            print(f"Epoch {epoch}")
+            # print(f"Epoch {epoch}")
             self.model.train()
             with tqdm.tqdm(batch_start, unit="batch", mininterval=0, disable=True) as bar:
                 bar.set_description(f"Epoch {epoch}")
@@ -80,6 +79,7 @@ class NNPolicy:
         # restore model and return best accuracy
         self.model.load_state_dict(best_weights)
         print(f"Loss: {best_mse}")
+        print(history)
         
         # save the model params
         dir = 'models'

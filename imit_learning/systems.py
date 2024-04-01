@@ -16,7 +16,7 @@ class DoubleIntegrator:
         self.observation_space = np.zeros(self.udim)
         self.action_space = np.zeros(1)
 
-    def step(self, action):
+    def step(self, action, des_pt=None):
         x, x_dot = self.state
         u = action
 
@@ -34,10 +34,13 @@ class DoubleIntegrator:
             [0],
             [1],
         ])
-        costs = x ** 2 + 0.1 * x_dot**2 + 0.001 * (u**2)
+        if des_pt is not None:
+            costs = (x - des_pt[0]) ** 2 + 0.1 * (x_dot - des_pt[1])**2 + 0.001 * (u**2) # tracking problem
+        else:
+            costs = x ** 2 + 0.1 * x_dot**2 + 0.001 * (u**2) # reg around 0
+        
         done = False
-        if abs(x - 0.0) < 0.01 and abs(x_dot - 0.0) < 0.01:
-            done = True
+
         
         return self._get_obs(), -costs, done, False
     
@@ -63,7 +66,7 @@ class DoubleIntegratorWithPerturbations:
         self.observation_space = np.zeros(self.udim)
         self.action_space = np.zeros(1)
 
-    def step(self, action):
+    def step(self, action, des_pt=None):
         x, x_dot = self.state
         u = action
 
@@ -84,11 +87,12 @@ class DoubleIntegratorWithPerturbations:
             [0],
             [1],
         ])
-        costs = x ** 2 + 0.1 * x_dot**2 + 0.001 * (u**2)
+        if des_pt is not None:
+            costs = (x - des_pt[0]) ** 2 + 0.1 * (x_dot - des_pt[1])**2 + 0.001 * (u**2) # tracking problem
+        else:
+            costs = x ** 2 + 0.1 * x_dot**2 + 0.001 * (u**2) # reg around 0
         
         done = False
-        # if abs(x - 0.0) < 0.01 and abs(x_dot - 0.0) < 0.01:
-        #     done = True
 
         return self._get_obs(), -costs, done, False
     

@@ -18,8 +18,6 @@ def train():
 
     ####### initialize environment hyperparameters ######
 
-    has_continuous_action_space = True  # continuous action space; else discrete
-
     max_ep_len = 1000                   # max timesteps in one episode
     max_training_timesteps = int(2e6)   # break training loop if timeteps > max_training_timesteps
 
@@ -49,19 +47,16 @@ def train():
     #####################################################
 
 
-    env = DoubleIntegratorWithPerturbations(dt=0.01)
-    env_name = 'DoubleIntegratorWithPerturbations'
-    # env = DoubleIntegrator(dt=0.01)
-    # env_name = 'DoubleIntegrator'
+    # env = DoubleIntegratorWithPerturbations(dt=0.01)
+    # env_name = 'DoubleIntegratorWithPerturbations'
+    env = DoubleIntegrator(dt=0.01)
+    env_name = 'DoubleIntegrator'
     # state space dimension
-    state_dim = 2
+    state_dim = env.xdim
 
     # action space dimension
-    if has_continuous_action_space:
-        action_dim = 1
-    else:
-        action_dim = env.action_space.n
-
+    action_dim = env.udim
+   
     ###################### logging ######################
 
     #### log files for multiple runs are NOT overwritten
@@ -113,15 +108,14 @@ def train():
     print("state space dimension : ", state_dim)
     print("action space dimension : ", action_dim)
     print("--------------------------------------------------------------------------------------------")
-    if has_continuous_action_space:
-        print("Initializing a continuous action space policy")
-        print("--------------------------------------------------------------------------------------------")
-        print("starting std of action distribution : ", action_std)
-        print("decay rate of std of action distribution : ", action_std_decay_rate)
-        print("minimum std of action distribution : ", min_action_std)
-        print("decay frequency of std of action distribution : " + str(action_std_decay_freq) + " timesteps")
-    else:
-        print("Initializing a discrete action space policy")
+
+    print("Initializing a continuous action space policy")
+    print("--------------------------------------------------------------------------------------------")
+    print("starting std of action distribution : ", action_std)
+    print("decay rate of std of action distribution : ", action_std_decay_rate)
+    print("minimum std of action distribution : ", min_action_std)
+    print("decay frequency of std of action distribution : " + str(action_std_decay_freq) + " timesteps")
+
     print("--------------------------------------------------------------------------------------------")
     print("PPO update frequency : " + str(update_timestep) + " timesteps")
     print("PPO K epochs : ", K_epochs)
@@ -143,7 +137,7 @@ def train():
     ################# training procedure ################
 
     # initialize a PPO agent
-    ppo_agent = PPO(state_dim, action_dim, lr_actor, lr_critic, gamma, K_epochs, eps_clip, has_continuous_action_space, action_std)
+    ppo_agent = PPO(state_dim, action_dim, lr_actor, lr_critic, gamma, K_epochs, eps_clip, action_std)
 
     # track total training time
     start_time = datetime.now().replace(microsecond=0)
@@ -172,12 +166,28 @@ def train():
         result = env.reset()
         state = result[0]
         current_ep_reward = 0
+        
+        # generate trajectory
+        
+        frequency = np.random.uniform(0.01, 0.05)
+        def get_N_pt_traj(N, frequency, dt):
+            des_traj_pos = lambda t: np.cos(t*frequency) + np.sin(3*t*frequency) + np.tanh(t*frequency)
+            pos_des = [des_traj_pos(i) for i in range(N)]
+            des_traj_vel = np.zeros(N)
+
+            for i in range(N - 1):
+                des_traj_vel[i] = (pos_des[i+1] - pos_des[i])/dt
+            return pos_des, des_traj_vel
+
+        des_traj_pos, des_traj_vel = get_N_pt_traj(max_ep_len + 1, frequency, env.dt)
+        state = np.array([des_traj_pos[0], des_traj_vel[0]])
 
         for t in range(1, max_ep_len+1):
 
             # select action with policy
-            action = ppo_agent.select_action(state)
-            result = env.step(action[0])
+            des_pt = np.array([des_traj_pos[t], des_traj_vel[t]])
+            action = ppo_agent.select_action(state, des_pt)
+            result = env.step(action[0], des_pt)
             state = result[0]
             reward = result[1]
             done = result[2]
@@ -193,7 +203,7 @@ def train():
                 ppo_agent.update()
 
             # if continuous action space; then decay action std of ouput action distribution
-            if has_continuous_action_space and time_step % action_std_decay_freq == 0:
+            if time_step % action_std_decay_freq == 0:
                 ppo_agent.decay_action_std(action_std_decay_rate, min_action_std)
 
             # log in logging file
@@ -234,7 +244,7 @@ def train():
                 # full IL -> trained after NN = IL NN
                 # partial IL -> only certain layers of NN = IL NN
                 # from scratch IL -> trained from scratch = IL NN
-                np.save(directory + '/average_reward_partial_IL.npy', average_reward_list_np)
+                np.save(directory + '/average_reward_full_IL.npy', average_reward_list_np)
 
             # break; if the episode is over
             if done:
