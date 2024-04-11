@@ -7,9 +7,10 @@ import tqdm
 from sklearn.model_selection import train_test_split
 import os
 
+
 class NNPolicy:
 
-    def __init__(self, net_arch):
+    def __init__(self, net_arch, limits):
         # Construct the network (Feedfoward deterministic network)
         layers = []
         for ii in range(len(net_arch)):
@@ -21,9 +22,9 @@ class NNPolicy:
                 layers.append(nn.ReLU())
         self.model = nn.Sequential(*layers)
         self.loss_fcn = nn.MSELoss()
-        self.optimizer = optim.Adam(self.model.parameters(), lr=0.01)
+        self.optimizer = optim.Adam(self.model.parameters(), lr=0.001)
     
-    def predict(self, obs):
+    def forward(self, obs):
         tensor_in = torch.tensor(obs, dtype=torch.float32)
         return self.model(tensor_in)
     
@@ -37,8 +38,8 @@ class NNPolicy:
         y_test = torch.tensor(y_test, dtype=torch.float32).reshape(-1, 1)
 
         # training parameters
-        n_epochs = 30   # number of epochs to run
-        batch_size = 32  # size of each batch
+        n_epochs = 40   # number of epochs to run
+        batch_size = 64  # size of each batch
         batch_start = torch.arange(0, len(X_train), batch_size)
         
         # Hold the best model
@@ -82,7 +83,6 @@ class NNPolicy:
         # restore model and return best accuracy
         self.model.load_state_dict(best_weights)
         print(f"Loss: {best_mse}")
-        print(history)
         
         # save the model params
         dir = 'models'
@@ -90,6 +90,7 @@ class NNPolicy:
         if not os.path.exists(dir):
             os.makedirs(dir)
         torch.save(self.model.state_dict(), dir + "/model_weights.pth")
+        return best_mse, history
         
     def load_state_dict(self, state_dict):
         self.model.load_state_dict(state_dict)
