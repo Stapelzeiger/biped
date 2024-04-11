@@ -120,6 +120,7 @@ class AckermannVelDelay:
         self.state = np.zeros(self.xdim)
         self.observation_space = np.zeros(self.udim)
         self.action_space = np.zeros(self.udim)
+        self.max_steering_angle_deg = 30
         self.tau = 0.1
         self.L = 0.49
 
@@ -154,7 +155,11 @@ class AckermannVelDelay:
                             [1/self.tau,      0],
                             ])
 
-        costs = False
+        if des_pt is not None:
+            costs = (x - des_pt[0]) ** 2 + (y - des_pt[1])**2 + 0.1 * (theta - des_pt[2])**2 + 0.1 * (vx - des_pt[3])**2 + 0.001 * (u_v**2 + steering**2)
+        else:
+            costs = 0.0
+
         done = False
         return self._get_obs(), -costs, done, False
 
