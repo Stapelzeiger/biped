@@ -26,7 +26,8 @@ setup(
         'console_scripts': [
             'mujoco = sim_mujoco.mujoco:main',
             'joy = sim_mujoco.joynode:main',
-            'joint_publisher = sim_mujoco.joint_publisher:main'
+            'joint_publisher = sim_mujoco.joint_publisher:main',
+            'stepping_stones = sim_mujoco.stepping_stone_markers:main'
         ],
     },
 )
