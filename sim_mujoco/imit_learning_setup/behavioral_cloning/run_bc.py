@@ -6,10 +6,13 @@ from bc import bc
 
 data_rel_paths = [
     # "../../sim_mujoco/data/dataset_backwards.csv", "../../sim_mujoco/data/dataset_forward_sideways.csv", "../../sim_mujoco/data/dataset_misc.csv"
-    "../../sim_mujoco/data/in_place.csv", "../../sim_mujoco/data/in_place_long.csv"
+    # "../../sim_mujoco/data/in_place.csv", "../../sim_mujoco/data/in_place_long.csv"
+    # "../../sim_mujoco/data/in_place.csv"
+    "../data_processing/updated_data/in_place_long_v1.csv"
 ]
+# TODO: train
 data_paths = [os.path.join(os.path.dirname(os.path.realpath(__file__)), pth) for pth in data_rel_paths]
-policy_name = "bc_policy_v4_in_place_dataset_long_10_epoch"
+policy_name = "bc_v4_normalized_data_long_cleaned"
 # Fraction of data to train on. If you are going to test the policy on the biped in sim, use 1. (no reason to leave any data out)
 train_frac = 0.9
 
@@ -37,7 +40,8 @@ state_columns = [
     "omega_x", "omega_y", "omega_z", "vx_des_BF", "vy_des_BF", 
     # "right_foot_t_since_contact", "right_foot_t_since_no_contact", 
     "right_foot_t_since_contact",
-    "left_foot_t_since_contact", "left_foot_t_since_no_contact",
+    # "left_foot_t_since_contact", "left_foot_t_since_no_contact",
+    "left_foot_t_since_contact",
     "left_foot_pos_x_BF", "left_foot_pos_y_BF", "left_foot_pos_z_BF"
 ]
 action_columns = [
@@ -48,19 +52,26 @@ action_columns = [
     "L_YAW_q_vel_des", "L_HAA_q_vel_des", "L_HFE_q_vel_des", "L_KFE_q_vel_des", "L_ANKLE_q_vel_des",
     "R_YAW_q_vel_des", "R_HAA_q_vel_des", "R_HFE_q_vel_des", "R_KFE_q_vel_des", "R_ANKLE_q_vel_des"
 ]
+
+# how about changing the layer node to 32?
 use_spectral_norm = True
 num_input_states = 3 # Number of states to include in input
+layer1 = 256 * 2
+layer2 = 512 * 2 
+layer3 = 512 * 2
+layer4 = 256 * 2
 policy_arch = [
-    {'Layer': 'Linear', 'Input': len(state_columns) * num_input_states, 'Output': 256, 'SpectralNorm': use_spectral_norm},
+    {'Layer': 'Linear', 'Input': len(state_columns) * num_input_states, 'Output': layer1, 'SpectralNorm': use_spectral_norm},
     {'Layer': 'ReLU'},
-    {'Layer': 'Linear', 'Input': 256, 'Output': 512, 'SpectralNorm': use_spectral_norm},
+    {'Layer': 'Linear', 'Input': layer1, 'Output': layer2, 'SpectralNorm': use_spectral_norm},
     {'Layer': 'ReLU'},
-    {'Layer': 'Linear', 'Input': 512, 'Output': 256, 'SpectralNorm': use_spectral_norm},
+    {'Layer': 'Linear', 'Input': layer2, 'Output': layer3, 'SpectralNorm': use_spectral_norm},
     {'Layer': 'ReLU'},
-    {'Layer': 'Linear', 'Input': 256, 'Output': len(action_columns), 'SpectralNorm': use_spectral_norm}
+    {'Layer': 'Linear', 'Input': layer3, 'Output': layer4, 'SpectralNorm': use_spectral_norm},
+    {'Layer': 'ReLU'},
+    {'Layer': 'Linear', 'Input': layer4, 'Output': len(action_columns), 'SpectralNorm': use_spectral_norm}
 ]
-train_epochs = 10
-
+train_epochs = 30
 
 def main():
     # Load Data
@@ -69,6 +80,10 @@ def main():
         ds = pd.read_csv(dp)
         dataset = pd.concat((dataset, ds))
     num_steps = dataset.shape[0]
+
+    # randomly shuffle all the rows.
+    # dataset = dataset.sample(frac=1).reset_index(drop=True)
+
     states = dataset[state_columns].to_numpy(dtype=np.float64)
     actions = dataset[action_columns].to_numpy(dtype=np.float64)
     # For debugging & finding std of each state and removing states with std of 0
@@ -86,7 +101,7 @@ def main():
 
     # Run vanilla behavior cloning
     behavior_clone = bc(train_states, train_actions, policy_arch)
-    behavior_clone.train(train_epochs)
+    behavior_clone.train(train_epochs, use_best_weights=False)
 
     behavior_clone.save_policy(os.path.join(os.path.dirname(os.path.realpath(__file__)), f"policies/{policy_name}.pt"))
     
