@@ -8,11 +8,11 @@ data_rel_paths = [
     # "../../sim_mujoco/data/dataset_backwards.csv", "../../sim_mujoco/data/dataset_forward_sideways.csv", "../../sim_mujoco/data/dataset_misc.csv"
     # "../../sim_mujoco/data/in_place.csv", "../../sim_mujoco/data/in_place_long.csv"
     # "../../sim_mujoco/data/in_place.csv"
-    "../data_processing/updated_data/in_place_long_v4.csv"
+    "../data_processing/updated_data/no_controller_input_v4.csv"
 ]
 # TODO: train
 data_paths = [os.path.join(os.path.dirname(os.path.realpath(__file__)), pth) for pth in data_rel_paths]
-policy_name = "bc_v6_normalized_data_long_cleaned_ignore_foot"
+policy_name = "bc_v3_fixed_data_all_normalized"
 # Fraction of data to train on. If you are going to test the policy on the biped in sim, use 1. (no reason to leave any data out)
 train_frac = 0.9
 
@@ -38,17 +38,14 @@ state_columns = [
     "R_YAW_vel", "R_HAA_vel", "R_HFE_vel", "R_KFE_vel", "R_ANKLE_vel", 
     "vel_x_BF", "vel_y_BF", "vel_z_BF", "normal_vec_x_BF", "normal_vec_y_BF", "normal_vec_z_BF", 
     "omega_x", "omega_y", "omega_z", "vx_des_BF", "vy_des_BF", 
-    # "right_foot_t_since_contact", "right_foot_t_since_no_contact", 
-    # "right_foot_t_since_contact",
-    # "left_foot_t_since_contact", "left_foot_t_since_no_contact",
-    # "left_foot_t_since_contact",
+    "right_foot_t_since_contact", "right_foot_t_since_no_contact", 
+    "right_foot_pos_x_BF", "right_foot_pos_y_BF", "right_foot_pos_z_BF",
+    "left_foot_t_since_contact", "left_foot_t_since_no_contact",
     "left_foot_pos_x_BF", "left_foot_pos_y_BF", "left_foot_pos_z_BF"
 ]
 action_columns = [
-    # "L_YAW_tau_ff", "L_HAA_tau_ff", "L_HFE_tau_ff", "L_KFE_tau_ff", "L_ANKLE_tau_ff",
-    "L_YAW_tau_ff", "L_HFE_tau_ff", "L_KFE_tau_ff", "L_ANKLE_tau_ff",
-    # "R_YAW_tau_ff", "R_HAA_tau_ff", "R_HFE_tau_ff", "R_KFE_tau_ff", "R_ANKLE_tau_ff",
-    "R_YAW_tau_ff", "R_HFE_tau_ff", "R_KFE_tau_ff", "R_ANKLE_tau_ff",
+    "L_YAW_tau_ff", "L_HAA_tau_ff", "L_HFE_tau_ff", "L_KFE_tau_ff", "L_ANKLE_tau_ff",
+    "R_YAW_tau_ff", "R_HAA_tau_ff", "R_HFE_tau_ff", "R_KFE_tau_ff", "R_ANKLE_tau_ff",
     "L_YAW_q_des", "L_HAA_q_des", "L_HFE_q_des", "L_KFE_q_des", "L_ANKLE_q_des",
     "R_YAW_q_des", "R_HAA_q_des", "R_HFE_q_des", "R_KFE_q_des", "R_ANKLE_q_des",
     "L_YAW_q_vel_des", "L_HAA_q_vel_des", "L_HFE_q_vel_des", "L_KFE_q_vel_des", "L_ANKLE_q_vel_des",
@@ -58,10 +55,10 @@ action_columns = [
 # how about changing the layer node to 32?
 use_spectral_norm = True
 num_input_states = 3 # Number of states to include in input
-layer1 = 256
-layer2 = 512 
-layer3 = 512
-layer4 = 256
+layer1 = 256 * 2
+layer2 = 512 * 2
+layer3 = 512 * 2
+layer4 = 256 * 2
 policy_arch = [
     {'Layer': 'Linear', 'Input': len(state_columns) * num_input_states, 'Output': layer1, 'SpectralNorm': use_spectral_norm},
     {'Layer': 'ReLU'},
@@ -73,7 +70,7 @@ policy_arch = [
     {'Layer': 'ReLU'},
     {'Layer': 'Linear', 'Input': layer4, 'Output': len(action_columns), 'SpectralNorm': use_spectral_norm}
 ]
-train_epochs = 10
+train_epochs = 30
 
 def main():
     # Load Data
