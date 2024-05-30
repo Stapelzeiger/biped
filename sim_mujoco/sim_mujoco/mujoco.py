@@ -197,8 +197,8 @@ class MujocoNode(Node):
                 self.get_logger().info("init done")
                 self.initialization_done = True
                 self.data.qvel = [0.0]* self.model.nv
-                # self.model.eq_active0 = 0 # let go of the robot
-                # self.data.eq_active[0] = 0 # let go of the robot
+                self.model.eq_active0 = 0 # let go of the robot
+                self.data.eq_active[0] = 0 # let go of the robot
 
         for _ in range(2):
             self.run_joint_controllers()
