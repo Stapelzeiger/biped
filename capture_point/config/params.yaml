@@ -7,8 +7,7 @@
     P_gain_scaling: 0.1
     duration_init_traj: 1.0 # seconds
     safety_radius_CP: 0.4
-    # T_contact_ignore: 2.0
-    walk_slow: false
+    walk_slow: False # True if we do walk in place, while holding the robot.
     T_contact_ignore: 0.1
 
     r_foot_frame_id: R_FOOT_CONTACT

@@ -70,7 +70,7 @@ public:
 
         if (walk_slow_ == true)
         {
-            swing_foot_traj_ = OptimizerTrajectory(robot_params_.dt_ctrl, 4*robot_params_.t_step);
+            swing_foot_traj_ = OptimizerTrajectory(robot_params_.dt_ctrl, robot_params_.t_step);
         } else {
             swing_foot_traj_ = OptimizerTrajectory(robot_params_.dt_ctrl, robot_params_.t_step);
         }
@@ -231,7 +231,7 @@ private:
             if (mode_ == "WALK") {
                 swing_foot_traj_.set_desired_foot_raise_height(0.1);
             } else {
-                swing_foot_traj_.set_desired_foot_raise_height(0.15); // todo fix, this is strange
+                swing_foot_traj_.set_desired_foot_raise_height(0.1); // todo fix, this is strange
             }
             state_ = "RAMP_TO_STARTING_POS";
         }
@@ -290,9 +290,14 @@ private:
             }
         }
 
-        if (initialization_done_ == true && mode_ == "ONE_FOOT_SWING") {
-            run_one_foot_swing();
-        }
+        // if (initialization_done_ == true && mode_ == "ONE_FOOT_SWING") {
+        //     run_one_foot_swing();
+        // }
+
+        RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 1000, "Walking mode: %s", mode_.c_str());
+        RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 1000, "Walk slow: %d", walk_slow_);
+
+
 
     }
 
@@ -336,7 +341,7 @@ private:
             set_position_limits_for_foot_in_optimization(swing_foot_name);
 
             if (walk_slow_ == true) {
-                swing_foot_traj_.enable_lowering_foot_after_opt_solved(false);
+                swing_foot_traj_.enable_lowering_foot_after_opt_solved(true);
             } else {
                 swing_foot_traj_.enable_lowering_foot_after_opt_solved(true);
             }
@@ -399,9 +404,9 @@ private:
 
         if (walk_slow_ == true) {
             if (swing_foot_is_left_) {
-                des_pos_foot_STF << 0.01, 0.15, 0.0;
+                des_pos_foot_STF << 0.00, 0.15, 0.0;
             } else {
-                des_pos_foot_STF << 0.01, -0.15, 0.0;
+                des_pos_foot_STF << 0.00, -0.15, 0.0;
             }
         }
 
@@ -487,102 +492,6 @@ private:
         publish_marker(marker_type, stance_foot_BF, "stance_foot", base_link_frame_id_, 6, Eigen::Vector3d(1.0, 1.0, 0.0), pub_marker_stance_foot_BF_);
         foot_traj_list_STF_.push_back(pos_desired_swing_foot_STF);
         publish_line_traj_markers(foot_traj_list_STF_, "foot_trajectory", "STF", 3, Eigen::Vector3d(1.0, 0.0, 1.0), pub_markers_foot_traj_);
-    }
-
-    void run_one_foot_swing(){
-        // set feet names
-        std::string swing_foot_name;
-        std::string stance_foot_name;
-        if (swing_foot_is_left_) {
-            swing_foot_name = l_foot_frame_id_;
-            stance_foot_name = r_foot_frame_id_;
-        } else {
-            swing_foot_name = r_foot_frame_id_;
-            stance_foot_name = l_foot_frame_id_;
-        }
-
-        // set body level frame (BLF) transform
-        auto T_BLF_to_BF = get_BLF_to_BF();
-        broadcast_transform(base_link_frame_id_, "BLF", T_BLF_to_BF.translation(), Eigen::Quaterniond(T_BLF_to_BF.rotation()));
-        auto T_BF_to_BLF = T_BLF_to_BF.inverse();
-
-        double duration_foot_swing = 2.0;
-        if (time_since_last_step_ > duration_foot_swing) { // todo: add if the foot reached the desired position
-
-            Eigen::Vector3d swing_foot_BF = get_eigen_transform(swing_foot_name, base_link_frame_id_).translation();
-
-            auto swing_foot_BLF = T_BF_to_BLF * swing_foot_BF;
-            Eigen::Vector3d stance_foot_BLF = T_BF_to_BLF * stance_foot_BF_saved_;
-            T_STF_to_BLF_.linear() = Eigen::Matrix3d::Identity();
-            T_STF_to_BLF_.translation() = stance_foot_BLF;
-            auto swing_foot_STF = T_STF_to_BLF_.inverse() * swing_foot_BLF;
-            swing_foot_position_beginning_of_step_STF_ = swing_foot_STF;
-            start_opt_pos_swing_foot_ = swing_foot_position_beginning_of_step_STF_;
-            start_opt_vel_swing_foot_ = Eigen::Vector3d::Zero();
-
-            foot_traj_list_STF_.clear(); // used for markers
-            foot_actual_traj_list_STF_.clear(); // used for markers
-
-            swing_foot_traj_.set_initial_pos_vel(start_opt_pos_swing_foot_, start_opt_vel_swing_foot_);
-            swing_foot_traj_.enable_lowering_foot_after_opt_solved(false);
-            set_position_limits_for_foot_in_optimization(swing_foot_name);
-            sign_ = -sign_;
-            time_since_last_step_ = 0.0;
-        }
-
-        Eigen::Vector3d swing_foot_BF = get_eigen_transform(swing_foot_name, base_link_frame_id_).translation();
-        Eigen::Vector3d stance_foot_BLF = T_BF_to_BLF * stance_foot_BF_saved_;
-        T_STF_to_BLF_.linear() = Eigen::Matrix3d::Identity();
-        T_STF_to_BLF_.translation() = stance_foot_BLF; // todo figure out if i update TSTF
-        broadcast_transform("BLF", "STF", T_STF_to_BLF_.translation(), Eigen::Quaterniond(T_STF_to_BLF_.rotation()));
-        auto swing_foot_BLF = T_BF_to_BLF * swing_foot_BF;
-        auto swing_foot_STF = T_STF_to_BLF_.inverse() * swing_foot_BLF;
-
-        // swing foot trajectory
-        Eigen::Vector3d end_swing_pos_STF;
-        end_swing_pos_STF << sign_*0.15, 0.0, 0.1;
-
-        Eigen::Vector3d pos_desired_swing_foot_STF, vel_desired_swing_foot_STF, acc_desired_swing_foot_STF;
-        swing_foot_traj_.compute_traj_pos_vel(time_since_last_step_,
-                                        end_swing_pos_STF,
-                                        pos_desired_swing_foot_STF,
-                                        vel_desired_swing_foot_STF,
-                                        acc_desired_swing_foot_STF);
-
-        double dt = robot_params_.dt_ctrl;
-        remaining_time_in_step_ = robot_params_.t_step - time_since_last_step_;
-        time_since_last_step_ = time_since_last_step_ + dt;
-
-        Eigen::Vector3d pos_desired_stance_foot_STF = Eigen::Vector3d::Zero();
-        Eigen::Vector3d vel_desired_stance_foot_STF = Eigen::Vector3d::Zero();
-        Eigen::Vector3d acc_desired_stance_foot_STF = Eigen::Vector3d::Zero();
-        Eigen::Quaterniond quat_desired_stance_foot_STF = Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0);
-        Eigen::Quaterniond quat_desired_swing_foot_STF = Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0);
-
-        Eigen::Vector3d fin_baselink_pos_STF;
-        fin_baselink_pos_STF = Eigen::Vector3d(0.0, 0.0, robot_params_.robot_height);
-
-        std::string frame_id = "STF";
-        if (swing_foot_name == r_foot_frame_id_) {
-            publish_body_trajectories(frame_id, fin_baselink_pos_STF, Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0), Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero(),
-                                                pos_desired_swing_foot_STF, quat_desired_swing_foot_STF, vel_desired_swing_foot_STF, acc_desired_swing_foot_STF,
-                                                pos_desired_stance_foot_STF, quat_desired_stance_foot_STF, vel_desired_stance_foot_STF, acc_desired_stance_foot_STF);
-        } else {
-            publish_body_trajectories(frame_id, fin_baselink_pos_STF, Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0), Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero(),
-                                                pos_desired_stance_foot_STF, quat_desired_stance_foot_STF, vel_desired_stance_foot_STF, acc_desired_stance_foot_STF,
-                                                pos_desired_swing_foot_STF, quat_desired_swing_foot_STF, vel_desired_swing_foot_STF, acc_desired_swing_foot_STF);
-        }
-
-        // Marker publishers
-        int marker_type;
-        marker_type = visualization_msgs::msg::Marker::SPHERE;
-        publish_marker(marker_type, end_swing_pos_STF, "next_footstep", "STF", 1, Eigen::Vector3d(1.0, 0.0, 1.0), pub_marker_next_footstep_);
-        publish_marker(marker_type, swing_foot_BF, "swing_foot", base_link_frame_id_, 5, Eigen::Vector3d(1.0, 1.0, 0.0), pub_marker_swing_foot_BF_);
-        publish_marker(marker_type, stance_foot_BF_saved_, "stance_foot", base_link_frame_id_, 6, Eigen::Vector3d(1.0, 1.0, 0.0), pub_marker_stance_foot_BF_);
-        foot_traj_list_STF_.push_back(pos_desired_swing_foot_STF);
-        foot_actual_traj_list_STF_.push_back(swing_foot_STF);
-        publish_line_traj_markers(foot_traj_list_STF_, "foot_trajectory", "STF", 3, Eigen::Vector3d(1.0, 0.0, 1.0), pub_markers_foot_traj_);
-        publish_line_traj_markers(foot_actual_traj_list_STF_, "foot_actual_trajectory", "STF", 3, Eigen::Vector3d(1.0, 1.0, 0.0), pub_markers_foot_traj_actual_);
     }
 
     void contact_right_callback(biped_bringup::msg::StampedBool::SharedPtr msg)
