@@ -71,7 +71,7 @@ public:
 
         if (walk_slow_ == true)
         {
-            swing_foot_traj_ = OptimizerTrajectory(robot_params_.dt_ctrl, 4*robot_params_.t_step);
+            swing_foot_traj_ = OptimizerTrajectory(robot_params_.dt_ctrl, robot_params_.t_step);
         } else {
             swing_foot_traj_ = OptimizerTrajectory(robot_params_.dt_ctrl, robot_params_.t_step);
         }
@@ -238,7 +238,7 @@ private:
             if (mode_ == "WALK") {
                 swing_foot_traj_.set_desired_foot_raise_height(0.1);
             } else {
-                swing_foot_traj_.set_desired_foot_raise_height(0.15); // todo fix, this is strange
+                swing_foot_traj_.set_desired_foot_raise_height(0.1); // todo fix, this is strange
             }
             state_ = "RAMP_TO_STARTING_POS";
         }
@@ -343,7 +343,7 @@ private:
             set_position_limits_for_foot_in_optimization(swing_foot_name);
 
             if (walk_slow_ == true) {
-                swing_foot_traj_.enable_lowering_foot_after_opt_solved(false);
+                swing_foot_traj_.enable_lowering_foot_after_opt_solved(true);
             } else {
                 swing_foot_traj_.enable_lowering_foot_after_opt_solved(true);
             }
@@ -429,9 +429,9 @@ private:
 
         if (walk_slow_ == true) {
             if (swing_foot_is_left_) {
-                des_pos_foot_STF << 0.01, 0.15, 0.0;
+                des_pos_foot_STF << 0.00, 0.15, 0.0;
             } else {
-                des_pos_foot_STF << 0.01, -0.15, 0.0;
+                des_pos_foot_STF << 0.00, -0.15, 0.0;
             }
         }
 
