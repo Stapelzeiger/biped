@@ -266,7 +266,7 @@ class MujocoNode(Node):
                 for i in range(self.policy_input_size):
                     self.list_policy_inputs.pop(0) # pop the old state
                 policy_input = np.array(self.list_policy_inputs)
-                self.policy_NN_output = self.policy_bc_NN(policy_input)
+                # self.policy_NN_output = self.policy_bc_NN(policy_input)
 
         # TODO: leo: think about whether we need this double for loop.
         for _ in range(2):
@@ -571,8 +571,8 @@ class MujocoNode(Node):
         if self.initialization_done and self.dcm_desired_BF is not None:
             # TODO (LEO 5/12/24): Since the model isn't trained with the data, we don't wanna save the policy_NN_output yet.
             #                     When I train the new model, I should do this.
-            row_entry = [self.time, self.model.opt.timestep, *policy_input, *policy_output, *self.policy_NN_output]
-            # row_entry = [self.time, self.model.opt.timestep, *policy_input, *policy_output, *policy_output]
+            # row_entry = [self.time, self.model.opt.timestep, *policy_input, *policy_output, *self.policy_NN_output]
+            row_entry = [self.time, self.model.opt.timestep, *policy_input, *policy_output, *policy_output]
             self.writer.writerow(row_entry)
 
     def joint_traj_cb(self, msg):

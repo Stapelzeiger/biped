@@ -4,6 +4,8 @@ from torch.utils.tensorboard import SummaryWriter
 
 class Autoencoder(nn.Module):
     def __init__(self, states):
+        super.__init__()
+
         self.encoder = nn.Sequential(
             nn.Linear(states, 128),
             nn.ReLU(True),

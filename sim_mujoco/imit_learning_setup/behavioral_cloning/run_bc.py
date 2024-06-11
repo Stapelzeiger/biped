@@ -12,7 +12,7 @@ data_rel_paths = [
 ]
 # TODO: train
 data_paths = [os.path.join(os.path.dirname(os.path.realpath(__file__)), pth) for pth in data_rel_paths]
-policy_name = "bc_v3_fixed_data_all_normalized"
+policy_name = "bc_v4_fixed_data_all_normalized_no_duplicate_inputs"
 # Fraction of data to train on. If you are going to test the policy on the biped in sim, use 1. (no reason to leave any data out)
 train_frac = 0.9
 
@@ -54,11 +54,11 @@ action_columns = [
 
 # how about changing the layer node to 32?
 use_spectral_norm = True
-num_input_states = 3 # Number of states to include in input
-layer1 = 256 * 2
-layer2 = 512 * 2
-layer3 = 512 * 2
-layer4 = 256 * 2
+num_input_states = 1 # Number of states to include in input
+layer1 = 256 * 7
+layer2 = 512 * 7
+layer3 = 512 * 7
+layer4 = 256 * 7
 policy_arch = [
     {'Layer': 'Linear', 'Input': len(state_columns) * num_input_states, 'Output': layer1, 'SpectralNorm': use_spectral_norm},
     {'Layer': 'ReLU'},
@@ -70,7 +70,7 @@ policy_arch = [
     {'Layer': 'ReLU'},
     {'Layer': 'Linear', 'Input': layer4, 'Output': len(action_columns), 'SpectralNorm': use_spectral_norm}
 ]
-train_epochs = 30
+train_epochs = 50
 
 def main():
     # Load Data

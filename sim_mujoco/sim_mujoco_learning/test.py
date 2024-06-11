@@ -2,9 +2,9 @@ import numpy as np
 import pandas as pd
 from time import sleep
 import sys
-sys.path.append("/home/sorina/Documents/code/biped_hardware/ros2_ws/src/biped/sim_mujoco/")
+sys.path.append("/home/leo/biped_ws/src/biped/sim_mujoco/")
 from sim_mujoco_learning.mujoco_imit_node import MujocoImitNode
-model_path = "/home/sorina/Documents/code/biped_hardware/ros2_ws/src/biped/biped_robot_description/urdf/custom_robot.mujoco.xml"
+model_path = "/home/leo/biped_ws/src/biped/biped_robot_description/urdf/custom_robot.mujoco.xml"
 
 data_path = "data/dataset_qpos.csv"
 mj_node = MujocoImitNode(model_path, visualize=True, vis_rate=60)

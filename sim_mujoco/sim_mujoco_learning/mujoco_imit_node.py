@@ -19,7 +19,7 @@ import numpy as np
 import sys
 import json
 import time
-sys.path.append("/home/sorina/Documents/code/biped_hardware/ros2_ws/src/biped/sim_mujoco/")
+sys.path.append("/home/leo/biped_ws/src/biped/sim_mujoco/")
 from sim_mujoco_learning.submodules.pid import pid as pid_ctrl
 
 from threading import Lock
@@ -547,7 +547,7 @@ class MujocoImitNode:
 
 def main(args=None):
     # rclpy.init(args=args)
-    model_path = "/home/sorina/Documents/code/biped_hardware/ros2_ws/src/biped/biped_robot_description/urdf/custom_robot.mujoco.xml"
+    model_path = "/home/leo/biped_ws/src/biped/biped_robot_description/urdf/custom_robot.mujoco.xml"
     sim_node = MujocoImitNode(model_path, visualize=True)
     qpos0 = np.array([
         -0.0737598007648667, -0.0733845727937982, 0.550748421344813, 0.998831755605091, -0.0471508286450751,

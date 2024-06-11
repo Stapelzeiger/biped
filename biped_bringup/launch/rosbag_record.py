@@ -38,7 +38,7 @@ def generate_launch_description():
     #     default_value='test'
     # )
     timestr = time.strftime("%Y%m%d-%H-%M-%S")
-    rosbag_dir = '/home/sorina/Documents/code/biped_hardware/bags/'
+    rosbag_dir = '/home/leo/biped_ws/bags/'
     rosbag_name = timestr + '.bag'
     rosbag_file = rosbag_dir + rosbag_name
 
