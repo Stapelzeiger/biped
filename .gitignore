@@ -3,3 +3,5 @@ __pycache__
 *.csv
 COLCON_IGNORE
 .DS_Store
+*.pth
+*.npy
