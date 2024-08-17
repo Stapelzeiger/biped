@@ -10,7 +10,7 @@ import threading
 TIME_PERIOD = 0.01
 VEL_MAX = 0.3
 COUNTER_TRIGGER = 20
-EPSILON = 0.001
+EPSILON = 0.0001
 
 
 class JointCalibration(Node):
@@ -99,7 +99,7 @@ class JointCalibration(Node):
                     self.setpt_vel = -self.joints_dict['vel_max'][idx]
                     self.counter_ramp_center += 1
 
-                    # verify the center position was achieved
+                # verify the center position was achieved
                 if np.abs(self.joints_dict['joint_pos'][idx] - self.joints_dict['center_pos'][idx]) < EPSILON:
                     self.joints_dict['is_calibrated'][idx] = True
                     self.counter = 0
@@ -107,11 +107,13 @@ class JointCalibration(Node):
                     self.get_logger().info(f'Joint {joint} is calibrated')
                     self.get_logger().info(f'Center Position achieved: {self.joints_dict["joint_pos"][idx]}')
 
-                    # check for overshooting (todo make this better)
+                # check for overshooting (todo make this better)
                 if self.joints_dict['vel_max'][idx] > 0 and self.joints_dict['joint_pos'][idx] < self.joints_dict['center_pos'][idx]:
                     self.get_logger().info(f'Overshooting, stop the joint')
                     self.setpt_vel = 0
                     self.joints_dict['is_calibrated'][idx] = True
+                    # bring back to center
+                    self.joints_dict['joint_pos'][idx] = self.joints_dict['center_pos'][idx]
                     self.get_logger().info(f'Joint position achieved: {self.joints_dict["joint_pos"][idx]}')
                     self.counter = 0
                     self.counter_ramp_center = 0
@@ -120,6 +122,8 @@ class JointCalibration(Node):
                     self.get_logger().info(f'Overshooting, stop the joint')
                     self.setpt_vel = 0
                     self.joints_dict['is_calibrated'][idx] = True
+                    # bring back to center
+                    self.joints_dict['joint_pos'][idx] = self.joints_dict['center_pos'][idx]
                     self.get_logger().info(f'Joint position achieved: {self.joints_dict["joint_pos"][idx]}')
                     self.counter = 0
                     self.counter_ramp_center = 0
@@ -152,10 +156,9 @@ class JointCalibration(Node):
             for i, joint in enumerate(self.joints_dict['joint_names']):
                 self.get_logger().info('i: ' + str(i))
                 offset_param_str = f'{joint}/offset'
-                offset_param = self.get_parameter(offset_param_str).get_parameter_value()
                 new_offset_param = rclpy.parameter.Parameter(offset_param_str,
-                                                         rclpy.Parameter.Type.DOUBLE,
-                                                         self.joints_dict['joint_pos'][i])
+                                                        rclpy.Parameter.Type.DOUBLE,
+                                                        self.joints_dict['joint_pos'][i])
                 self.set_parameters([new_offset_param])
                 new_param_value = self.get_parameter(offset_param_str).get_parameter_value().double_value
                 self.get_logger().info(f'New offset for {joint}: {new_param_value}')
@@ -206,7 +209,7 @@ class JointCalibration(Node):
             if self.joints_dict['is_calibrated'][i] == True:
                 msg.joint_names.append(joint)
                 joint_traj_pt_msg = JointTrajectoryPoint()
-                joint_traj_pt_msg.positions.append(self.joints_dict['joint_pos'][i])
+                joint_traj_pt_msg.positions.append(self.joints_dict['center_pos'][i])
                 joint_traj_pt_msg.velocities.append(0)
                 joint_traj_pt_msg.effort.append(0)
                 msg.points.append(joint_traj_pt_msg)
