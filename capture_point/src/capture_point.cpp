@@ -68,12 +68,7 @@ public:
 
         walk_slow_ = robot_params_.walk_slow;
 
-        if (walk_slow_ == true)
-        {
-            swing_foot_traj_ = OptimizerTrajectory(robot_params_.dt_ctrl, robot_params_.t_step);
-        } else {
-            swing_foot_traj_ = OptimizerTrajectory(robot_params_.dt_ctrl, robot_params_.t_step);
-        }
+        swing_foot_traj_ = OptimizerTrajectory(robot_params_.dt_ctrl, robot_params_.t_step);
 
         r_foot_frame_id_ = this->declare_parameter<std::string>("r_foot_frame_id", "R_FOOT");
         l_foot_frame_id_ = this->declare_parameter<std::string>("l_foot_frame_id", "L_FOOT");
@@ -341,7 +336,7 @@ private:
             set_position_limits_for_foot_in_optimization(swing_foot_name);
 
             if (walk_slow_ == true) {
-                swing_foot_traj_.enable_lowering_foot_after_opt_solved(true);
+                swing_foot_traj_.enable_lowering_foot_after_opt_solved(false);
             } else {
                 swing_foot_traj_.enable_lowering_foot_after_opt_solved(true);
             }
