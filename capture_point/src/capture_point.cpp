@@ -285,15 +285,8 @@ private:
             }
         }
 
-        // if (initialization_done_ == true && mode_ == "ONE_FOOT_SWING") {
-        //     run_one_foot_swing();
-        // }
-
         RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 1000, "Walking mode: %s", mode_.c_str());
         RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 1000, "Walk slow: %d", walk_slow_);
-
-
-
     }
 
     void run_capture_point_controller()
