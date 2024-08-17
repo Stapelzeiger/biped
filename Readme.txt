@@ -51,10 +51,29 @@ make install
 ```
 Then add `export OsqpEigen_DIR="/opt/osqp_eigen"` to your `~/.bashrc` file (or anywhere where you set environment variables).
 
-## rviz (optional, if want visualization)
+## rviz (optional, if you want visualization)
 ```
 sudo apt install ros-humble-rviz-2d-overlay-plugins
 ```
+
+## building the code
+make a build.sh with the following
+```
+#!/bin/bash                                                                                      
+                                                                                                 
+cd `dirname -- "${BASH_SOURCE[0]}"`                                                              
+pwd                                                                                              
+                                                                                                 
+colcon build --symlink-install --continue-on-error --cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo #--event-handlers console_direct+
+colcon test --ctest-args test --packages-select capture_point
+colcon test-result --all --verbose
+```
+
+Then run
+```
+./build.sh
+```
+
 
 # Running
 
