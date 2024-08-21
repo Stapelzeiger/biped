@@ -4,7 +4,7 @@ from rclpy.node import Node
 from sensor_msgs.msg import JointState, Imu
 from nav_msgs.msg import Odometry
 from trajectory_msgs.msg import MultiDOFJointTrajectoryPoint, MultiDOFJointTrajectory, JointTrajectory
-from geometry_msgs.msg import TransformStamped, Vector3, PoseStamped, PoseWithCovarianceStamped
+from geometry_msgs.msg import TransformStamped, Vector3, PoseStamped, PoseWithCovarianceStamped, Vector3Stamped
 
 from rosgraph_msgs.msg import Clock
 from biped_bringup.msg import StampedBool
@@ -124,6 +124,9 @@ class MujocoNode(Node):
         self.step_sim_sub = self.create_subscription(Float64, "~/step", self.step_cb, 1)
         self.pause_sim_sub = self.create_subscription(Bool, "~/pause", self.pause_cb, 1)
 
+        self.u_ankle = None
+        self.zmp_sub = self.create_subscription(Vector3Stamped, '~/u_ankle', self.u_ankle_cb, 10)
+
         self.previous_q_vel = np.zeros(self.model.nv)
 
         self.timer = self.create_timer(self.dt*2, self.timer_cb, clock=rclpy.clock.Clock(clock_type=rclpy.clock.ClockType.STEADY_TIME))
@@ -183,6 +186,15 @@ class MujocoNode(Node):
     def stop_viz(self):
         self.viewer.close()
 
+    def u_ankle_cb(self, msg):
+        with self.lock:
+            self.u_ankle = msg.vector.x
+
+    def zmp_dot_cb(self, msg):
+        with self.lock:
+            self.x_dot_zmp = msg.vector.x
+            self.y_dot_zmp = msg.vector.y
+
     def step(self):
         if not self.initialization_done:
             msg_stop_controller = Bool()
@@ -191,6 +203,7 @@ class MujocoNode(Node):
 
             self.model.eq_data[0][2] -= 0.5 * self.dt
             self.initialization_timeout -= self.dt
+
         self.read_contact_states()
         if self.contact_states['R_FOOT'] or self.contact_states['L_FOOT']:
             if not self.initialization_done:
@@ -200,10 +213,18 @@ class MujocoNode(Node):
                 self.model.eq_active0 = 0 # let go of the robot
                 self.data.eq_active[0] = 0 # let go of the robot
 
-        for _ in range(2):
+        for _ in range(2): # run sim twice as fast as the control loop
             self.run_joint_controllers()
-            self.ankle_foot_spring('L_ANKLE')
-            self.ankle_foot_spring('R_ANKLE')
+            if self.contact_states['R_FOOT'] == True and self.contact_states['L_FOOT'] == True:
+                self.ankle_control('R_ANKLE')
+                self.ankle_control('L_ANKLE')
+            elif self.contact_states['R_FOOT'] == True:
+                self.ankle_control('R_ANKLE')
+                self.ankle_foot_spring('L_ANKLE')
+            elif self.contact_states['L_FOOT'] == True:
+                self.ankle_control('L_ANKLE')
+                self.ankle_foot_spring('R_ANKLE')
+
             mj.mj_step(self.model, self.data)
             if self.visualize_mujoco is True:
                 if self.viewer.is_running():
@@ -393,6 +414,25 @@ class MujocoNode(Node):
 
         self.data.ctrl[idx_act] = pitch_torque_setpt
         self.data.ctrl[idx_vel_act] = 0.0
+
+    def ankle_control(self, foot_joint):
+        if self.u_ankle == None:
+            # Run them as a spring damper system when no zmp is available
+            self.ankle_foot_spring(foot_joint)
+            return
+
+        pitch_torque_setpt = -self.u_ankle
+        print(pitch_torque_setpt)
+        idx_act = mj.mj_name2id(
+            self.model, mj.mjtObj.mjOBJ_ACTUATOR, foot_joint)
+        vel_actuator_name = str(foot_joint) + str('_VEL')
+        idx_vel_act = mj.mj_name2id(
+            self.model, mj.mjtObj.mjOBJ_ACTUATOR, vel_actuator_name)
+
+        self.data.ctrl[idx_act] = pitch_torque_setpt
+        self.data.ctrl[idx_vel_act] = 0.0
+
+
 
 def main(args=None):
     rclpy.init(args=args)

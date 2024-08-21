@@ -1,6 +1,7 @@
 /capture_point:
   ros__parameters:
     robot_height: 0.55
+    mass: 8.0 # [kg]
     t_step: 0.25
     ctrl_time_sec: 0.01
     threshold_next_footstep: 0.1 # Not used
@@ -20,10 +21,11 @@
     offset_baselink_cog_z: 0.0
     time_no_feet_in_contact: 0.2
     foot_separation: 0.1
+    half_foot_size: 0.08 # [m]
     swing_x_safe_box_min: -0.3
     swing_x_safe_box_max: 0.3
     swing_y_safe_box_min: -0.4
     swing_y_safe_box_max: 0.4
     swing_z_safe_box_min: -0.1
     swing_z_safe_box_max: 0.3
-    mode: WALK # options = ['WALK', 'ONE_FOOT_SWING']
+    mode: STANDING # options = ['WALK', 'STANDING']

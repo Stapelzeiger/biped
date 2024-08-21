@@ -10,7 +10,7 @@ launch:
       - name: mujoco_xml_path
         value: "$(find-pkg-share biped_robot_description)/urdf/custom_robot.mujoco.xml"
       - name: visualize_mujoco
-        value: false
+        value: true
       - name: sim_time_sec
         value: $(var sim_time_sec)
       - name: publish_tf
@@ -24,6 +24,8 @@ launch:
         to: /e_stop
       - from: /mujoco_sim/imu
         to: /imu
+      - from: /mujoco_sim/u_ankle
+        to: /capture_point/u_ankle
     output: screen
     # print GDB backtrace:
     # launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args

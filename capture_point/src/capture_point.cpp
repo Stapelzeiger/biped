@@ -35,6 +35,8 @@
 using namespace std::placeholders;
 using namespace std::chrono_literals;
 
+#define GRAVITY 9.81
+
 class CapturePoint : public rclcpp::Node
 {
 
@@ -60,6 +62,8 @@ public:
         robot_params_.swing_z_safe_box_min = this->declare_parameter<double>("swing_z_safe_box_min", 0.0);
         robot_params_.swing_z_safe_box_max = this->declare_parameter<double>("swing_z_safe_box_max", 0.2);
         robot_params_.walk_slow = this->declare_parameter<bool>("walk_slow", true);
+        robot_params_.half_foot_size = this->declare_parameter<double>("half_foot_size", 0.1);
+        robot_params_.mass = this->declare_parameter<double>("mass", 10.0);
 
         state_ = "INIT";
         initialization_done_ = false;
@@ -75,8 +79,8 @@ public:
         r_foot_urdf_frame_id_ = this->declare_parameter<std::string>("r_foot_urdf_frame_id", "R_FOOT");
         l_foot_urdf_frame_id_ = this->declare_parameter<std::string>("l_foot_urdf_frame_id", "L_FOOT");
         base_link_frame_id_ = this->declare_parameter<std::string>("base_link_frame_id", "base_link");
-        mode_ = this->declare_parameter<std::string>("mode", "ONE_FOOT_SWING");
-        if (mode_ != "WALK" && mode_ != "ONE_FOOT_SWING") {
+        mode_ = this->declare_parameter<std::string>("mode", "STANDING");
+        if (mode_ != "WALK" && mode_ != "STANDING") {
             RCLCPP_ERROR(this->get_logger(), "Mode not supported");
             throw std::runtime_error("Mode not supported");
         }
@@ -102,6 +106,8 @@ public:
 
         pub_desired_left_contact_ = this->create_publisher<biped_bringup::msg::StampedBool>("~/desired_left_contact", 10);
         pub_desired_right_contact_ = this->create_publisher<biped_bringup::msg::StampedBool>("~/desired_right_contact", 10);
+
+        u_ankle_pub_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("~/u_ankle", 10);
 
         odometry_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
             "/odometry", 10, std::bind(&CapturePoint::odometry_callback, this, _1));
@@ -205,13 +211,18 @@ private:
         if (foot_left_contact_ == false && foot_right_contact_ == false) {
             timeout_for_no_feet_in_contact_ -= robot_params_.dt_ctrl;
         } else {
-            timeout_for_no_feet_in_contact_ = robot_params_.time_no_feet_in_contact;
-            state_ = "FOOT_IN_CONTACT";
+            timeout_for_no_feet_in_contact_ = robot_params_.time_no_feet_in_contact; // reset the timeout
+            if ((foot_left_contact_ == true || foot_right_contact_ == true) && mode_ == "WALK") {
+                state_ = "FOOT_IN_CONTACT";
+            }
+            if ((foot_left_contact_ == true && foot_right_contact_ == true) && mode_ == "STANDING") {
+                state_ = "FEET_IN_CONTACT";
+            }
         }
 
         if (timeout_for_no_feet_in_contact_ < 0) {
             RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 1000, "No feet in contact for too long");
-            if (state_ == "FOOT_IN_CONTACT") {
+            if (state_ == "FOOT_IN_CONTACT" || state_ == "FEET_IN_CONTACT") {
                 state_ = "INIT";
                 initialization_done_ = false;
                 t_init_traj_ = 0;
@@ -220,18 +231,17 @@ private:
 
         if (state_ == "INIT") {
             t_init_traj_ = 0;
-            swing_foot_is_left_ = true;
-            auto swing_foot_name = l_foot_frame_id_;
-            set_position_limits_for_foot_in_optimization(swing_foot_name);
             if (mode_ == "WALK") {
+                swing_foot_is_left_ = true;
+                auto swing_foot_name = l_foot_frame_id_;
+                set_position_limits_for_foot_in_optimization(swing_foot_name);
                 swing_foot_traj_.set_desired_foot_raise_height(0.1);
-            } else {
-                swing_foot_traj_.set_desired_foot_raise_height(0.1); // todo fix, this is strange
             }
             state_ = "RAMP_TO_STARTING_POS";
         }
 
         if (state_ == "RAMP_TO_STARTING_POS") {
+            // keep the same notation with stance and swing feet for both modes (WALK and STANDING)
             auto T_BLF_to_BF = get_BLF_to_BF();
             auto T_BF_to_BLF = T_BLF_to_BF.inverse();
 
@@ -244,11 +254,17 @@ private:
             broadcast_transform(base_link_frame_id_, "BLF", T_BLF_to_BF.translation(), Eigen::Quaterniond(T_BLF_to_BF.rotation()));
             broadcast_transform("BLF", "STF", T_STF_to_BLF_.translation(), Eigen::Quaterniond(T_STF_to_BLF_.rotation()));
 
-            Eigen::Vector3d fin_swing_foot_pos_STF;
-            fin_swing_foot_pos_STF = Eigen::Vector3d(0.0, 0.1, 0.1);
-
-            Eigen::Vector3d fin_baselink_pos_STF;
-            fin_baselink_pos_STF = Eigen::Vector3d(0.0, 0.0, robot_params_.robot_height);
+            // Set desired positions for the body and the swing foot wrt to the STF
+            Eigen::Vector3d fin_swing_foot_pos_STF, fin_baselink_pos_STF, fin_stance_foot_pos;
+            if (mode_ == "WALK"){
+                fin_swing_foot_pos_STF = Eigen::Vector3d(0.0, 0.1, 0.1);
+                fin_baselink_pos_STF = Eigen::Vector3d(0.0, 0.0, robot_params_.robot_height);
+            }
+            if (mode_ == "STANDING")
+            {
+                fin_swing_foot_pos_STF = Eigen::Vector3d(0.0, 0.24, 0.0);
+                fin_baselink_pos_STF = Eigen::Vector3d(-robot_params_.offset_baselink_cog_x, 0.12, robot_params_.robot_height);
+            }
 
             std::string frame_id = "STF";
             publish_body_trajectories(frame_id, fin_baselink_pos_STF, Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0), Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero(),  // todo fix this so it takes the init orientation of the robot
@@ -265,11 +281,14 @@ private:
             t_init_traj_ += robot_params_.dt_ctrl;
             if (t_init_traj_ > robot_params_.duration_init_traj) {
                 initialization_done_ = true;
-                set_starting_to_walk_params(fin_swing_foot_pos_STF);
+                if (mode_ == "WALK") {
+                    set_starting_to_walk_params(fin_swing_foot_pos_STF);
+                }
                 t_init_traj_ = robot_params_.duration_init_traj;
             }
         }
 
+        // Walking.
         if (state_ == "FOOT_IN_CONTACT" && initialization_done_ == true && mode_ == "WALK") {
             auto t_start = std::chrono::high_resolution_clock::now();
             run_capture_point_controller();
@@ -285,8 +304,92 @@ private:
             }
         }
 
+        // Standing.
+        if (state_ == "FEET_IN_CONTACT" && initialization_done_ == true && mode_ == "STANDING") {
+            auto t_start = std::chrono::high_resolution_clock::now();
+            run_standing_controller(r_foot_frame_id_);
+            auto t_finish = std::chrono::high_resolution_clock::now();
+            auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t_finish - t_start);
+
+            double dt_ctrl_ms = robot_params_.dt_ctrl * 1000;
+            if (duration_ms.count() > dt_ctrl_ms * 0.8)
+            {
+                RCLCPP_WARN(this->get_logger(), "duration of standing controller in ms %ld ", duration_ms.count());
+                RCLCPP_WARN(this->get_logger(), "dt_ctrl_ms %f", dt_ctrl_ms);
+                RCLCPP_WARN(this->get_logger(), "Running slower than desired");
+            }
+        }
+
         RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 1000, "Walking mode: %s", mode_.c_str());
         RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 1000, "Walk slow: %d", walk_slow_);
+    }
+
+    void run_standing_controller(std::string stance_foot_frame_id_)
+    {
+        auto T_BLF_to_BF = get_BLF_to_BF();
+        auto T_BF_to_BLF = T_BLF_to_BF.inverse();
+
+        // For standing, we pick the stance foot to be the right foot.
+        Eigen::Vector3d stance_foot_BF = get_eigen_transform(stance_foot_frame_id_, base_link_frame_id_).translation();
+        Eigen::Vector3d stance_foot_BLF = T_BF_to_BLF * stance_foot_BF;
+        T_STF_to_BLF_.linear() = Eigen::Matrix3d::Identity();
+        T_STF_to_BLF_.translation() = stance_foot_BLF;
+        broadcast_transform(base_link_frame_id_, "BLF", T_BLF_to_BF.translation(), Eigen::Quaterniond(T_BLF_to_BF.rotation()));
+        broadcast_transform("BLF", "STF", T_STF_to_BLF_.translation(), Eigen::Quaterniond(T_STF_to_BLF_.rotation()));
+
+        // Compute pos body level in the STF frame.
+        Eigen::Vector3d pos_body_level_STF = T_STF_to_BLF_.inverse().translation();
+        pos_body_level_STF(2) = robot_params_.robot_height;
+        // Compute vel body level in the STF frame.
+        Eigen::Vector3d base_link_vel_BF;
+        base_link_vel_BF << base_link_odom_.linear_velocity(0), base_link_odom_.linear_velocity(1), base_link_odom_.linear_velocity(2);
+        Eigen::Vector3d base_link_vel_BLF = T_BF_to_BLF.rotation() * base_link_vel_BF;
+        Eigen::Vector3d vel_base_link_STF = T_STF_to_BLF_.inverse().rotation() * base_link_vel_BLF;
+
+        // Compute x_ref_ddot (acceleration) and u_ankle.
+        double k_p = 20.0; // TODO: make this a parameter
+        double k_d = 5.0; // TODO: make this a parameter
+        double x_ref_ddot;
+        double x_zmp_des = 0.02 * sin(2 * M_PI * 0.5 * this->get_clock()->now().seconds());
+        x_zmp_des = 0.0;
+        double x_dot_zmp_des = 0.02 * 2 * M_PI * 0.5 * cos(2 * M_PI * 0.5 * this->get_clock()->now().seconds());
+        x_dot_zmp_des = 0.0;
+        RCLCPP_INFO(this->get_logger(), "x_zmp_des: %f", x_zmp_des);
+        x_ref_ddot = - k_p * (pos_body_level_STF(0) - x_zmp_des) - k_d * (vel_base_link_STF(0) - x_dot_zmp_des);
+
+        double u_ankle;
+        u_ankle = x_ref_ddot * robot_params_.mass * robot_params_.robot_height; // [m/s^2 * kg * m = Nm]
+
+        // Limit u_ankle.
+        double u_ankle_max = robot_params_.half_foot_size * robot_params_.mass * GRAVITY; // [m * kg * m/s^2 = Nm]
+        if (u_ankle > u_ankle_max) {
+            u_ankle = u_ankle_max;
+        }
+        if (u_ankle < -u_ankle_max) {
+            u_ankle = -u_ankle_max;
+        }
+
+        // Publish u_ankle.
+        geometry_msgs::msg::Vector3Stamped u_ankle_msg;
+        u_ankle_msg.header.stamp = this->get_clock()->now();
+        u_ankle_msg.vector.x = u_ankle;
+        u_ankle_msg.vector.y = 0.0;
+        u_ankle_msg.vector.z = 0.0;
+        u_ankle_pub_->publish(u_ankle_msg);
+
+        // Set desired positions for the body and the swing foot wrt to the STF
+        if (mode_ == "STANDING") {
+            Eigen::Vector3d fin_swing_foot_pos_STF, fin_baselink_pos_STF, fin_stance_foot_pos;
+            fin_swing_foot_pos_STF = Eigen::Vector3d(0.0, 0.24, 0.0);
+            fin_baselink_pos_STF = Eigen::Vector3d(0.0, 0.12, robot_params_.robot_height);
+            Eigen::Quaterniond quat_body_level_STF = Eigen::Quaterniond(T_STF_to_BLF_.inverse().rotation());
+
+
+            std::string frame_id = "STF";
+            publish_body_trajectories(frame_id, fin_baselink_pos_STF, quat_body_level_STF, Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero(),  // todo fix this so it takes the init orientation of the robot
+                                        Eigen::Vector3d::Zero(), Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0), Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero(),
+                                        fin_swing_foot_pos_STF, Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0), Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero());
+        }
     }
 
     void run_capture_point_controller()
@@ -368,7 +471,7 @@ private:
         dcm_STF_(1) = T_STF_to_BLF_.inverse().translation()[1] + offset_com_baselink[1] + 1.0 / robot_params_.omega * vel_base_link_STF(1);
         dcm_STF_(2) = 0;
 
-        auto next_dcm_STF_predicted = dcm_STF_ * exp(robot_params_.omega * remaining_time_in_step_);
+        auto next_dcm_STF_predicted = dcm_STF_ * exp(robot_params_.omega * remaining_time_in_step_); // TODO: check for larger times.
         Eigen::Vector3d error_dcm_STF = next_dcm_STF_predicted - dcm_desired_STF;
         error_dcm_STF(2) = 0.0;
 
@@ -462,6 +565,9 @@ private:
                                                     pos_desired_swing_foot_STF, quat_desired_swing_foot_STF, vel_desired_swing_foot_STF, acc_desired_swing_foot_STF);
             }
         }
+
+        // Run standing controller.
+        run_standing_controller(stance_foot_name);
 
         // Marker publishers
         int marker_type;
@@ -773,6 +879,8 @@ private:
     rclcpp::Publisher<biped_bringup::msg::StampedBool>::SharedPtr pub_desired_left_contact_;
     rclcpp::Publisher<biped_bringup::msg::StampedBool>::SharedPtr pub_desired_right_contact_;
 
+    rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr u_ankle_pub_;
+
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odometry_sub_;
     rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
     rclcpp::Subscription<biped_bringup::msg::StampedBool>::SharedPtr contact_right_sub_;
@@ -815,6 +923,8 @@ private:
         double swing_z_safe_box_min;
         double swing_z_safe_box_max;
         bool walk_slow;
+        double half_foot_size;
+        double mass;
     } robot_params_;
 
     bool foot_right_contact_ = false;
@@ -838,6 +948,8 @@ private:
     std::list<Eigen::Vector3d> foot_actual_traj_list_STF_;
     float time_since_last_step_;
     float remaining_time_in_step_;
+
+    Eigen::Vector3d zmp_;
 
     Eigen::Vector3d vel_d_;
     Eigen::Vector3d dcm_STF_;
