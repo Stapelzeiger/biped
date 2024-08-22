@@ -4,7 +4,7 @@ windows:
   shell_command_before:
   - source $ROS_WS/install/local_setup.bash
   panes:
-  - rviz2 -d src/biped/biped_bringup/rviz/biped.rviz --ros-args --param use_sim_time:=true
+  - rviz2 -d /home/sorina/Documents/code/biped_hardware/ros2_ws/src/biped/biped_bringup/rviz/biped.rviz --ros-args --param use_sim_time:=true
   - ros2 launch biped_robot_description launch.yaml
-  - ros2 bag play $ROSBAG_PATH
+  - ros2 bag play /home/sorina/Documents/code/biped_hardware/ros2_ws/rosbag/rosbag2_2024_07_23-09_39_10
   - clear
