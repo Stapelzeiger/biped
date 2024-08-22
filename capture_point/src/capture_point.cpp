@@ -329,7 +329,7 @@ private:
             set_position_limits_for_foot_in_optimization(swing_foot_name);
 
             if (walk_slow_ == true) {
-                swing_foot_traj_.enable_lowering_foot_after_opt_solved(false);
+                swing_foot_traj_.enable_lowering_foot_after_opt_solved(true);
             } else {
                 swing_foot_traj_.enable_lowering_foot_after_opt_solved(true);
             }
