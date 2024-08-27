@@ -350,12 +350,10 @@ private:
         double k_p = 20.0; // TODO: make this a parameter
         double k_d = 5.0; // TODO: make this a parameter
         double x_ref_ddot;
-        double x_zmp_des = 0.02 * sin(2 * M_PI * 0.5 * this->get_clock()->now().seconds());
-        x_zmp_des = 0.0;
-        double x_dot_zmp_des = 0.02 * 2 * M_PI * 0.5 * cos(2 * M_PI * 0.5 * this->get_clock()->now().seconds());
-        x_dot_zmp_des = 0.0;
-        RCLCPP_INFO(this->get_logger(), "x_zmp_des: %f", x_zmp_des);
-        x_ref_ddot = - k_p * (pos_body_level_STF(0) - x_zmp_des) - k_d * (vel_base_link_STF(0) - x_dot_zmp_des);
+        double x_zmp_des_sine = 0.01 * sin(2 * M_PI * 0.5 * this->get_clock()->now().seconds());
+        double x_dot_zmp_sine_des = 0.01 * 2 * M_PI * 0.5 * cos(2 * M_PI * 0.5 * this->get_clock()->now().seconds());
+        RCLCPP_INFO(this->get_logger(), "x_zmp_des: %f", x_zmp_des_sine);
+        x_ref_ddot = - k_p * (pos_body_level_STF(0) - x_zmp_des_sine) - k_d * (vel_base_link_STF(0) - x_dot_zmp_sine_des);
 
         double u_ankle;
         u_ankle = x_ref_ddot * robot_params_.mass * robot_params_.robot_height; // [m/s^2 * kg * m = Nm]
