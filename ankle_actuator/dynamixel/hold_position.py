@@ -68,7 +68,7 @@ PROTOCOL_VERSION = 2.0
 
 # Factory default ID of all DYNAMIXEL is 1
 DXL_ID = 1
-DEVICENAME = '/dev/ttyUSB0'
+DEVICENAME = sys.argv[1]  # Check which port is being used on your controller
 
 TORQUE_ENABLE = 1 # Value for enabling the torque
 TORQUE_DISABLE = 0 # Value for disabling the torque
