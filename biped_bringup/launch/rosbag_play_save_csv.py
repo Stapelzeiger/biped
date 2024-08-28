@@ -31,7 +31,7 @@ def generate_launch_description():
     ROSBAG_DIR = '/home/sorina/Documents/code/biped_hardware/bags/'
 
     rosbag_file = os.path.join(ROSBAG_DIR, ROSBAG_NAME + '.bag')
-    csv_output_dir = os.path.join(ROSBAG_DIR, ROSBAG_NAME + '_csvs/')
+    csv_output_dir = os.path.join(ROSBAG_DIR, ROSBAG_NAME + '.bag/' + 'csvs/')
     if not os.path.exists(csv_output_dir):
         os.makedirs(csv_output_dir)
     
