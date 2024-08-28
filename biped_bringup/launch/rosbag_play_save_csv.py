@@ -27,7 +27,7 @@ list_of_topics = ['/joy',
                 '/e_stop']
 
 def generate_launch_description():
-    ROSBAG_NAME = 'rosbag'
+    ROSBAG_NAME = '20240827-16-11-27'
     ROSBAG_DIR = '/home/sorina/Documents/code/biped_hardware/bags/'
 
     rosbag_file = os.path.join(ROSBAG_DIR, ROSBAG_NAME + '.bag')
@@ -36,7 +36,7 @@ def generate_launch_description():
         os.makedirs(csv_output_dir)
     
     run_rosbag_record = launch.actions.ExecuteProcess(
-            cmd=['ros2', 'bag', 'play', '--output=' + rosbag_file],
+            cmd=['ros2', 'bag', 'play', rosbag_file],
             output='screen'
         )
 
