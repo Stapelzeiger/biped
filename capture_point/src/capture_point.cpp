@@ -262,8 +262,8 @@ private:
             }
             if (mode_ == "STANDING")
             {
-                fin_swing_foot_pos_STF = Eigen::Vector3d(0.0, 0.24, 0.0);
-                fin_baselink_pos_STF = Eigen::Vector3d(-robot_params_.offset_baselink_cog_x, 0.12, robot_params_.robot_height);
+                fin_swing_foot_pos_STF = Eigen::Vector3d(0.0, 0.28, 0.0);
+                fin_baselink_pos_STF = Eigen::Vector3d(-0.2, 0.14, robot_params_.robot_height);
             }
 
             std::string frame_id = "STF";
