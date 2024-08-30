@@ -63,16 +63,20 @@ void IKRobot::build_model(const std::string urdf_xml_string)
         std::cout << "  frame name:" << f.name << std::endl;
         std::cout << "  parent joint:" << model_.names[f.parent] << std::endl;
         std::cout << "  frame placement:" << f.placement << std::endl;
-        std::cout << "  frame type" << f.type << std::endl;
+        std::cout << "  frame type: " << f.type << std::endl;
+        std::cout << "---------------------------------------------" << std::endl;
         std::cout << "" << std::endl;
     }
+
+    std::cout << "model joints:" << std::endl;
     for (auto j : model_.joints) {
         std::cout << "joint idx_q:" << j.idx_q() << std::endl;
         std::cout << "joint idx_v:" << j.idx_v() << std::endl;
         std::cout << "joint nq:" << j.nq() << std::endl;
         std::cout << "joint nv:" << j.nv() << std::endl;
         std::cout << "joint shortname:" << j.shortname() << std::endl;
-        std::cout << "" << std::endl;
+        std::cout << "---------------------------------------------" << std::endl;
+        std::cout << " " << std::endl;
     }
 
     nb_joints_actuators_ = model_.nv - 6;
