@@ -8,33 +8,24 @@ launch:
     name: "sim_time_sec"
     default: "0.001"
 
-- node:
-    pkg: robot_state_publisher
-    exec: robot_state_publisher
-    name: biped_state_publisher
-    param:
-    - name: "robot_description"
-      value: "$(command 'cat $(find-pkg-share biped_robot_description)/urdf/custom_robot.urdf')"
-      # value: "$(command '$(find-exec xacro) $(find-pkg-share biped_robot_description)/urdf/custom_robot.urdf')"
-    - name: use_sim_time
-      value: "$(var use_sim_time)"
-    - name: publish_frequency
-      value: 300.0
-    output: screen
+# - node:
+#     pkg: robot_state_publisher
+#     exec: robot_state_publisher
+#     name: biped_state_publisher
+#     param:
+#     - name: "robot_description"
+#       value: "$(command 'cat $(find-pkg-share biped_robot_description)/urdf/custom_robot.urdf')"
+#       # value: "$(command '$(find-exec xacro) $(find-pkg-share biped_robot_description)/urdf/custom_robot.urdf')"
+#     - name: use_sim_time
+#       value: "$(var use_sim_time)"
+#     - name: publish_frequency
+#       value: 300.0
+#     output: screen
 
 
 - include:
-    file: "$(find-pkg-share sim_mujoco)/sim.launch.yml"
+    file: "$(find-pkg-share sim_mujoco)/test_leg.launch.yml"
 
 # - include:
-#     file: "$(find-pkg-share sim_mujoco)/pub_traj.launch.yml"
-
-- include:
-    file: "$(find-pkg-share ik_biped)/launch/ik.launch.yml"
-
-- include:
-    file: "$(find-pkg-share kinematic_odometry)/launch/kinematic_odometry.launch.yml"
-
-- include:
-    file: "$(find-pkg-share capture_point)/launch/test_bodies.launch.yml"
+#     file: "$(find-pkg-share ik_biped)/launch/ik.launch.yml"
 

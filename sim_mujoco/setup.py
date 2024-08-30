@@ -25,6 +25,7 @@ setup(
     entry_points={
         'console_scripts': [
             'mujoco = sim_mujoco.mujoco:main',
+            'test_leg = sim_mujoco.test_leg:main',
             'joy = sim_mujoco.joynode:main',
             'joint_publisher = sim_mujoco.joint_publisher:main'
         ],

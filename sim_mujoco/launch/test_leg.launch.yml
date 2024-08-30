@@ -1,0 +1,29 @@
+launch:
+- arg:
+    name: "publish_tf"
+    default: "False"
+- node:
+    pkg: sim_mujoco
+    exec: test_leg
+    name: mujoco_sim
+    param:
+      - name: mujoco_xml_path
+        value: "$(find-pkg-share biped_robot_description)/urdf/leg.mujoco.xml"
+      - name: visualize_mujoco
+        value: true
+      - name: sim_time_sec
+        value: $(var sim_time_sec)
+      - name: publish_tf
+        value: '$(var publish_tf)'
+    remap:
+      - from: /mujoco_sim/contact_foot_right
+        to: /poll_R_FOOT/gpio
+      - from: /mujoco_sim/contact_foot_left
+        to: /poll_L_FOOT/gpio
+      - from: /mujoco_sim/stop
+        to: /e_stop
+      - from: /mujoco_sim/imu
+        to: /imu
+    output: screen
+    # print GDB backtrace:
+    # launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args
