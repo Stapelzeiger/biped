@@ -126,8 +126,8 @@
     <limit
       lower="-0.3"
       upper="0.3"
-      effort="1000"
-      velocity="1000" />
+      effort="20"
+      velocity="20" />
   </joint>
   <link
     name="R_SHOULDER">
@@ -184,8 +184,8 @@
     <limit
       lower="-0.25"
       upper="0.25"
-      effort="1000"
-      velocity="1000" />
+      effort="20"
+      velocity="20" />
   </joint>
   <link
     name="R_UPPER_LEG">
@@ -242,8 +242,8 @@
     <limit
       lower="-1.5"
       upper="1.5"
-      effort="1000"
-      velocity="1000" />
+      effort="20"
+      velocity="20" />
   </joint>
   <link
     name="R_LOWER_LEG">
@@ -300,8 +300,8 @@
     <limit
       lower="-2.2"
       upper="-0.1"
-      effort="1000"
-      velocity="1000" />
+      effort="20"
+      velocity="20" />
   </joint>
   <link
     name="R_FOOT">
@@ -358,8 +358,8 @@
     <limit
       lower="-1.6"
       upper="1.6"
-      effort="1000"
-      velocity="1000" />
+      effort="20"
+      velocity="20" />
   </joint>
 
   <link name="R_FOOT_CONTACT"></link>
@@ -429,8 +429,8 @@
     <limit
       lower="-0.3"
       upper="0.3"
-      effort="1000"
-      velocity="1000" />
+      effort="20"
+      velocity="20" />
   </joint>
   <link
     name="L_SHOULDER">
@@ -487,8 +487,8 @@
     <limit
       lower="-0.25"
       upper="0.25"
-      effort="1000"
-      velocity="1000" />
+      effort="20"
+      velocity="20" />
   </joint>
   <link
     name="L_UPPER_LEG">
@@ -545,8 +545,8 @@
     <limit
       lower="-1.5"
       upper="1.5"
-      effort="1000"
-      velocity="1000" />
+      effort="20"
+      velocity="20" />
   </joint>
   <link
     name="L_LOWER_LEG">
@@ -603,8 +603,8 @@
     <limit
       lower="-2.2"
       upper="-0.1"
-      effort="1000"
-      velocity="1000" />
+      effort="20"
+      velocity="20" />
   </joint>
   <link
     name="L_FOOT">
@@ -661,8 +661,8 @@
     <limit
       lower="-1.6"
       upper="1.6"
-      effort="1000"
-      velocity="1000" />
+      effort="20"
+      velocity="20" />
   </joint>
 
   <link name="L_FOOT_CONTACT"></link>
