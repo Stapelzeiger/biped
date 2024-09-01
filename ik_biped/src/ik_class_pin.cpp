@@ -75,9 +75,13 @@ void IKRobot::build_model(const std::string urdf_xml_string)
         std::cout << "joint nq:" << j.nq() << std::endl;
         std::cout << "joint nv:" << j.nv() << std::endl;
         std::cout << "joint shortname:" << j.shortname() << std::endl;
+        std::cout << "joint pos limit: " << model_.lowerPositionLimit[j.idx_q()] << " " << model_.upperPositionLimit[j.idx_q()] << std::endl;
+        std::cout << "joint max velocity: " << model_.velocityLimit[j.idx_q()] << std::endl;
+        std::cout << "joint max effort: " << model_.effortLimit[j.idx_q()] << std::endl;
         std::cout << "---------------------------------------------" << std::endl;
         std::cout << " " << std::endl;
     }
+
 
     nb_joints_actuators_ = model_.nv - 6;
     nb_u_ = nb_joints_actuators_ - 2;
@@ -357,11 +361,19 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
         }
     }
     Eigen::VectorXd q_acc(QR_ff.solve(body_accs_stacked - J_dot_for_ff_stacked * q_vel));
+
     for (auto &joint_state: joint_states)
     {
         auto joint_id = model_.getJointId(joint_state.name);
         auto joint = model_.joints[joint_id];
-        joint_state.velocity = q_vel[joint.idx_v()];
+        double q_vel_min = std::numeric_limits<double>::lowest();
+        double q_vel_max = std::numeric_limits<double>::max();
+        if (model_.velocityLimit.size() > joint.idx_q())
+        {
+            q_vel_min = -model_.velocityLimit[joint.idx_q()];
+            q_vel_max = model_.velocityLimit[joint.idx_q()];
+        }
+        joint_state.velocity = fmax(q_vel_min, fmin(q_vel[joint.idx_v()], q_vel_max));
     }
 
     // create a list of bodies in contact
@@ -468,7 +480,15 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
         {
             auto joint_id = model_.getJointId(joint_state.name);
             auto joint = model_.joints[joint_id];
-            joint_state.effort = feedforward_torque_all_joints[joint.idx_v() - 6];
+            double q_effort_min = std::numeric_limits<double>::lowest();
+            double q_effort_max = std::numeric_limits<double>::max();
+            if (model_.effortLimit.size() > joint.idx_q())
+            {
+                q_effort_min = -model_.effortLimit[joint.idx_q()];
+                q_effort_max = model_.effortLimit[joint.idx_q()];
+            }
+            joint_state.effort = fmax(q_effort_min, fmin(feedforward_torque_all_joints[joint.idx_v() - 6], q_effort_max));
+
         }
         for (int joint_idx = 0; joint_idx < model_.njoints; joint_idx++)
         {
