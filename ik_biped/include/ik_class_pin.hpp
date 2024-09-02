@@ -69,7 +69,7 @@ public:
 private:
 
     pinocchio::Model model_;
-    Eigen::VectorXd q_;
+    Eigen::VectorXd q_pin_;
     Eigen::MatrixXd B_matrix_;
     int nb_joints_actuators_;
     int nb_u_;
