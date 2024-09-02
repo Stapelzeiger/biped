@@ -13,10 +13,10 @@
 #pragma GCC diagnostic pop
 #include <iomanip>
 
-const double eps = 1e-3;
+const double CLAMP_ERROR_MAG = 0.002;
 const int IT_MAX = 400;
 const double DT = 0.1;
-const double damp = 1e-5;
+const double DAMP = 1e-5;
 
 
 void get_singular_values(const Eigen::MatrixXd &A, Eigen::VectorXd &S)
@@ -185,15 +185,13 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
             err.setZero();
             Eigen::MatrixXd J_block;
             J_block.setZero();
-            Eigen::VectorXd sing_val_vector;
-            const double clamped_error_mag_constant = 0.002;
 
             if (body.type == BodyState::ContraintType::FULL_6DOF) {
                 pinocchio::SE3 cur_to_des = des_to_world.actInv(cur_to_world);
                 err = pinocchio::log6(cur_to_des).toVector();
-                clamp_error_per_step(err, clamped_error_mag_constant);
+                clamp_error_per_step(err, CLAMP_ERROR_MAG);
                 // J v = -err
-                // v = - JT (J JT + damp I)^-1 err
+                // v = - JT (J JT + DAMP I)^-1 err
                 J_block = J.block(0, 0, 6, model_.nv);
                 J_stacked.block(cur_constraint, 0, 6, model_.nv) = J_block;
                 err_stacked.block(cur_constraint, 0, 6, 1) = err;
@@ -202,7 +200,7 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
             } else if (body.type == BodyState::ContraintType::POS_ONLY) {
                 pinocchio::SE3 des_to_cur = cur_to_world.actInv(des_to_world);
                 err = - des_to_cur.translation();
-                clamp_error_per_step(err, clamped_error_mag_constant);
+                clamp_error_per_step(err, CLAMP_ERROR_MAG);
                 J_block = J.block(0, 0, 3, model_.nv);
                 J_stacked.block(cur_constraint, 0, 3, model_.nv) = J_block;
                 err_stacked.block(cur_constraint, 0, 3, 1) = err;
@@ -218,7 +216,7 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
                 auto a_proj = a_normal_basis.transpose() * a_des_in_cur;
                 auto a_err = -a_proj;
                 Eigen::VectorXd p_err = -des_to_cur.translation();
-                clamp_error_per_step(p_err, clamped_error_mag_constant);
+                clamp_error_per_step(p_err, CLAMP_ERROR_MAG);
 
                 auto J_w = J.block(3, 0, 3, model_.nv);
                 auto partial_a_partial_q = J_w.colwise().cross(body.align_axis);
@@ -237,7 +235,7 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
         }
         Eigen::MatrixXd identity_mat;
         identity_mat = Eigen::MatrixXd::Identity(nb_constraints, nb_constraints);
-        v = - J_stacked.transpose() * (J_stacked * J_stacked.transpose() + damp * identity_mat).ldlt().solve(err_stacked);
+        v = - J_stacked.transpose() * (J_stacked * J_stacked.transpose() + DAMP * identity_mat).ldlt().solve(err_stacked);
         q = pinocchio::integrate(model_, q, v * DT);
     }
 
