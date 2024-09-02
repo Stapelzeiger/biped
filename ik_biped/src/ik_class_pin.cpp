@@ -83,7 +83,7 @@ void IKRobot::build_model(const std::string urdf_xml_string)
         std::cout << " " << std::endl;
     }
 
-
+    // Create B matrix.
     nb_joints_actuators_ = model_.nv - 6;
     nb_u_ = nb_joints_actuators_ - 2;
     B_matrix_ = Eigen::MatrixXd::Zero(model_.nv, nb_joints_actuators_ - 2);
@@ -123,7 +123,8 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
         }
         body_frame_ids.push_back(frame_id);
     }
-    // check that the frames are connected to all leaf joints
+
+    // Check that the frames are connected to all leaf joints.
     for (const auto &joint_subtree : model_.subtrees) {
         if (joint_subtree.size() == 1) { // is leaf joint
             if (std::find_if(body_frame_ids.begin(), body_frame_ids.end(),
@@ -174,7 +175,7 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
 
     unsigned int i = 0;
     for (i = 0; i < IT_MAX; i++) {
-        pinocchio::computeJointJacobians(model_, data, q); // also computes forward kinematics
+        pinocchio::computeJointJacobians(model_, data, q); // Also computes forward kinematics.
         pinocchio::updateFramePlacements(model_, data);
         Eigen::VectorXd v = Eigen::VectorXd::Zero(model_.nv);
         int cur_constraint = 0;
@@ -246,6 +247,7 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
         q = pinocchio::integrate(model_, q, v * DT);
     }
 
+    // Send the solution to the joint_trajectory.
     std::vector<JointState> joint_states;
     for (int joint_idx = 0; joint_idx < model_.njoints; joint_idx++) {
         const auto &joint = model_.joints[joint_idx];
