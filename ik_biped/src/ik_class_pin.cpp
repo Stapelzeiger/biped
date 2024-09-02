@@ -49,7 +49,8 @@ IKRobot::IKRobot()
 
 void IKRobot::build_model(const std::string urdf_xml_string)
 {
-    // TODO clear previous model
+    // Create model.
+    model_ = pinocchio::Model();
     pinocchio::urdf::buildModelFromXML(urdf_xml_string, pinocchio::JointModelFreeFlyer(), model_);
     q_ = pinocchio::neutral(model_);
     // q_ += Eigen::VectorXd::Random(model_.nq) * 0.01;
