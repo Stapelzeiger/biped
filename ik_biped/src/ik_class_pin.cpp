@@ -71,14 +71,14 @@ void IKRobot::build_model(const std::string urdf_xml_string)
 
     std::cout << "model joints:" << std::endl;
     for (auto j : model_.joints) {
-        std::cout << "joint idx_q:" << j.idx_q() << std::endl;
-        std::cout << "joint idx_v:" << j.idx_v() << std::endl;
-        std::cout << "joint nq:" << j.nq() << std::endl;
-        std::cout << "joint nv:" << j.nv() << std::endl;
-        std::cout << "joint shortname:" << j.shortname() << std::endl;
-        std::cout << "joint pos limit: " << model_.lowerPositionLimit[j.idx_q()] << " " << model_.upperPositionLimit[j.idx_q()] << std::endl;
-        std::cout << "joint max velocity: " << model_.velocityLimit[j.idx_q()] << std::endl;
-        std::cout << "joint max effort: " << model_.effortLimit[j.idx_q()] << std::endl;
+        std::cout << "  joint idx_q:" << j.idx_q() << std::endl;
+        std::cout << "  joint idx_v:" << j.idx_v() << std::endl;
+        std::cout << "  joint nq:" << j.nq() << std::endl;
+        std::cout << "  joint nv:" << j.nv() << std::endl;
+        std::cout << "  joint shortname:" << j.shortname() << std::endl;
+        std::cout << "  joint pos limit: " << model_.lowerPositionLimit[j.idx_q()] << " " << model_.upperPositionLimit[j.idx_q()] << std::endl;
+        std::cout << "  joint max velocity: " << model_.velocityLimit[j.idx_q()] << std::endl;
+        std::cout << "  joint max effort: " << model_.effortLimit[j.idx_q()] << std::endl;
         std::cout << "---------------------------------------------" << std::endl;
         std::cout << " " << std::endl;
     }
