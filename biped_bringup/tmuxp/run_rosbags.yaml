@@ -6,5 +6,7 @@ windows:
   panes:
   - rviz2 -d src/biped/biped_bringup/rviz/biped.rviz --ros-args --param use_sim_time:=true
   - ros2 launch biped_robot_description launch.yaml
-  - ros2 bag play $ROSBAG_PATH
+  - ros2 bag play ../bags/20240830-15-49-29.bag/20240830-15-49-29.bag_0.mcap --remap /joint_trajectory:=/joint_trajectory_remapped --clock
+  - ros2 run plotjuggler plotjuggler --layout src/biped/biped_bringup/plotjuggler/joints_plot.xml
+  - ros2 launch ik_biped ik.launch.yml use_sim_time:=True
   - clear
