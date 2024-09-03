@@ -267,7 +267,7 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
         }
     }
 
-    // Update q_meas with encoder_joint_state
+    // Update q_meas with encoder_joint_state.
     for (int joint_idx = 0; joint_idx < model_.njoints; joint_idx++) {
         const auto &joint = model_.joints[joint_idx];
         if (joint.nq() == 1 && joint.idx_q() != -1) {
@@ -335,10 +335,10 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
         auto joint = model_.joints[joint_id];
         double q_vel_min = std::numeric_limits<double>::lowest();
         double q_vel_max = std::numeric_limits<double>::max();
-        if (model_.velocityLimit.size() > joint.idx_q())
+        if (model_.velocityLimit.size() > joint.idx_v())
         {
-            q_vel_min = -model_.velocityLimit[joint.idx_q()];
-            q_vel_max = model_.velocityLimit[joint.idx_q()];
+            q_vel_min = -model_.velocityLimit[joint.idx_v()];
+            q_vel_max = model_.velocityLimit[joint.idx_v()];
         }
         joint_state.velocity = fmax(q_vel_min, fmin(q_vel[joint.idx_v()], q_vel_max));
     }
@@ -508,10 +508,10 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
             auto joint = model_.joints[joint_id];
             double q_effort_min = std::numeric_limits<double>::lowest();
             double q_effort_max = std::numeric_limits<double>::max();
-            if (model_.effortLimit.size() > joint.idx_q())
+            if (model_.effortLimit.size() > joint.idx_v())
             {
-                q_effort_min = -model_.effortLimit[joint.idx_q()];
-                q_effort_max = model_.effortLimit[joint.idx_q()];
+                q_effort_min = -model_.effortLimit[joint.idx_v()];
+                q_effort_max = model_.effortLimit[joint.idx_v()];
             }
             joint_state.effort = fmax(q_effort_min, fmin(feedforward_torque_all_joints[joint.idx_v() - 6], q_effort_max));
 
