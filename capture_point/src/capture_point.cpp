@@ -68,12 +68,7 @@ public:
 
         walk_slow_ = robot_params_.walk_slow;
 
-        if (walk_slow_ == true)
-        {
-            swing_foot_traj_ = OptimizerTrajectory(robot_params_.dt_ctrl, robot_params_.t_step);
-        } else {
-            swing_foot_traj_ = OptimizerTrajectory(robot_params_.dt_ctrl, robot_params_.t_step);
-        }
+        swing_foot_traj_ = OptimizerTrajectory(robot_params_.dt_ctrl, robot_params_.t_step);
 
         r_foot_frame_id_ = this->declare_parameter<std::string>("r_foot_frame_id", "R_FOOT");
         l_foot_frame_id_ = this->declare_parameter<std::string>("l_foot_frame_id", "L_FOOT");
@@ -290,15 +285,8 @@ private:
             }
         }
 
-        // if (initialization_done_ == true && mode_ == "ONE_FOOT_SWING") {
-        //     run_one_foot_swing();
-        // }
-
         RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 1000, "Walking mode: %s", mode_.c_str());
         RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 1000, "Walk slow: %d", walk_slow_);
-
-
-
     }
 
     void run_capture_point_controller()

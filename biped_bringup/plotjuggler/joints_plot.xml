@@ -1,57 +1,288 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <root>
  <tabbed_widget parent="main_window" name="Main Window">
-  <Tab tab_name="tab1" containers="1">
+  <Tab containers="1" tab_name="positions">
    <Container>
-    <DockSplitter sizes="1" count="1" orientation="-">
+    <DockSplitter sizes="0.249867;0.250399;0.249867;0.249867" count="4" orientation="-">
      <DockSplitter sizes="0.5;0.5" count="2" orientation="|">
       <DockArea name="...">
-       <plot mode="TimeSeries" flip_y="false" style="Lines" flip_x="false">
-        <range bottom="-0.265545" left="143.229326" right="153.242126" top="1.030867"/>
+       <plot style="Lines" mode="TimeSeries" flip_x="false" flip_y="false">
+        <range bottom="-0.030191" left="0.000000" top="0.023908" right="18.449971"/>
         <limitY/>
-        <curve color="#1f77b4" name="/poll_L_FOOT/gpio/data"/>
-        <curve color="#d62728" name="/capture_point/desired_left_contact/data"/>
-        <curve color="#1ac938" name="/joint_states/L_HAA/position"/>
-        <curve color="#ff7f0e" name="/joint_trajectory/points.0/positions.1"/>
+        <curve color="#d62728" name="/joint_trajectory/points[0]/positions[0]"/>
+        <curve color="#1ac938" name="/joint_trajectory_remapped/points[0]/positions[0]"/>
+        <curve color="#0e43ff" name="/joint_states/position[4]"/>
        </plot>
       </DockArea>
       <DockArea name="...">
-       <plot mode="TimeSeries" flip_y="false" style="Lines" flip_x="false">
-        <range bottom="-0.131498" left="143.229326" right="153.242126" top="1.027598"/>
+       <plot style="Lines" mode="TimeSeries" flip_x="false" flip_y="false">
+        <range bottom="-0.014090" left="0.000000" top="0.023515" right="18.449971"/>
         <limitY/>
-        <curve color="#1f77b4" name="/poll_R_FOOT/gpio/data"/>
-        <curve color="#d62728" name="/capture_point/desired_right_contact/data"/>
-        <curve color="#1ac938" name="/joint_states/R_HAA/position"/>
-        <curve color="#ff7f0e" name="/joint_trajectory/points.0/positions.6"/>
+        <curve color="#d62728" name="/joint_trajectory/points[0]/positions[5]"/>
+        <curve color="#1ac938" name="/joint_trajectory_remapped/points[0]/positions[5]"/>
+        <curve color="#0e3bff" name="/joint_states/position[0]"/>
+       </plot>
+      </DockArea>
+     </DockSplitter>
+     <DockSplitter sizes="0.5;0.5" count="2" orientation="|">
+      <DockArea name="...">
+       <plot style="Lines" mode="TimeSeries" flip_x="false" flip_y="false">
+        <range bottom="-0.306074" left="0.000000" top="0.146006" right="18.449971"/>
+        <limitY/>
+        <curve color="#d62728" name="/joint_trajectory/points[0]/positions[1]"/>
+        <curve color="#1ac938" name="/joint_trajectory_remapped/points[0]/positions[1]"/>
+        <curve color="#0e2fff" name="/joint_states/position[5]"/>
+       </plot>
+      </DockArea>
+      <DockArea name="...">
+       <plot style="Lines" mode="TimeSeries" flip_x="false" flip_y="false">
+        <range bottom="-0.136877" left="0.000000" top="0.289116" right="18.449971"/>
+        <limitY/>
+        <curve color="#d62728" name="/joint_trajectory/points[0]/positions[6]"/>
+        <curve color="#1ac938" name="/joint_trajectory_remapped/points[0]/positions[6]"/>
+        <curve color="#0e3bff" name="/joint_states/position[1]"/>
+       </plot>
+      </DockArea>
+     </DockSplitter>
+     <DockSplitter sizes="0.5;0.5" count="2" orientation="|">
+      <DockArea name="...">
+       <plot style="Lines" mode="TimeSeries" flip_x="false" flip_y="false">
+        <range bottom="0.563753" left="0.000000" top="1.032413" right="18.449971"/>
+        <limitY/>
+        <curve color="#d62728" name="/joint_trajectory/points[0]/positions[2]"/>
+        <curve color="#1ac938" name="/joint_trajectory_remapped/points[0]/positions[2]"/>
+        <curve color="#0e3bff" name="/joint_states/position[6]"/>
+       </plot>
+      </DockArea>
+      <DockArea name="...">
+       <plot style="Lines" mode="TimeSeries" flip_x="false" flip_y="false">
+        <range bottom="0.504425" left="0.000000" top="1.037026" right="18.449971"/>
+        <limitY/>
+        <curve color="#d62728" name="/joint_trajectory/points[0]/positions[7]"/>
+        <curve color="#1ac938" name="/joint_trajectory_remapped/points[0]/positions[7]"/>
+        <curve color="#0e3bff" name="/joint_states/position[2]"/>
+       </plot>
+      </DockArea>
+     </DockSplitter>
+     <DockSplitter sizes="0.5;0.5" count="2" orientation="|">
+      <DockArea name="...">
+       <plot style="Lines" mode="TimeSeries" flip_x="false" flip_y="false">
+        <range bottom="-1.731239" left="0.000000" top="-0.869817" right="18.449971"/>
+        <limitY/>
+        <curve color="#d62728" name="/joint_trajectory/points[0]/positions[3]"/>
+        <curve color="#1ac938" name="/joint_trajectory_remapped/points[0]/positions[3]"/>
+        <curve color="#0e3bff" name="/joint_states/position[7]"/>
+       </plot>
+      </DockArea>
+      <DockArea name="...">
+       <plot style="Lines" mode="TimeSeries" flip_x="false" flip_y="false">
+        <range bottom="-1.683783" left="0.000000" top="-0.860033" right="18.449971"/>
+        <limitY/>
+        <curve color="#d62729" name="/joint_trajectory/points[0]/positions[8]"/>
+        <curve color="#1ac938" name="/joint_trajectory_remapped/points[0]/positions[8]"/>
+        <curve color="#0e3bff" name="/joint_states/position[3]"/>
        </plot>
       </DockArea>
      </DockSplitter>
     </DockSplitter>
    </Container>
   </Tab>
-  <currentTabIndex index="0"/>
+  <Tab containers="1" tab_name="velocities">
+   <Container>
+    <DockSplitter sizes="0.249867;0.250399;0.249867;0.249867" count="4" orientation="-">
+     <DockSplitter sizes="0.5;0.5" count="2" orientation="|">
+      <DockArea name="...">
+       <plot style="Lines" mode="TimeSeries" flip_x="false" flip_y="false">
+        <range bottom="-1.670306" left="0.000000" top="1.321589" right="18.449971"/>
+        <limitY/>
+        <curve color="#1ac938" name="/joint_trajectory_remapped/points[0]/velocities[0]"/>
+        <curve color="#d62728" name="/joint_trajectory/points[0]/velocities[0]"/>
+        <curve color="#0e3bff" name="/joint_states/velocity[4]"/>
+       </plot>
+      </DockArea>
+      <DockArea name="...">
+       <plot style="Lines" mode="TimeSeries" flip_x="false" flip_y="false">
+        <range bottom="-1.203151" left="0.000000" top="1.960275" right="18.449971"/>
+        <limitY/>
+        <curve color="#d62728" name="/joint_trajectory/points[0]/velocities[5]"/>
+        <curve color="#1ac938" name="/joint_trajectory_remapped/points[0]/velocities[5]"/>
+        <curve color="#0e3bff" name="/joint_states/velocity[0]"/>
+       </plot>
+      </DockArea>
+     </DockSplitter>
+     <DockSplitter sizes="0.5;0.5" count="2" orientation="|">
+      <DockArea name="...">
+       <plot style="Lines" mode="TimeSeries" flip_x="false" flip_y="false">
+        <range bottom="-2.958831" left="0.000000" top="1.966087" right="18.449971"/>
+        <limitY/>
+        <curve color="#d62728" name="/joint_trajectory/points[0]/velocities[1]"/>
+        <curve color="#1ac938" name="/joint_trajectory_remapped/points[0]/velocities[1]"/>
+        <curve color="#0e3bff" name="/joint_states/velocity[5]"/>
+       </plot>
+      </DockArea>
+      <DockArea name="...">
+       <plot style="Lines" mode="TimeSeries" flip_x="false" flip_y="false">
+        <range bottom="-1.815723" left="0.000000" top="2.533577" right="18.449971"/>
+        <limitY/>
+        <curve color="#d62728" name="/joint_trajectory/points[0]/velocities[6]"/>
+        <curve color="#1ac938" name="/joint_trajectory_remapped/points[0]/velocities[6]"/>
+        <curve color="#0e3bff" name="/joint_states/velocity[1]"/>
+       </plot>
+      </DockArea>
+     </DockSplitter>
+     <DockSplitter sizes="0.5;0.5" count="2" orientation="|">
+      <DockArea name="...">
+       <plot style="Lines" mode="TimeSeries" flip_x="false" flip_y="false">
+        <range bottom="-3.498211" left="0.000000" top="3.939137" right="18.449971"/>
+        <limitY/>
+        <curve color="#d62728" name="/joint_trajectory/points[0]/velocities[2]"/>
+        <curve color="#1ac938" name="/joint_trajectory_remapped/points[0]/velocities[2]"/>
+        <curve color="#0e3bff" name="/joint_states/velocity[6]"/>
+       </plot>
+      </DockArea>
+      <DockArea name="...">
+       <plot style="Lines" mode="TimeSeries" flip_x="false" flip_y="false">
+        <range bottom="-3.493137" left="0.000000" top="5.795924" right="18.449971"/>
+        <limitY/>
+        <curve color="#d62728" name="/joint_trajectory/points[0]/velocities[7]"/>
+        <curve color="#1ac938" name="/joint_trajectory_remapped/points[0]/velocities[7]"/>
+        <curve color="#0e3bff" name="/joint_states/velocity[2]"/>
+       </plot>
+      </DockArea>
+     </DockSplitter>
+     <DockSplitter sizes="0.5;0.5" count="2" orientation="|">
+      <DockArea name="...">
+       <plot style="Lines" mode="TimeSeries" flip_x="false" flip_y="false">
+        <range bottom="-9.780681" left="0.000000" top="5.563093" right="18.449971"/>
+        <limitY/>
+        <curve color="#d62728" name="/joint_trajectory/points[0]/velocities[3]"/>
+        <curve color="#1ac938" name="/joint_trajectory_remapped/points[0]/velocities[3]"/>
+        <curve color="#0e3bff" name="/joint_states/velocity[7]"/>
+       </plot>
+      </DockArea>
+      <DockArea name="...">
+       <plot style="Lines" mode="TimeSeries" flip_x="false" flip_y="false">
+        <range bottom="-9.595563" left="0.000000" top="5.296293" right="18.449971"/>
+        <limitY/>
+        <curve color="#d62728" name="/joint_trajectory/points[0]/velocities[8]"/>
+        <curve color="#1ac938" name="/joint_trajectory_remapped/points[0]/velocities[8]"/>
+        <curve color="#0e3bff" name="/joint_states/velocity[3]"/>
+       </plot>
+      </DockArea>
+     </DockSplitter>
+    </DockSplitter>
+   </Container>
+  </Tab>
+  <Tab containers="1" tab_name="effort">
+   <Container>
+    <DockSplitter sizes="1" count="1" orientation="-">
+     <DockSplitter sizes="0.5;0.5" count="2" orientation="|">
+      <DockSplitter sizes="0.249867;0.250399;0.249867;0.249867" count="4" orientation="-">
+       <DockArea name="...">
+        <plot style="Lines" mode="TimeSeries" flip_x="false" flip_y="false">
+         <range bottom="-0.650000" left="0.000000" top="1.030000" right="18.449971"/>
+         <limitY/>
+         <curve color="#d62728" name="/joint_trajectory/points[0]/effort[0]"/>
+         <curve color="#1ac938" name="/joint_trajectory_remapped/points[0]/effort[0]"/>
+         <curve color="#0e3bff" name="/joint_states/effort[4]"/>
+        </plot>
+       </DockArea>
+       <DockArea name="...">
+        <plot style="Lines" mode="TimeSeries" flip_x="false" flip_y="false">
+         <range bottom="-2.641750" left="0.000000" top="2.891750" right="18.449971"/>
+         <limitY/>
+         <curve color="#d62728" name="/joint_trajectory/points[0]/effort[1]"/>
+         <curve color="#1ac938" name="/joint_trajectory_remapped/points[0]/effort[1]"/>
+         <curve color="#0e3bff" name="/joint_states/effort[5]"/>
+        </plot>
+       </DockArea>
+       <DockArea name="...">
+        <plot style="Lines" mode="TimeSeries" flip_x="false" flip_y="false">
+         <range bottom="-4.676300" left="0.000000" top="3.269178" right="18.449971"/>
+         <limitY/>
+         <curve color="#d62728" name="/joint_trajectory/points[0]/effort[2]"/>
+         <curve color="#1ac938" name="/joint_trajectory_remapped/points[0]/effort[2]"/>
+         <curve color="#0e3bff" name="/joint_states/effort[6]"/>
+        </plot>
+       </DockArea>
+       <DockArea name="...">
+        <plot style="Lines" mode="TimeSeries" flip_x="false" flip_y="false">
+         <range bottom="-3.326326" left="0.000000" top="11.639371" right="18.449971"/>
+         <limitY/>
+         <curve color="#d62728" name="/joint_trajectory/points[0]/effort[3]"/>
+         <curve color="#1ac938" name="/joint_trajectory_remapped/points[0]/effort[3]"/>
+         <curve color="#0e3bff" name="/joint_states/effort[7]"/>
+        </plot>
+       </DockArea>
+      </DockSplitter>
+      <DockSplitter sizes="0.249867;0.250399;0.249867;0.249867" count="4" orientation="-">
+       <DockArea name="...">
+        <plot style="Lines" mode="TimeSeries" flip_x="false" flip_y="false">
+         <range bottom="-0.824500" left="0.000000" top="0.624500" right="18.449971"/>
+         <limitY/>
+         <curve color="#d62728" name="/joint_trajectory/points[0]/effort[5]"/>
+         <curve color="#1ac938" name="/joint_trajectory_remapped/points[0]/effort[5]"/>
+         <curve color="#0e3bff" name="/joint_states/effort[0]"/>
+        </plot>
+       </DockArea>
+       <DockArea name="...">
+        <plot style="Lines" mode="TimeSeries" flip_x="false" flip_y="false">
+         <range bottom="-4.516029" left="0.000000" top="2.753074" right="18.449971"/>
+         <limitY/>
+         <curve color="#d62728" name="/joint_trajectory/points[0]/effort[6]"/>
+         <curve color="#1ac938" name="/joint_trajectory_remapped/points[0]/effort[6]"/>
+         <curve color="#0e3bff" name="/joint_states/effort[1]"/>
+        </plot>
+       </DockArea>
+       <DockArea name="...">
+        <plot style="Lines" mode="TimeSeries" flip_x="false" flip_y="false">
+         <range bottom="-4.528892" left="0.000000" top="3.470461" right="18.449971"/>
+         <limitY/>
+         <curve color="#d62728" name="/joint_trajectory/points[0]/effort[7]"/>
+         <curve color="#1ac938" name="/joint_trajectory_remapped/points[0]/effort[7]"/>
+         <curve color="#0e3bff" name="/joint_states/effort[2]"/>
+        </plot>
+       </DockArea>
+       <DockArea name="...">
+        <plot style="Lines" mode="TimeSeries" flip_x="false" flip_y="false">
+         <range bottom="-3.298541" left="0.000000" top="9.660182" right="18.449971"/>
+         <limitY/>
+         <curve color="#d62728" name="/joint_trajectory/points[0]/effort[8]"/>
+         <curve color="#1ac938" name="/joint_trajectory_remapped/points[0]/effort[8]"/>
+         <curve color="#0e3bff" name="/joint_states/effort[3]"/>
+        </plot>
+       </DockArea>
+      </DockSplitter>
+     </DockSplitter>
+    </DockSplitter>
+   </Container>
+  </Tab>
+  <currentTabIndex index="2"/>
  </tabbed_widget>
  <use_relative_time_offset enabled="1"/>
  <!-- - - - - - - - - - - - - - - -->
  <!-- - - - - - - - - - - - - - - -->
  <Plugins>
   <plugin ID="DataLoad CSV">
-   <default delimiter="0" time_axis=""/>
+   <parameters delimiter="0" time_axis=""/>
   </plugin>
+  <plugin ID="DataLoad MCAP"/>
   <plugin ID="DataLoad ROS2 bags">
    <use_header_stamp value="false"/>
    <discard_large_arrays value="true"/>
    <max_array_size value="100"/>
    <boolean_strings_to_number value="true"/>
    <remove_suffix_from_strings value="true"/>
+   <selected_topics value=""/>
   </plugin>
   <plugin ID="DataLoad ULog"/>
   <plugin ID="ROS2 Topic Subscriber">
-   <use_header_stamp value="false"/>
+   <use_header_stamp value="true"/>
    <discard_large_arrays value="true"/>
    <max_array_size value="100"/>
    <boolean_strings_to_number value="true"/>
    <remove_suffix_from_strings value="true"/>
+   <selected_topics value="/joint_states;/joint_trajectory;/odometry;/joint_trajectory_remapped"/>
   </plugin>
   <plugin ID="UDP Server"/>
   <plugin ID="WebSocket Server"/>

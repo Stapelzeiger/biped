@@ -53,7 +53,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes_v2/base_link.STL" />
+          filename="package://biped_robot_description/meshes/base_link.STL" />
       </geometry>
       <material
         name="">
@@ -67,7 +67,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes_v2/base_link.STL" />
+          filename="package://biped_robot_description/meshes/base_link.STL" />
       </geometry>
     </collision>
   </link>
@@ -93,7 +93,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes_v2/R_HIP.STL" />
+          filename="package://biped_robot_description/meshes/R_HIP.STL" />
       </geometry>
       <material
         name="">
@@ -107,7 +107,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes_v2/R_HIP.STL" />
+          filename="package://biped_robot_description/meshes/R_HIP.STL" />
       </geometry>
     </collision>
   </link>
@@ -126,8 +126,8 @@
     <limit
       lower="-0.3"
       upper="0.3"
-      effort="1000"
-      velocity="1000" />
+      effort="20"
+      velocity="20" />
   </joint>
   <link
     name="R_SHOULDER">
@@ -151,7 +151,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes_v2/R_SHOULDER.STL" />
+          filename="package://biped_robot_description/meshes/R_SHOULDER.STL" />
       </geometry>
       <material
         name="">
@@ -165,7 +165,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes_v2/R_SHOULDER.STL" />
+          filename="package://biped_robot_description/meshes/R_SHOULDER.STL" />
       </geometry>
     </collision>
   </link>
@@ -184,8 +184,8 @@
     <limit
       lower="-0.25"
       upper="0.25"
-      effort="1000"
-      velocity="1000" />
+      effort="20"
+      velocity="20" />
   </joint>
   <link
     name="R_UPPER_LEG">
@@ -209,7 +209,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes_v2/R_UPPER_LEG.STL" />
+          filename="package://biped_robot_description/meshes/R_UPPER_LEG.STL" />
       </geometry>
       <material
         name="">
@@ -223,7 +223,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes_v2/R_UPPER_LEG.STL" />
+          filename="package://biped_robot_description/meshes/R_UPPER_LEG.STL" />
       </geometry>
     </collision>
   </link>
@@ -242,8 +242,8 @@
     <limit
       lower="-1.5"
       upper="1.5"
-      effort="1000"
-      velocity="1000" />
+      effort="20"
+      velocity="20" />
   </joint>
   <link
     name="R_LOWER_LEG">
@@ -267,7 +267,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes_v2/R_LOWER_LEG.STL" />
+          filename="package://biped_robot_description/meshes/R_LOWER_LEG.STL" />
       </geometry>
       <material
         name="">
@@ -281,7 +281,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes_v2/R_LOWER_LEG.STL" />
+          filename="package://biped_robot_description/meshes/R_LOWER_LEG.STL" />
       </geometry>
     </collision>
   </link>
@@ -300,8 +300,8 @@
     <limit
       lower="-2.2"
       upper="-0.1"
-      effort="1000"
-      velocity="1000" />
+      effort="20"
+      velocity="20" />
   </joint>
   <link
     name="R_FOOT">
@@ -325,7 +325,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes_v2/R_FOOT.STL" />
+          filename="package://biped_robot_description/meshes/R_FOOT.STL" />
       </geometry>
       <material
         name="">
@@ -339,7 +339,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes_v2/R_FOOT.STL" />
+          filename="package://biped_robot_description/meshes/R_FOOT.STL" />
       </geometry>
     </collision>
   </link>
@@ -358,8 +358,8 @@
     <limit
       lower="-1.6"
       upper="1.6"
-      effort="1000"
-      velocity="1000" />
+      effort="20"
+      velocity="20" />
   </joint>
 
   <link name="R_FOOT_CONTACT"></link>
@@ -396,7 +396,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes_v2/L_HIP.STL" />
+          filename="package://biped_robot_description/meshes/L_HIP.STL" />
       </geometry>
       <material
         name="">
@@ -410,7 +410,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes_v2/L_HIP.STL" />
+          filename="package://biped_robot_description/meshes/L_HIP.STL" />
       </geometry>
     </collision>
   </link>
@@ -429,8 +429,8 @@
     <limit
       lower="-0.3"
       upper="0.3"
-      effort="1000"
-      velocity="1000" />
+      effort="20"
+      velocity="20" />
   </joint>
   <link
     name="L_SHOULDER">
@@ -454,7 +454,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes_v2/L_SHOULDER.STL" />
+          filename="package://biped_robot_description/meshes/L_SHOULDER.STL" />
       </geometry>
       <material
         name="">
@@ -468,7 +468,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes_v2/L_SHOULDER.STL" />
+          filename="package://biped_robot_description/meshes/L_SHOULDER.STL" />
       </geometry>
     </collision>
   </link>
@@ -487,8 +487,8 @@
     <limit
       lower="-0.25"
       upper="0.25"
-      effort="1000"
-      velocity="1000" />
+      effort="20"
+      velocity="20" />
   </joint>
   <link
     name="L_UPPER_LEG">
@@ -512,7 +512,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes_v2/L_UPPER_LEG.STL" />
+          filename="package://biped_robot_description/meshes/L_UPPER_LEG.STL" />
       </geometry>
       <material
         name="">
@@ -526,7 +526,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes_v2/L_UPPER_LEG.STL" />
+          filename="package://biped_robot_description/meshes/L_UPPER_LEG.STL" />
       </geometry>
     </collision>
   </link>
@@ -545,8 +545,8 @@
     <limit
       lower="-1.5"
       upper="1.5"
-      effort="1000"
-      velocity="1000" />
+      effort="20"
+      velocity="20" />
   </joint>
   <link
     name="L_LOWER_LEG">
@@ -570,7 +570,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes_v2/L_LOWER_LEG.STL" />
+          filename="package://biped_robot_description/meshes/L_LOWER_LEG.STL" />
       </geometry>
       <material
         name="">
@@ -584,7 +584,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes_v2/L_LOWER_LEG.STL" />
+          filename="package://biped_robot_description/meshes/L_LOWER_LEG.STL" />
       </geometry>
     </collision>
   </link>
@@ -603,8 +603,8 @@
     <limit
       lower="-2.2"
       upper="-0.1"
-      effort="1000"
-      velocity="1000" />
+      effort="20"
+      velocity="20" />
   </joint>
   <link
     name="L_FOOT">
@@ -628,7 +628,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes_v2/L_FOOT.STL" />
+          filename="package://biped_robot_description/meshes/L_FOOT.STL" />
       </geometry>
       <material
         name="">
@@ -642,7 +642,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes_v2/L_FOOT.STL" />
+          filename="package://biped_robot_description/meshes/L_FOOT.STL" />
       </geometry>
     </collision>
   </link>
@@ -661,8 +661,8 @@
     <limit
       lower="-1.6"
       upper="1.6"
-      effort="1000"
-      velocity="1000" />
+      effort="20"
+      velocity="20" />
   </joint>
 
   <link name="L_FOOT_CONTACT"></link>

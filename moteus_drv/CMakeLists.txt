@@ -39,10 +39,6 @@ if( HAS_RASPBERRY_PI_HEADER )
   )
   rclcpp_components_register_node(moteus PLUGIN "MoteusServo" EXECUTABLE "moteus_node")
 
-  rosidl_generate_interfaces(${PROJECT_NAME}
-  "msg/StampedSensors.msg"
-  DEPENDENCIES std_msgs)
-
   rosidl_get_typesupport_target(cpp_typesupport_target
   ${PROJECT_NAME} "rosidl_typesupport_cpp")
 
@@ -66,6 +62,11 @@ install(PROGRAMS
 )
 
 endif()
+
+rosidl_generate_interfaces(${PROJECT_NAME}
+  "msg/StampedSensors.msg"
+  DEPENDENCIES std_msgs
+)
 
 install(DIRECTORY
   launch

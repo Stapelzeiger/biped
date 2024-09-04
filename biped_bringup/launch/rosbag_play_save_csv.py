@@ -1,9 +1,6 @@
 import launch
 import time
-# from launch.substitutions import LaunchConfiguration
-# from launch.actions import DeclareLaunchArgument, RegisterEventHandler
-# from launch.event_handlers import OnExecutionComplete
-
+import os
 
 list_of_topics = ['/joy',
                 '/imu',
@@ -24,37 +21,36 @@ list_of_topics = ['/joy',
                 '/capture_point/markers_traj_feet',
                 '/capture_point/markers_swing_foot_BF',
                 '/capture_point/markers_stance_foot_BF',
-                '/capture_point/desired_left_contact',
-                '/capture_point/desired_right_contact',
                 '/ik_interface/markers',
                 '/rosout',
                 '/external_cam/image_raw/compressed',
-                '/vel_cmd',
                 '/e_stop']
 
-
 def generate_launch_description():
+    ROSBAG_NAME = '20240827-16-11-27'
+    ROSBAG_DIR = '/home/sorina/Documents/code/biped_hardware/bags/'
 
-    # test_name = LaunchConfiguration('test_name')
-    # test_name_launch_arg = DeclareLaunchArgument(
-    #     'test_name',
-    #     default_value='test'
-    # )
-    timestr = time.strftime("%Y%m%d-%H-%M-%S")
-    rosbag_dir = '/home/sorina/Documents/code/biped_hardware/bags/'
-    rosbag_name = timestr + '.bag'
-    rosbag_file = rosbag_dir + rosbag_name
-
+    rosbag_file = os.path.join(ROSBAG_DIR, ROSBAG_NAME + '.bag')
+    csv_output_dir = os.path.join(ROSBAG_DIR, ROSBAG_NAME + '.bag/' + 'csvs/')
+    if not os.path.exists(csv_output_dir):
+        os.makedirs(csv_output_dir)
+    
     run_rosbag_record = launch.actions.ExecuteProcess(
-            cmd=['ros2', 'bag', 'record', *list_of_topics, '--output='+rosbag_file],
+            cmd=['ros2', 'bag', 'play', rosbag_file],
             output='screen'
         )
-    create_symlink = launch.actions.ExecuteProcess(
-            cmd=['ln', '-s', '-fn', rosbag_file, rosbag_dir + 'latest.bag'],
+
+    # List of commands to echo topics to CSV.
+    echo_commands = [
+        launch.actions.ExecuteProcess(
+            cmd=['ros2', 'topic', 'echo', '--csv', topic, '>', f'{csv_output_dir}{topic.replace("/", "_")}.csv'],
+            shell=True,
             output='screen'
         )
+        for topic in list_of_topics
+    ]
+
     return launch.LaunchDescription([
-        # test_name_launch_arg,
         run_rosbag_record,
-        create_symlink,
+        *echo_commands,
     ])

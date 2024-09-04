@@ -184,6 +184,7 @@ private:
             }
             if (fabs((time_odom_baselink_ - time_encoder_joint_state_).seconds()) > 0.01) {
                 RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 100 /* [ms] */, "odom and joint_states are out of sync: ");
+                RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 100 /* [ms] */, "diff odom - joint_states: %f", (time_odom_baselink_ - time_encoder_joint_state_).seconds());
             }
             std::vector<Eigen::Vector3d> body_positions_solution;
             std::vector<IKRobot::JointState> joint_states_for_EL_eq;
