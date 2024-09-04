@@ -49,11 +49,7 @@ IKRobot::IKRobot()
 
 void IKRobot::build_model(const std::string urdf_xml_string)
 {
-    // Create model.
-    model_ = pinocchio::Model();
     pinocchio::urdf::buildModelFromXML(urdf_xml_string, pinocchio::JointModelFreeFlyer(), model_);
-    q_pin_ = pinocchio::neutral(model_);
-    // q_pin_ += Eigen::VectorXd::Random(model_.nq) * 0.01;
 
     std::cout << "model nq:" << model_.nq << std::endl;
     std::cout << "model nv:" << model_.nv << std::endl;
@@ -83,12 +79,12 @@ void IKRobot::build_model(const std::string urdf_xml_string)
         std::cout << " " << std::endl;
     }
 
-    // Create B matrix.
-    nb_joints_actuators_ = model_.nv - 6;
-    nb_u_ = nb_joints_actuators_ - 2;
-    B_matrix_ = Eigen::MatrixXd::Zero(model_.nv, nb_joints_actuators_ - 2);
+
+    nb_joints_ = model_.nv - 6;
+    nb_u_ = nb_joints_ - 2;
+    B_matrix_ = Eigen::MatrixXd::Zero(model_.nv, nb_joints_ - 2);
     B_matrix_.block(6, 0, nb_u_/2, nb_u_/2) = Eigen::MatrixXd::Identity(nb_u_/2, nb_u_/2);
-    B_matrix_.block(6 + nb_joints_actuators_/2, nb_u_/2, nb_u_/2, nb_u_/2) = Eigen::MatrixXd::Identity(nb_u_/2, nb_u_/2);
+    B_matrix_.block(6 + nb_joints_/2, nb_u_/2, nb_u_/2, nb_u_/2) = Eigen::MatrixXd::Identity(nb_u_/2, nb_u_/2);
 }
 
 bool IKRobot::has_model() const
@@ -137,27 +133,47 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
         }
     }
 
-    // Initialize q_meas.
-    Eigen::VectorXd q_meas;
-    q_meas = Eigen::VectorXd::Zero(model_.nq);
-
-    // Initialize q for base_link.
     int base_link_joint_id = model_.frames[model_.getFrameId("base_link")].parent;
     const auto &base_link_joint = model_.joints[base_link_joint_id];
     assert(base_link_joint.nq() == 7);
-    q_meas[base_link_joint.idx_q()] = base_link->position[0];
-    q_meas[base_link_joint.idx_q() + 1] = base_link->position[1];
-    q_meas[base_link_joint.idx_q() + 2] = base_link->position[2];
-    q_meas[base_link_joint.idx_q() + 3] = base_link->orientation.x();
-    q_meas[base_link_joint.idx_q() + 4] = base_link->orientation.y();
-    q_meas[base_link_joint.idx_q() + 5] = base_link->orientation.z();
-    q_meas[base_link_joint.idx_q() + 6] = base_link->orientation.w();
 
-    q_pin_.head(7) = q_meas.head(7);
+    Eigen::VectorXd q_meas;
+    q_meas = Eigen::VectorXd::Zero(model_.nq);
+    q_meas[base_link_joint.idx_q()] = odom_baselink.position[0];
+    q_meas[base_link_joint.idx_q() + 1] = odom_baselink.position[1];
+    q_meas[base_link_joint.idx_q() + 2] = odom_baselink.position[2];
+    q_meas[base_link_joint.idx_q() + 3] = odom_baselink.orientation.x();
+    q_meas[base_link_joint.idx_q() + 4] = odom_baselink.orientation.y();
+    q_meas[base_link_joint.idx_q() + 5] = odom_baselink.orientation.z();
+    q_meas[base_link_joint.idx_q() + 6] = odom_baselink.orientation.w();
+    for (int joint_idx = 0; joint_idx < model_.njoints; joint_idx++) {
+        const auto &joint = model_.joints[joint_idx];
+        if (joint.nq() == 1 && joint.idx_q() != -1) {
+            auto encoder_joint = std::find_if(encoder_joint_states.begin(), encoder_joint_states.end(), [&](JointState& js) {
+                return js.name == model_.names[joint_idx];});
+            if (encoder_joint != encoder_joint_states.end()) {
+                q_meas[joint.idx_q()] = encoder_joint->position;
+            }
+            else
+            {
+                std::cout << "joint not found in encoder_joint_states:" << model_.names[joint_idx] << std::endl;
+            }
+        }
+    }
+
 
     // Solve IK.
-    Eigen::VectorXd q = q_pin_;
+    Eigen::VectorXd q = q_meas;
     pinocchio::Data data(model_);
+
+    // initialize q for base_link
+    q[base_link_joint.idx_q()] = base_link->position[0];
+    q[base_link_joint.idx_q() + 1] = base_link->position[1];
+    q[base_link_joint.idx_q() + 2] = base_link->position[2];
+    q[base_link_joint.idx_q() + 3] = base_link->orientation.x();
+    q[base_link_joint.idx_q() + 4] = base_link->orientation.y();
+    q[base_link_joint.idx_q() + 5] = base_link->orientation.z();
+    q[base_link_joint.idx_q() + 6] = base_link->orientation.w();
 
     int nb_constraints = 0;
     for (const auto &body: body_states) {
@@ -267,26 +283,11 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
         }
     }
 
-    // Update q_meas with encoder_joint_state.
-    for (int joint_idx = 0; joint_idx < model_.njoints; joint_idx++) {
-        const auto &joint = model_.joints[joint_idx];
-        if (joint.nq() == 1 && joint.idx_q() != -1) {
-            auto encoder_joint = std::find_if(encoder_joint_states.begin(), encoder_joint_states.end(), [&](JointState& js) {
-                return js.name == model_.names[joint_idx];});
-            if (encoder_joint != encoder_joint_states.end()) {
-                q_meas[joint.idx_q()] = encoder_joint->position;
-            }
-        }
-    }
-
-    // Update q_pin_ with the actual state.
-    q_pin_ = q_meas;
-
-    pinocchio::forwardKinematics(model_, data, q_meas); // Perform fw kin. with the actual state.
+    pinocchio::forwardKinematics(model_, data, q_meas);
     for (const auto &body: body_states) {
         auto frame_id = model_.getFrameId(body.name);
         const auto &cur_to_world = data.oMf[frame_id];
-        body_positions_solution.push_back(cur_to_world.translation());
+        body_positions_solution.push_back(cur_to_world.translation()); // TODO name this variable better
     }
 
     pinocchio::computeJointJacobians(model_, data, q_meas);
@@ -326,7 +327,7 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
         }
     }
     Eigen::HouseholderQR<Eigen::MatrixXd> QR_ff(J_for_ff_stacked);
-    Eigen::VectorXd q_vel(QR_ff.solve(body_vels_stacked));
+    const Eigen::VectorXd q_vel(QR_ff.solve(body_vels_stacked));
 
     // Send the solution to the joint_trajectory velocity.
     for (auto &joint_state: joint_states)
@@ -335,7 +336,7 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
         auto joint = model_.joints[joint_id];
         double q_vel_min = std::numeric_limits<double>::lowest();
         double q_vel_max = std::numeric_limits<double>::max();
-        if (model_.velocityLimit.size() > joint.idx_v())
+        if (joint.idx_v() < model_.velocityLimit.size())
         {
             q_vel_min = -model_.velocityLimit[joint.idx_v()];
             q_vel_max = model_.velocityLimit[joint.idx_v()];
@@ -343,7 +344,7 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
         joint_state.velocity = fmax(q_vel_min, fmin(q_vel[joint.idx_v()], q_vel_max));
     }
 
-    // Update q_vel with measured velocities from encoder and state estimation.
+    // Set q_vel_meas with measured velocities from encoder and state estimation.
     Eigen::VectorXd q_vel_meas = Eigen::VectorXd::Zero(model_.nv);
     for (int joint_idx = 0; joint_idx < model_.njoints; joint_idx++) {
         const auto &joint = model_.joints[joint_idx];
@@ -353,9 +354,12 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
             if (encoder_joint != encoder_joint_states.end()) {
                 q_vel_meas[joint.idx_v()] = encoder_joint->velocity;
             }
+            else
+            {
+                std::cout << "joint not found in encoder_joint_states:" << model_.names[joint_idx] << std::endl;
+            }
         }
     }
-
     q_vel_meas[base_link_joint.idx_v()] = odom_baselink.linear_velocity[0];
     q_vel_meas[base_link_joint.idx_v() + 1] = odom_baselink.linear_velocity[1];
     q_vel_meas[base_link_joint.idx_v() + 2] = odom_baselink.linear_velocity[2];
@@ -400,7 +404,7 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
             cur_constraint_ff += 5;
         }
     }
-    Eigen::VectorXd q_acc(QR_ff.solve(body_accs_stacked - J_dot_for_ff_stacked * q_vel_meas));
+    const Eigen::VectorXd q_acc(QR_ff.solve(body_accs_stacked - J_dot_for_ff_stacked * q_vel_meas));
 
     // create a list of bodies in contact
     std::vector<std::reference_wrapper<const IKRobot::BodyState>> bodies_in_contact;
@@ -474,7 +478,7 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
         Eigen::MatrixXd PB = P * B_matrix_;
         Eigen::HouseholderQR<Eigen::MatrixXd> QR(PB);
         Eigen::VectorXd feedforward_torque(QR.solve(y));
-        Eigen::VectorXd feedforward_torque_all_joints = Eigen::VectorXd::Zero(nb_joints_actuators_);
+        Eigen::VectorXd feedforward_torque_all_joints = Eigen::VectorXd::Zero(nb_joints_);
         feedforward_torque_all_joints.head(nb_u_/2) = feedforward_torque.head(nb_u_/2);
         feedforward_torque_all_joints.segment((nb_u_)/2 + 1, (nb_u_)/2) = feedforward_torque.tail(nb_u_/2);
 
@@ -493,7 +497,7 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
 
         Eigen::VectorXd right_hand_side_q_lambda = Eigen::MatrixXd::Zero(model_.nv + 5, 1);
         right_hand_side_q_lambda.head(model_.nv) = - data.g - data.C * q_vel_meas + B_matrix_ * feedforward_torque_with_acceleration;
-        right_hand_side_q_lambda.tail(5) = -J_contacts_dot * q_vel;
+        right_hand_side_q_lambda.tail(5) = -J_contacts_dot * q_vel_meas;
 
         Eigen::HouseholderQR<Eigen::MatrixXd> QR_q_lambda(block_matrix_q_acc_and_lambda);
         Eigen::VectorXd q_acc_and_lambda(QR_q_lambda.solve(right_hand_side_q_lambda));
@@ -508,7 +512,7 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
             auto joint = model_.joints[joint_id];
             double q_effort_min = std::numeric_limits<double>::lowest();
             double q_effort_max = std::numeric_limits<double>::max();
-            if (model_.effortLimit.size() > joint.idx_v())
+            if (joint.idx_v() < model_.effortLimit.size())
             {
                 q_effort_min = -model_.effortLimit[joint.idx_v()];
                 q_effort_max = model_.effortLimit[joint.idx_v()];

@@ -29,6 +29,7 @@ list_of_topics = ['/joy',
                 '/ik_interface/markers',
                 '/rosout',
                 '/external_cam/image_raw/compressed',
+                '/vel_cmd',
                 '/e_stop']
 
 
