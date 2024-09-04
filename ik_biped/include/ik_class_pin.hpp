@@ -68,6 +68,7 @@ public:
 
 private:
 
+    Eigen::VectorXd prev_q_;
     pinocchio::Model model_;
     Eigen::MatrixXd B_matrix_;
     int nb_joints_;

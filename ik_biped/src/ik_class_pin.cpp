@@ -50,6 +50,7 @@ IKRobot::IKRobot()
 void IKRobot::build_model(const std::string urdf_xml_string)
 {
     pinocchio::urdf::buildModelFromXML(urdf_xml_string, pinocchio::JointModelFreeFlyer(), model_);
+    prev_q_ = pinocchio::neutral(model_);
 
     std::cout << "model nq:" << model_.nq << std::endl;
     std::cout << "model nv:" << model_.nv << std::endl;
@@ -153,10 +154,9 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
                 return js.name == model_.names[joint_idx];});
             if (encoder_joint != encoder_joint_states.end()) {
                 q_meas[joint.idx_q()] = encoder_joint->position;
-            }
-            else
-            {
+            } else {
                 std::cout << "joint not found in encoder_joint_states:" << model_.names[joint_idx] << std::endl;
+                q_meas[joint.idx_q()] = prev_q_[joint.idx_q()];
             }
         }
     }
@@ -262,6 +262,7 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
         v = - J_stacked.transpose() * (J_stacked * J_stacked.transpose() + DAMP * identity_mat).ldlt().solve(err_stacked);
         q = pinocchio::integrate(model_, q, v * DT);
     }
+    prev_q_ = q;
 
     // Send the solution to the joint_trajectory.
     std::vector<JointState> joint_states;
@@ -357,6 +358,7 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
             else
             {
                 std::cout << "joint not found in encoder_joint_states:" << model_.names[joint_idx] << std::endl;
+                q_vel_meas[joint.idx_v()] = 0.0;
             }
         }
     }
