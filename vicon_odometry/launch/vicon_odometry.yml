@@ -1,0 +1,27 @@
+launch:
+  - arg:
+      name: "publish_tf"
+      default: "False"
+  - node:
+      pkg: vicon_odometry
+      exec: vicon_odometry_estimation
+      name: vicon_odom
+      param:
+        - from: $(find-pkg-share vicon_odometry)/config/params.yaml
+        - name: publish_tf
+          value: '$(var publish_tf)'
+      remap:
+        - from: /vicon_odom/imu
+          to: /imu
+        - from: /vicon_odom/odom
+          to: /odometry
+        - from: /vicon_odom/reset
+          to: /e_stop
+        - from: /vicon/pose
+          to: /mujoco_sim/fake_vicon
+      # args: "--ros-args --log-level DEBUG"
+      output: screen
+      # print GDB backtrace:
+      # launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args
+      # launch-prefix: xterm -e gdb -ex run --args
+      #  launch-prefix: tmux split-window gdb -ex run --args
