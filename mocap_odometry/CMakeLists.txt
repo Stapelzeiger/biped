@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(vicon_odometry)
+project(mocap_odometry)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -10,7 +10,6 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
-find_package(biped_bringup REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(PkgConfig REQUIRED)
@@ -21,24 +20,23 @@ find_package(Eigen3 REQUIRED)
 include_directories(include EIGEN3_INCLUDE_DIR)
 
 
-add_executable(vicon_odometry_estimation src/vicon_odometry_estimation.cpp)
-target_include_directories(vicon_odometry_estimation PRIVATE ${EIGEN3_INCLUDE_DIR})
+add_executable(mocap_odometry src/mocap_odometry.cpp)
+target_include_directories(mocap_odometry PRIVATE ${EIGEN3_INCLUDE_DIR})
 
-target_compile_features(vicon_odometry_estimation PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+target_compile_features(mocap_odometry PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 
 ament_target_dependencies(
-  vicon_odometry_estimation
+  mocap_odometry
   rclcpp
   std_msgs
   sensor_msgs
-  biped_bringup
   tf2
   tf2_ros
   nav_msgs
   visualization_msgs
   )
 
-install(TARGETS vicon_odometry_estimation
+install(TARGETS mocap_odometry
   DESTINATION lib/${PROJECT_NAME})
 
 

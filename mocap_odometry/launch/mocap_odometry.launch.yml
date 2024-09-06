@@ -3,21 +3,21 @@ launch:
       name: "publish_tf"
       default: "False"
   - node:
-      pkg: vicon_odometry
-      exec: vicon_odometry_estimation
-      name: vicon_odom
+      pkg: mocap_odometry
+      exec: mocap_odometry
+      name: mocap_odometry
       param:
-        - from: $(find-pkg-share vicon_odometry)/config/params.yaml
+        - from: $(find-pkg-share mocap_odometry)/config/params.yaml
         - name: publish_tf
           value: '$(var publish_tf)'
       remap:
-        - from: /vicon_odom/imu
+        - from: /mocap_odometry/imu
           to: /imu
-        - from: /vicon_odom/odom
+        - from: /mocap_odometry/odom
           to: /odometry
-        - from: /vicon_odom/reset
+        - from: /mocap_odometry/reset
           to: /e_stop
-        - from: /vicon/pose
+        - from: /mocap_odometry/vicon/pose
           to: /mujoco_sim/fake_vicon
       # args: "--ros-args --log-level DEBUG"
       output: screen

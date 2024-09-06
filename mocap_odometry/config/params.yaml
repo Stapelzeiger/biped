@@ -1,7 +1,8 @@
-/vel_estimation:
+/mocap_odometry:
   ros__parameters:
     base_link_frame_id: "base_link"
     odom_frame_id: "odom"
+    base_link_vicon_frame_id: "base_link_vicon"
 
     vel_std_0: 0.1
     att_std_0: 1.0
