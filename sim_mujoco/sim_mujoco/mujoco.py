@@ -85,7 +85,10 @@ class MujocoNode(Node):
                 'actual_acc': 0.0,
                 'desired_pos': 0.0,
                 'desired_vel': 0.0,
-                'feedforward_torque': 0.0
+                'feedforward_torque': 0.0,
+                'qfrc_actuator': 0.0,
+                'total_tau': 0.0,
+                'qfrc_passive': 0.0
             }
 
         self.name_actuators = []
@@ -109,10 +112,15 @@ class MujocoNode(Node):
         self.contact_right_pub = self.create_publisher(StampedBool, '~/contact_foot_right', 10)
         self.contact_left_pub = self.create_publisher(StampedBool, '~/contact_foot_left', 10)
 
+        self.qfrc_actuators_pub = self.create_publisher(JointState, '~/qfrc_actuators', 10)
+        self.tau_actuators_pub = self.create_publisher(JointState, '~/tau_actuators', 10)
+        self.qfrc_passive_pub = self.create_publisher(JointState, '~/qfrc_passive', 10)
+
         self.stop_pub = self.create_publisher(Bool, '~/stop', 10)
 
         self.joint_states_pub = self.create_publisher(JointState, 'joint_states', 10)
         self.imu_pub = self.create_publisher(Imu, '~/imu', 10)
+        self.fake_vicon_pub = self.create_publisher(PoseStamped, '~/fake_vicon', 10)
         self.tf_broadcaster = TransformBroadcaster(self)
 
         self.joint_traj_sub = self.create_subscription(JointTrajectory, 'joint_trajectory', self.joint_traj_cb, 10)
@@ -272,6 +280,33 @@ class MujocoNode(Node):
             msg_joint_states.effort.append(value['actual_acc'])
         self.joint_states_pub.publish(msg_joint_states)
 
+        # qfrc message
+        msg_qfrc_actuators = JointState()
+        msg_qfrc_actuators.header.stamp.sec = int(self.time)
+        msg_qfrc_actuators.header.stamp.nanosec = int((self.time - clock_msg.clock.sec) * 1e9)
+        for key, value in self.q_joints.items():
+            msg_qfrc_actuators.name.append(key)
+            msg_qfrc_actuators.effort.append(value['qfrc_actuator'])
+        self.qfrc_actuators_pub.publish(msg_qfrc_actuators)
+
+        # tau
+        msg_tau_actuators = JointState()
+        msg_tau_actuators.header.stamp.sec = int(self.time)
+        msg_tau_actuators.header.stamp.nanosec = int((self.time - clock_msg.clock.sec) * 1e9)
+        for key, value in self.q_joints.items():
+            msg_tau_actuators.name.append(key)
+            msg_tau_actuators.effort.append(value['total_tau'])
+        self.tau_actuators_pub.publish(msg_tau_actuators)
+
+        # qfrc passive
+        msg_qfrc_passive = JointState()
+        msg_qfrc_passive.header.stamp.sec = int(self.time)
+        msg_qfrc_passive.header.stamp.nanosec = int((self.time - clock_msg.clock.sec) * 1e9)
+        for key, value in self.q_joints.items():
+            msg_qfrc_passive.name.append(key)
+            msg_qfrc_passive.effort.append(value['qfrc_passive'])
+        self.qfrc_passive_pub.publish(msg_qfrc_passive)
+
         gyro_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_SENSOR, "gyro")
         accel_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_SENSOR, "accelerometer")
         accel = self.data.sensordata[self.model.sensor_adr[accel_id]:self.model.sensor_adr[accel_id] + 3]
@@ -296,6 +331,18 @@ class MujocoNode(Node):
         msg_imu.orientation_covariance[0] = -1 # no orientation
         self.imu_pub.publish(msg_imu)
 
+        msg_fake_vicon = PoseStamped()
+        msg_fake_vicon.header.stamp.sec = int(self.time)
+        msg_fake_vicon.header.stamp.nanosec = int((self.time - clock_msg.clock.sec) * 1e9)
+        msg_fake_vicon.header.frame_id = 'world'
+        msg_fake_vicon.pose.position.x = self.data.qpos[0]
+        msg_fake_vicon.pose.position.y = self.data.qpos[1]
+        msg_fake_vicon.pose.position.z = self.data.qpos[2]
+        msg_fake_vicon.pose.orientation.w = self.data.qpos[3]
+        msg_fake_vicon.pose.orientation.x = self.data.qpos[4]
+        msg_fake_vicon.pose.orientation.y = self.data.qpos[5]
+        msg_fake_vicon.pose.orientation.z = self.data.qpos[6]
+        self.fake_vicon_pub.publish(msg_fake_vicon)
 
     def run_joint_controllers(self):
         if self.joint_traj_msg is None:
@@ -324,15 +371,23 @@ class MujocoNode(Node):
         i = 0
         for key, value in self.q_joints.items():
             if key != 'L_ANKLE' and key != 'R_ANKLE':
+                # Q: why are we not using a PD controller
                 error = value['actual_pos'] - value['desired_pos']
-                actuators_torque = - Kp[i]*error
+                actuators_torque = - Kp[i] * error
                 actuators_vel = value['desired_vel']
                 feedforward_torque = value['feedforward_torque']
                 self.data.ctrl[self.q_actuator_addr[str(key)]] = actuators_torque
                 self.data.ctrl[self.q_actuator_addr[str(key) + "_VEL"]] = actuators_vel
                 id_joint_mj = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_JOINT, key)
+
                 self.data.qfrc_applied[self.model.jnt_dofadr[id_joint_mj]] = feedforward_torque
+                self.q_joints[key]['qfrc_actuator'] = self.data.qfrc_actuator[self.model.jnt_dofadr[id_joint_mj]]
+
+                self.q_joints[key]['total_tau'] = self.data.qfrc_passive[self.model.jnt_dofadr[id_joint_mj]] + \
+                                                    self.data.qfrc_actuator[self.model.jnt_dofadr[id_joint_mj]] + \
+                                                    self.data.qfrc_applied[self.model.jnt_dofadr[id_joint_mj]]
             i = i + 1
+
 
     # def stop_controller(self, actuator_name):
     #     idx_act = mj.mj_name2id(
