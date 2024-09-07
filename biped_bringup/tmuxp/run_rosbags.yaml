@@ -6,9 +6,15 @@ windows:
   panes:
   - rviz2 -d src/biped/biped_bringup/rviz/biped.rviz --ros-args --param use_sim_time:=true
   - ros2 launch biped_robot_description launch.yaml
-  - ros2 bag play ../bags/20240830-15-49-29.bag/20240830-15-49-29.bag_0.mcap --remap /joint_trajectory:=/joint_trajectory_remapped --clock --start-offset 178.0
+  - ros2 launch biped_bringup launch_mocap.yaml
+  # - ros2 bag play ../bags/20240904-13-28-29.bag/20240904-13-28-29.bag_0.mcap --clock --start-offset 97.0
+  # - ros2 bag play ../bags/20240904-13-20-45.bag/20240904-13-20-45.bag_0.mcap --clock --start-offset 97.0
+  - ros2 bag play ../bags/vicon/rosbag2_2024_09_06-15_36_12/rosbag2_2024_09_06-15_36_12_0.mcap --clock
+
+  - ros2 run tf2_ros static_transform_publisher 0.0 0.0 0.01 0.0 0.0 0.0 /base_link /base_link_mocap
+  - ros2 run tf2_ros static_transform_publisher 0.0 0.0 0.0 0.0 0.0 0.0 /odom /world
   - ros2 run plotjuggler plotjuggler --layout src/biped/biped_bringup/plotjuggler/joints_plot.xml
-  - ros2 launch ik_biped ik.launch.yml use_sim_time:=True
+  # - ros2 launch ik_biped ik.launch.yml use_sim_time:=True
   # - ros2 launch capture_point cp.launch.yml use_sim_time:=True
   - clear
 
