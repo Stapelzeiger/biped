@@ -3,6 +3,7 @@
     base_link_frame_id: "base_link"
     odom_frame_id: "odom"
     base_link_mocap_frame_id: "base_link_mocap"
+    pose_array_tracker_name: "biped"
 
     pos_std_0: 0.05
     vel_std_0: 0.1

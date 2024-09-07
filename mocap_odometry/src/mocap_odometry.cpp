@@ -18,6 +18,7 @@
 #include "tf2_ros/buffer.h"
 #include "tf2_ros/transform_broadcaster.h"
 
+#include "motion_capture_tracking_interfaces/msg/named_pose_array.hpp"
 
 using namespace std::placeholders;
 using namespace std::chrono_literals;
@@ -268,6 +269,7 @@ public:
     base_link_frame_id_ = this->declare_parameter<std::string>("base_link_frame_id", "base_link");
     base_link_mocap_frame_id_ = this->declare_parameter<std::string>("base_link_mocap_frame_id", "base_link_mocap");
     odom_frame_id_ = this->declare_parameter<std::string>("odom_frame_id", "world");
+    pose_array_tracker_name_ = this->declare_parameter<std::string>("pose_array_tracker_name", "pose_name");
     this->declare_parameter<bool>("publish_tf", false);
 
     // load noise parameters
@@ -297,9 +299,11 @@ public:
     reset_sub_ = this->create_subscription<std_msgs::msg::Bool>(
       "~/reset", 10, std::bind(&MocapOdometry::reset_cb, this, _1));
 
-    mocap_sub_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
+    mocap_pose_stamped_sub_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
       "~/mocap/pose", 10, std::bind(&MocapOdometry::mocap_cb, this, _1));
 
+    mocap_pose_array_sub_ = this->create_subscription<motion_capture_tracking_interfaces::msg::NamedPoseArray>(
+      "~/mocap/named_pose_array", 10, std::bind(&MocapOdometry::mocap_pose_array_cb, this, _1));
   }
 
 private:
@@ -311,6 +315,22 @@ private:
       RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 1000 /* ms */, "Resetting estimator");
       ekf_.reset(q_IMU_to_BL_);
     }
+  }
+
+  void mocap_pose_array_cb(const motion_capture_tracking_interfaces::msg::NamedPoseArray::SharedPtr msg)
+  {
+    auto pose_stamped = std::make_shared<geometry_msgs::msg::PoseStamped>();
+    pose_stamped->header = msg->header;
+    for (auto pose : msg->poses)
+    {
+      if (pose.name == pose_array_tracker_name_)
+      {
+        pose_stamped->pose = pose.pose;
+        mocap_cb(pose_stamped);
+        return;
+      }
+    }
+    RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 1000 /* ms */, "Tracker pose not found in pose array");
   }
 
   void mocap_cb(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
@@ -515,6 +535,7 @@ private:
   std::string base_link_mocap_frame_id_;
   std::string odom_frame_id_;
   std::string mocap_frame_id_;
+  std::string pose_array_tracker_name_;
   Eigen::Quaterniond q_IMU_to_BL_;
   Eigen::Vector3d p_IMU_in_BL_;
   Eigen::Vector3d p_TRACKER_in_IMU_;
@@ -532,7 +553,8 @@ private:
 
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
   rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr reset_sub_;
-  rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr mocap_sub_;
+  rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr mocap_pose_stamped_sub_;
+  rclcpp::Subscription<motion_capture_tracking_interfaces::msg::NamedPoseArray>::SharedPtr mocap_pose_array_sub_;
 
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
   std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;

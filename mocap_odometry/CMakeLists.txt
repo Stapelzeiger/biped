@@ -15,6 +15,7 @@ find_package(tf2_ros REQUIRED)
 find_package(PkgConfig REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
+find_package(motion_capture_tracking_interfaces REQUIRED)
 
 find_package(Eigen3 REQUIRED)
 include_directories(include EIGEN3_INCLUDE_DIR)
@@ -34,6 +35,7 @@ ament_target_dependencies(
   tf2_ros
   nav_msgs
   visualization_msgs
+  motion_capture_tracking_interfaces
   )
 
 install(TARGETS mocap_odometry

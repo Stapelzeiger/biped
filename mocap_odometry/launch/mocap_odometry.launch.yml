@@ -19,6 +19,8 @@ launch:
           to: /e_stop
         - from: /mocap_odometry/mocap/pose
           to: /mujoco_sim/fake_vicon
+        - from: /mocap_odometry/mocap/named_pose_array
+          to: /poses
       # args: "--ros-args --log-level DEBUG"
       output: screen
       # print GDB backtrace:
