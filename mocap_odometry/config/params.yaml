@@ -2,8 +2,9 @@
   ros__parameters:
     base_link_frame_id: "base_link"
     odom_frame_id: "odom"
-    base_link_vicon_frame_id: "base_link_vicon"
+    base_link_mocap_frame_id: "base_link_mocap"
 
+    pos_std_0: 0.05
     vel_std_0: 0.1
     att_std_0: 1.0
     acc_bias_std_0: 0.1
@@ -14,5 +15,5 @@
     acc_bias_random_walk: 0.0001
     gyro_bias_random_walk: 0.0001
 
-    zero_vel_noise_cov: 0.1
-    contact_vel_covariance: 0.1
+    mocap_pos_std: 0.05
+    mocap_att_std: 0.1

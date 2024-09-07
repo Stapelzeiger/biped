@@ -17,7 +17,7 @@ launch:
           to: /odometry
         - from: /mocap_odometry/reset
           to: /e_stop
-        - from: /mocap_odometry/vicon/pose
+        - from: /mocap_odometry/mocap/pose
           to: /mujoco_sim/fake_vicon
       # args: "--ros-args --log-level DEBUG"
       output: screen

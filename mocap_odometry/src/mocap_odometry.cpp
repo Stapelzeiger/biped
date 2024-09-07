@@ -56,11 +56,11 @@ class IMUPoseEKF
       this->reset();
     }
 
-    void reset(const Eigen::Quaterniond &att_0 = Eigen::Quaterniond::Identity())
+    void reset(const Eigen::Quaterniond &att_0 = Eigen::Quaterniond::Identity(), const Eigen::Vector3d &pos_0 = Eigen::Vector3d::Zero())
     {
       // nominal states
       att_ = att_0;
-      pos_I_ = Eigen::Vector3d::Zero();
+      pos_I_ = pos_0;
       vel_I_ = Eigen::Vector3d::Zero();
       acc_bias_ = Eigen::Vector3d::Zero();
       gyro_bias_ = Eigen::Vector3d::Zero();
@@ -271,6 +271,7 @@ public:
     this->declare_parameter<bool>("publish_tf", false);
 
     // load noise parameters
+    ekf_.pos_std_0_ = this->declare_parameter<double>("pos_std_0", 0.1);
     ekf_.vel_std_0_ = this->declare_parameter<double>("vel_std_0", 0.1);
     ekf_.att_std_0_ = this->declare_parameter<double>("att_std_0", 0.1);
     ekf_.acc_bias_std_0_ = this->declare_parameter<double>("acc_bias_std_0", 0.1);
@@ -279,6 +280,8 @@ public:
     ekf_.gyro_noise_density_ = this->declare_parameter<double>("gyro_noise_density", 0.01);
     ekf_.acc_bias_random_walk_ = this->declare_parameter<double>("acc_bias_random_walk", 0.01);
     ekf_.gyro_bias_random_walk_ = this->declare_parameter<double>("gyro_bias_random_walk", 0.01);
+    mocap_pos_std_ = this->declare_parameter<double>("mocap_pos_std", 0.1);
+    mocap_att_std_ = this->declare_parameter<double>("mocap_att_std", 0.1);
 
     tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
     tf_listener_ = std::make_unique<tf2_ros::TransformListener>(*tf_buffer_);
@@ -322,13 +325,11 @@ private:
       }
       try {
         geometry_msgs::msg::TransformStamped T_MOCAP_to_I = tf_buffer_->lookupTransform(odom_frame_id_, msg->header.frame_id, rclcpp::Time(0));
-        p_MOCAP_in_I_ << T_MOCAP_to_I.transform.translation.x, T_MOCAP_to_I.transform.translation.y, T_MOCAP_to_I.transform.translation.z;
-        q_MOCAP_to_I_ = Eigen::Quaterniond(T_MOCAP_to_I.transform.rotation.w,
+        T_MOCAP_to_I_.translation() << T_MOCAP_to_I.transform.translation.x, T_MOCAP_to_I.transform.translation.y, T_MOCAP_to_I.transform.translation.z;
+        T_MOCAP_to_I_.linear() = Eigen::Quaterniond(T_MOCAP_to_I.transform.rotation.w,
                                             T_MOCAP_to_I.transform.rotation.x,
                                             T_MOCAP_to_I.transform.rotation.y,
-                                            T_MOCAP_to_I.transform.rotation.z);
-
-
+                                            T_MOCAP_to_I.transform.rotation.z).toRotationMatrix();
       } catch (tf2::TransformException &ex) {
         RCLCPP_WARN(this->get_logger(), "Could not get transform from %s to %s, skipping", msg->header.frame_id.c_str(), imu_frame_id_.c_str());
         return;
@@ -336,65 +337,68 @@ private:
       RCLCPP_WARN_SKIPFIRST(this->get_logger(), "Mocap frame id changed from %s to %s", msg->header.frame_id.c_str(), msg->header.frame_id.c_str());
       mocap_frame_id_ = msg->header.frame_id;
     }
-
+    // TODO: do not run this everytime.
     try {
-        geometry_msgs::msg::TransformStamped T_MOCAP_to_IMU = tf_buffer_->lookupTransform(imu_frame_id_, base_link_mocap_frame_id_, rclcpp::Time(0));
-        p_MOCAP_in_IMU_ << T_MOCAP_to_IMU.transform.translation.x, T_MOCAP_to_IMU.transform.translation.y, T_MOCAP_to_IMU.transform.translation.z;
+        geometry_msgs::msg::TransformStamped T_TRACKER_to_IMU = tf_buffer_->lookupTransform(imu_frame_id_, base_link_mocap_frame_id_, rclcpp::Time(0));
+        T_TRACKER_to_IMU_.translation() << T_TRACKER_to_IMU.transform.translation.x, T_TRACKER_to_IMU.transform.translation.y, T_TRACKER_to_IMU.transform.translation.z;
+        T_TRACKER_to_IMU_.linear() = Eigen::Quaterniond(T_TRACKER_to_IMU.transform.rotation.w,
+                                            T_TRACKER_to_IMU.transform.rotation.x,
+                                            T_TRACKER_to_IMU.transform.rotation.y,
+                                            T_TRACKER_to_IMU.transform.rotation.z).toRotationMatrix();
+
       } catch (tf2::TransformException &ex) {
         RCLCPP_WARN(this->get_logger(), "Could not get transform from %s to %s, skipping", base_link_mocap_frame_id_.c_str(), imu_frame_id_.c_str());
         return;
     }
 
+    Eigen::Transform<double, 3, Eigen::Isometry> T_TRACKER_to_MOCAP;
+    T_TRACKER_to_MOCAP.translation() << msg->pose.position.x, msg->pose.position.y, msg->pose.position.z;
+    T_TRACKER_to_MOCAP.linear() = Eigen::Quaterniond(msg->pose.orientation.w, msg->pose.orientation.x, msg->pose.orientation.y, msg->pose.orientation.z).toRotationMatrix();
+
+    const auto T_TRACKER_to_I = T_MOCAP_to_I_ * T_TRACKER_to_MOCAP;
+    const auto p_TRACKER_in_I = T_TRACKER_to_I.translation();
+    const auto p_TRACKER_in_IMU = T_TRACKER_to_IMU_.translation();
+
+    // update EKF for position & att. measurement
+    Eigen::Matrix3d R_cov = Eigen::Array3d(mocap_pos_std_, mocap_pos_std_, mocap_pos_std_).pow(2.0).matrix().asDiagonal();
+    Eigen::Vector3d h_out; // todo publish for plotting
+    Eigen::Matrix3d h_cov_out;
+
+    Eigen::Matrix3d R_cov_att = Eigen::Array3d(mocap_att_std_, mocap_att_std_, mocap_att_std_).pow(2.0).matrix().asDiagonal();
+    Eigen::Vector3d h_out_att; // todo publish for plotting
+    Eigen::Matrix3d h_cov_out_att;
+    const auto T_IMU_to_I = T_TRACKER_to_I * T_TRACKER_to_IMU_.inverse();
+    const auto q_IMU_to_I = Eigen::Quaterniond(T_IMU_to_I.linear());
+
     // message time checks
     auto new_time = rclcpp::Time(msg->header.stamp);
-    if (time_ == rclcpp::Time(0, 0, RCL_ROS_TIME)) {  // first message
-      time_ = new_time;
+    if (last_mocap_time_ == rclcpp::Time(0, 0, RCL_ROS_TIME)) {  // first message
+      last_mocap_time_ = new_time;
+      ekf_.reset(q_IMU_to_I, T_IMU_to_I.translation());
       return;
     }
-    double dt = (new_time - time_).seconds();
+    double dt = (new_time - last_mocap_time_).seconds();
     if (dt < 0) {
       RCLCPP_WARN(this->get_logger(), "Mocap messages are not in order, skipping");
       return;
     }
-    time_ = new_time;
+
+    last_mocap_time_ = new_time;
     if (dt > 0.1){
       RCLCPP_WARN(this->get_logger(), "Mocap messages gap");
+      ekf_.reset(q_IMU_to_I, T_IMU_to_I.translation());
       return;
     }
 
-    Eigen::Vector3d pos_I;
-    pos_I << msg->pose.position.x, msg->pose.position.y, msg->pose.position.z;
-    
-    // update EKF for position measurement
-    Eigen::Matrix3d R_cov;
-    R_cov.setZero();
-    R_cov(0, 0) = 0.1; // TODO parameters
-    R_cov(1, 1) = 0.1;
-    R_cov(2, 2) = 0.1;
-    Eigen::Vector3d h_out; // todo publish for plotting
-    Eigen::Matrix3d h_cov_out;
-    ekf_.pos_measurement(p_MOCAP_in_IMU_, pos_I, R_cov, h_out, h_cov_out);
-
-    // update EKF for attitude measurement
-    Eigen::Quaterniond att_MOCAP_to_I;
-    att_MOCAP_to_I.w() = msg->pose.orientation.w;
-    att_MOCAP_to_I.x() = msg->pose.orientation.x;
-    att_MOCAP_to_I.y() = msg->pose.orientation.y;
-    att_MOCAP_to_I.z() = msg->pose.orientation.z;
-
-    Eigen::Matrix3d R_cov_att;
-    R_cov_att.setZero();
-    R_cov_att(0, 0) = 0.1; // TODO parameters
-    R_cov_att(1, 1) = 0.1;
-    R_cov_att(2, 2) = 0.1;
-    Eigen::Vector3d h_out_att; // todo publish for plotting
-    Eigen::Matrix3d h_cov_out_att;
-    ekf_.att_measurement(att_MOCAP_to_I, R_cov_att, h_out_att, h_cov_out_att);
+    ekf_.pos_measurement(p_TRACKER_in_IMU, p_TRACKER_in_I, R_cov, h_out, h_cov_out);
+    ekf_.att_measurement(q_IMU_to_I, R_cov_att, h_out_att, h_cov_out_att);
   }
 
 
   void imu_cb(const sensor_msgs::msg::Imu::SharedPtr msg)
   {
+    RCLCPP_INFO(this->get_logger(), "IMU message received");
+
     // get imu transform (cached if the frame id is the same)
     if (msg->header.frame_id != imu_frame_id_)
     {
@@ -503,6 +507,7 @@ private:
   }
 
   rclcpp::Time time_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
+  rclcpp::Time last_mocap_time_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
   IMUPoseEKF ekf_;
 
   std::string imu_frame_id_;
@@ -512,9 +517,16 @@ private:
   std::string mocap_frame_id_;
   Eigen::Quaterniond q_IMU_to_BL_;
   Eigen::Vector3d p_IMU_in_BL_;
-  Eigen::Vector3d p_MOCAP_in_IMU_;
+  Eigen::Vector3d p_TRACKER_in_IMU_;
+  Eigen::Quaterniond q_TRACKER_to_IMU_;
   Eigen::Quaterniond q_MOCAP_to_I_;
   Eigen::Vector3d p_MOCAP_in_I_;
+
+  double mocap_pos_std_;
+  double mocap_att_std_;
+
+  Eigen::Transform<double, 3, Eigen::Isometry> T_TRACKER_to_IMU_;
+  Eigen::Transform<double, 3, Eigen::Isometry> T_MOCAP_to_I_;
 
   bool publish_tf_;
 
