@@ -1,14 +1,14 @@
 /capture_point:
   ros__parameters:
     robot_height: 0.55
-    t_step: 0.5
+    t_step: 0.25
     ctrl_time_sec: 0.01
     threshold_next_footstep: 0.1 # Not used
     P_gain_scaling: 0.1
     duration_init_traj: 1.0 # seconds
     safety_radius_CP: 0.4
-    walk_slow: True # True if we do walk in place, while holding the robot.
-    T_contact_ignore: 0.3
+    walk_slow: False # True if we do walk in place, while holding the robot.
+    T_contact_ignore: 0.1
 
     r_foot_frame_id: R_FOOT_CONTACT
     r_foot_urdf_frame_id: R_ANKLE
