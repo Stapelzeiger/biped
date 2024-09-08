@@ -417,8 +417,6 @@ private:
 
   void imu_cb(const sensor_msgs::msg::Imu::SharedPtr msg)
   {
-    RCLCPP_INFO(this->get_logger(), "IMU message received");
-
     // get imu transform (cached if the frame id is the same)
     if (msg->header.frame_id != imu_frame_id_)
     {
