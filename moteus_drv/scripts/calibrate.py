@@ -107,7 +107,7 @@ class JointCalibration(Node):
                     self.get_logger().info(f'Joint {joint} is calibrated')
                     self.get_logger().info(f'Center Position achieved: {self.joints_dict["joint_pos"][idx]}')
 
-                # check for overshooting (todo make this better)
+                # check for overshooting (TODO: make this better)
                 if self.joints_dict['vel_max'][idx] > 0 and self.joints_dict['joint_pos'][idx] < self.joints_dict['center_pos'][idx]:
                     self.get_logger().info(f'Overshooting, stop the joint')
                     self.setpt_vel = 0
@@ -128,7 +128,6 @@ class JointCalibration(Node):
                     self.counter = 0
                     self.counter_ramp_center = 0
 
-
             # center pos was not determined, move the joint
             if self.joints_dict['center_pos'][idx] is None:
                 self.setpt_pos = self.joints_dict['vel_max'][idx]*self.counter*(TIME_PERIOD*0.1) + self.joints_dict['initial_pos'][idx]
@@ -146,6 +145,14 @@ class JointCalibration(Node):
             return joint_traj_pt_msg
 
     def timer_callback(self):
+        # Set global max torque param to high.
+        global_max_torque_param = 'max_torque'
+        new_global_max_torque_param = rclpy.parameter.Parameter(global_max_torque_param,
+                                                        rclpy.Parameter.Type.DOUBLE,
+                                                        10.0)
+        self.set_parameters([new_global_max_torque_param])
+
+        # Start calibration.
         if self.joints_dict['is_calibrated'] == [True]*len(self.joints_dict['joint_names']) and self.write_offsets == False:
             self.get_logger().info('All motors are calibrated')
 
@@ -168,24 +175,23 @@ class JointCalibration(Node):
                     updated = False
                     updated_line = f'    {joint}/offset: {new_param_value}'
 
-                    # keep in mind this assumes file is small which is true in our use case.
+                    # Keep in mind this assumes file is small which is true in our use case.
                     lines = output_file.readlines()
                     for line_i, line in enumerate(lines):
                         if f"{joint}/offset" in line:
                             lines[line_i] = updated_line
                             updated = True
                             break
-                    # if it doesn't exist, then create it at the end.
+                    # If it doesn't exist, then create it at the end.
                     if not updated:
                         lines.append('\n')
                         lines.append(updated_line)
-                    # move back to top of file & wrte
+                    # Move back to top of file & write.
                     output_file.seek(0)
                     output_file.writelines(lines)
 
                 self.get_logger().info(f'Joint {joint} position after calibration: {self.joints_dict["joint_pos"][i]}')
             self.write_offsets = True
-
 
         if None in self.joints_dict['joint_pos'] or \
             None in self.joints_dict['joint_vel'] or \
@@ -196,10 +202,19 @@ class JointCalibration(Node):
 
         msg = JointTrajectory()
         msg.header.stamp = self.get_clock().now().to_msg()
-        # take the first uncalibrated joint and calibrate it
+        # Take the first uncalibrated joint and calibrate it
         for i, joint in enumerate(self.joints_dict['joint_names']):
             if self.joints_dict['is_calibrated'][i] == False:
                 # self.get_logger().info(f'Calibrating joint {joint}')
+
+                # Set max torque to a low value for that particular joint.
+                max_torque_per_joint_param_name = f'{joint}/max_torque'
+                new_max_torque_param = rclpy.parameter.Parameter(max_torque_per_joint_param_name,
+                                                        rclpy.Parameter.Type.DOUBLE,
+                                                        3.0) # 3 Nm (low torque)
+                self.set_parameters([new_max_torque_param])
+
+                # Calibrate.
                 joint_traj_pt_msg = self.get_calibration_setpt_msg(joint, i)
                 msg.joint_names.append(joint)
                 msg.points.append(joint_traj_pt_msg)
@@ -207,6 +222,14 @@ class JointCalibration(Node):
 
         for i, joint in enumerate(self.joints_dict['joint_names']):
             if self.joints_dict['is_calibrated'][i] == True:
+
+                # Set max torque to a high value for the joints that are already calibrated.
+                max_torque_per_joint_param_name = f'{joint}/max_torque'
+                new_max_torque_param = rclpy.parameter.Parameter(max_torque_per_joint_param_name,
+                                                        rclpy.Parameter.Type.DOUBLE,
+                                                        10.0)
+                self.set_parameters([new_max_torque_param])
+
                 msg.joint_names.append(joint)
                 joint_traj_pt_msg = JointTrajectoryPoint()
                 joint_traj_pt_msg.positions.append(self.joints_dict['center_pos'][i])
