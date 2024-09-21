@@ -70,7 +70,7 @@ name="base_link">
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes_v3/base_link.STL" />
+          filename="package://biped_robot_description/meshes_v3/base_link_collision.STL" />
       </geometry>
     </collision>
   </link>
