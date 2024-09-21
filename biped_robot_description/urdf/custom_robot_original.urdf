@@ -328,7 +328,7 @@ name="base_link">
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes_v3/R_FOOT.STL" />
+          filename="package://biped_robot_description/meshes/R_FOOT.STL" />
       </geometry>
       <material
         name="">
@@ -342,7 +342,7 @@ name="base_link">
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes_v3/R_FOOT.STL" />
+          filename="package://biped_robot_description/meshes/R_FOOT.STL" />
       </geometry>
     </collision>
   </link>
@@ -631,7 +631,7 @@ name="base_link">
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes_v3/L_FOOT.STL" />
+          filename="package://biped_robot_description/meshes/L_FOOT.STL" />
       </geometry>
       <material
         name="">
@@ -645,7 +645,7 @@ name="base_link">
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://biped_robot_description/meshes_v3/L_FOOT.STL" />
+          filename="package://biped_robot_description/meshes/L_FOOT.STL" />
       </geometry>
     </collision>
   </link>
