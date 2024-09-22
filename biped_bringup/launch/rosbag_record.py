@@ -28,7 +28,7 @@ list_of_topics = ['/joy',
                 '/capture_point/desired_right_contact',
                 '/ik_interface/markers',
                 '/rosout',
-                '/external_cam/image_raw/compressed',
+                '/flir_camera/image_raw/compressed',
                 '/vel_cmd',
                 '/e_stop']
 
