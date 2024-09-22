@@ -39,12 +39,20 @@ class JointCalibration(Node):
             'vel_max': [None]*len(list_motors),
         }
 
+        # global max torque param.
+        global_max_torque_param_str = 'global_max_torque'
+        self.declare_parameter(global_max_torque_param_str, 10.0)
+
         for i, joint_name in enumerate(self.joints_dict['joint_names']):
-            # offset param
+            # offset param.
             offset_param_str = f'{joint_name}/offset'
             self.declare_parameter(offset_param_str, 0.0)
 
-            # since not everything is centered at 0, we need to know the centering factor
+            # max_torque param.
+            max_torque_param_str = f'{joint_name}/max_torque'
+            self.declare_parameter(max_torque_param_str, 3.0)
+
+            # since not everything is centered at 0, we need to know the centering factor.
             self.joints_dict['centering_pos_deg'][i] = self.declare_parameter(f'{joint_name}/calib/centering_pos_deg', rclpy.Parameter.Type.DOUBLE).value
             self.joints_dict['trigger_effort'][i] = self.declare_parameter(f'{joint_name}/calib/trigger_effort', rclpy.Parameter.Type.DOUBLE).value
             self.joints_dict['direction'][i] = self.declare_parameter(f'{joint_name}/calib/direction', rclpy.Parameter.Type.DOUBLE).value
@@ -146,7 +154,7 @@ class JointCalibration(Node):
 
     def timer_callback(self):
         # Set global max torque param to high.
-        global_max_torque_param = 'max_torque'
+        global_max_torque_param = 'global_max_torque'
         new_global_max_torque_param = rclpy.parameter.Parameter(global_max_torque_param,
                                                         rclpy.Parameter.Type.DOUBLE,
                                                         10.0)
