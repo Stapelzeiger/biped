@@ -23,17 +23,6 @@
 using namespace std::placeholders;
 using namespace std::chrono_literals;
 
-struct IMUData {
-    sensor_msgs::msg::Imu imu_msg;
-    rclcpp::Time timestamp;
-
-    IMUData(sensor_msgs::msg::Imu msg, rclcpp::Time ts)
-        : imu_msg(msg), timestamp(ts) {}
-
-    bool operator<(const IMUData& other) const {
-        return timestamp < other.timestamp;
-    }
-};
 
 Eigen::Matrix3d cross_product_matrix(Eigen::Vector3d v)
 {
