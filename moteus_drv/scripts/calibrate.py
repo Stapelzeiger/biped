@@ -1,16 +1,22 @@
 #!/usr/bin/env python3
 
 import rclpy
+import time
 from rclpy.node import Node
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 from sensor_msgs.msg import JointState
 import numpy as np
 import threading
+from rclpy.parameter import Parameter
+from rcl_interfaces.srv import SetParameters
 
 TIME_PERIOD = 0.01
 VEL_MAX = 0.3
 COUNTER_TRIGGER = 20
 EPSILON = 0.0001
+
+LOW_TORQUE = 3.0
+HIGH_TORQUE = 5.0
 
 
 class JointCalibration(Node):
@@ -18,8 +24,8 @@ class JointCalibration(Node):
         super().__init__('joint_calibration_publisher')
         # this will get moteus_drv share folder.
         # on the rasberrypi: /home/biped-raspi/biped_ws/install/moteus_drv/share/moteus_drv
-        self.ws_share_folder = self.declare_parameter('install_folder', rclpy.Parameter.Type.STRING).value
-
+        self.ws_share_folder = self.declare_parameter('install_folder', rclpy.Parameter.Type.STRING).value # todo use ros tooling for this
+        self.get_logger().info(f'Workspace share folder: {self.ws_share_folder}')
         list_motors = self.declare_parameter('joints', rclpy.Parameter.Type.STRING_ARRAY).value
         self.get_logger().info(f'List of motors: {list_motors}')
 
@@ -37,11 +43,9 @@ class JointCalibration(Node):
             'trigger_effort': [None]*len(list_motors),
             'direction': [None]*len(list_motors),
             'vel_max': [None]*len(list_motors),
+            'set_high_torque_param': [False]*len(list_motors),
+            'set_low_torque_param': [False]*len(list_motors),
         }
-
-        # global max torque param.
-        global_max_torque_param_str = 'global_max_torque'
-        self.declare_parameter(global_max_torque_param_str, 10.0)
 
         for i, joint_name in enumerate(self.joints_dict['joint_names']):
             # offset param.
@@ -50,7 +54,7 @@ class JointCalibration(Node):
 
             # max_torque param.
             max_torque_param_str = f'{joint_name}/max_torque'
-            self.declare_parameter(max_torque_param_str, 3.0)
+            self.declare_parameter(max_torque_param_str, LOW_TORQUE)
 
             # since not everything is centered at 0, we need to know the centering factor.
             self.joints_dict['centering_pos_deg'][i] = self.declare_parameter(f'{joint_name}/calib/centering_pos_deg', rclpy.Parameter.Type.DOUBLE).value
@@ -68,11 +72,51 @@ class JointCalibration(Node):
         self.setpt_pos = None
         self.setpt_vel = None
 
+        self.moteus_set_param = self.create_client(SetParameters, '/moteus/set_parameters')
+        while not self.moteus_set_param.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('service not available, waiting again...')
+        self.moteus_param_requests = []
+
+        self.update_moteus_parameter('global_max_torque', HIGH_TORQUE)
+
+        for joint_name in self.joints_dict['joint_names']:
+            self.update_moteus_parameter(f'{joint_name}/offset', 0.0)
+        while len(self.moteus_param_requests) > 0:
+            self.check_moteus_param_requests()
+            self.get_logger().info('Waiting for all offsets to be set to 0')
+            rclpy.spin_once(self, timeout_sec=1)
+            time.sleep(0.1)
+        # wait for some time to make sure motors are relative to new parameters
+        start = time.time()
+        while time.time() - start < 5:
+            self.get_logger().info('Waiting for motors to be relative to new parameters')
+            rclpy.spin_once(self, timeout_sec=1)
+            time.sleep(0.1)
+
         self.pub_trajectory = self.create_publisher(JointTrajectory, 'joint_trajectory', 10)
         self.joint_states_sub = self.create_subscription(JointState, 'joint_states', self.joint_states_callback, 10)
         self.timer_period = TIME_PERIOD # seconds
 
         self.timer = self.create_timer(self.timer_period, self.timer_callback)
+
+    def update_moteus_parameter(self, name_param, value):
+        req = SetParameters.Request()
+        req.parameters = [Parameter(name=name_param, value=value).to_parameter_msg()]
+        self.moteus_param_requests.append(self.moteus_set_param.call_async(req))
+
+    def check_moteus_param_requests(self):
+        requests_open = []
+        for i, req in enumerate(self.moteus_param_requests):
+            if req.done():
+                try:
+                    response = req.result()
+                except Exception as e:
+                    self.get_logger().error(f'Service call failed {str(e)}')
+                else:
+                    self.get_logger().info(f'Parameter updated')
+            else:
+                requests_open.append(req)
+        self.moteus_param_requests = requests_open
 
     def joint_states_callback(self, msg):
         with self.lock:
@@ -83,6 +127,7 @@ class JointCalibration(Node):
                     self.joints_dict['joint_vel'][idx] = msg.velocity[idx]
                     self.joints_dict['joint_effort'][idx] = msg.effort[idx]
                     self.joints_dict['initial_pos'][idx] = msg.position[idx]
+
 
     def get_calibration_setpt_msg(self, joint, idx):
         with self.lock:
@@ -153,53 +198,7 @@ class JointCalibration(Node):
             return joint_traj_pt_msg
 
     def timer_callback(self):
-        # Set global max torque param to high.
-        global_max_torque_param = 'global_max_torque'
-        new_global_max_torque_param = rclpy.parameter.Parameter(global_max_torque_param,
-                                                        rclpy.Parameter.Type.DOUBLE,
-                                                        10.0)
-        self.set_parameters([new_global_max_torque_param])
-
-        # Start calibration.
-        if self.joints_dict['is_calibrated'] == [True]*len(self.joints_dict['joint_names']) and self.write_offsets == False:
-            self.get_logger().info('All motors are calibrated')
-
-            self.get_logger().info('Writing offsets to file')
-            # this will save to share folder which is symlinked to the original file.
-            file_name = self.ws_share_folder + '/config/params.yaml'
-
-            for i, joint in enumerate(self.joints_dict['joint_names']):
-                self.get_logger().info('i: ' + str(i))
-                offset_param_str = f'{joint}/offset'
-                new_offset_param = rclpy.parameter.Parameter(offset_param_str,
-                                                        rclpy.Parameter.Type.DOUBLE,
-                                                        self.joints_dict['joint_pos'][i])
-                self.set_parameters([new_offset_param])
-                new_param_value = self.get_parameter(offset_param_str).get_parameter_value().double_value
-                self.get_logger().info(f'New offset for {joint}: {new_param_value}')
-                self.get_logger().info(f'Center position for {joint}: {self.joints_dict["joint_pos"][i]}')
-
-                with open(file_name, 'r+') as output_file:
-                    updated = False
-                    updated_line = f'    {joint}/offset: {new_param_value}'
-
-                    # Keep in mind this assumes file is small which is true in our use case.
-                    lines = output_file.readlines()
-                    for line_i, line in enumerate(lines):
-                        if f"{joint}/offset" in line:
-                            lines[line_i] = updated_line
-                            updated = True
-                            break
-                    # If it doesn't exist, then create it at the end.
-                    if not updated:
-                        lines.append('\n')
-                        lines.append(updated_line)
-                    # Move back to top of file & write.
-                    output_file.seek(0)
-                    output_file.writelines(lines)
-
-                self.get_logger().info(f'Joint {joint} position after calibration: {self.joints_dict["joint_pos"][i]}')
-            self.write_offsets = True
+        self.check_moteus_param_requests()
 
         if None in self.joints_dict['joint_pos'] or \
             None in self.joints_dict['joint_vel'] or \
@@ -208,21 +207,54 @@ class JointCalibration(Node):
             self.get_logger().info('No joint states received yet')
             return
 
-        msg = JointTrajectory()
-        msg.header.stamp = self.get_clock().now().to_msg()
+        calibration_done = self.joints_dict['is_calibrated'] == [True]*len(self.joints_dict['joint_names'])
+        if calibration_done:
+            self.get_logger().info('All motors are calibrated')
+
+            # set the joint traj to nan
+            msg = JointTrajectory()
+            msg.header.stamp = self.get_clock().now().to_msg()
+            for i, joint in enumerate(self.joints_dict['joint_names']):
+                msg.joint_names.append(joint)
+                joint_traj_pt_msg = JointTrajectoryPoint()
+                joint_traj_pt_msg.positions.append(np.nan)
+                joint_traj_pt_msg.velocities.append(np.nan)
+                joint_traj_pt_msg.effort.append(np.nan)
+                msg.points.append(joint_traj_pt_msg)
+            self.pub_trajectory.publish(msg)
+
+            if self.write_offsets == False:
+                self.write_offsets = True
+                self.get_logger().info('Writing offsets to file')
+                # this will save to share folder which is symlinked to the original file.
+                file_name = self.ws_share_folder + '/config/calibration.yaml'
+
+                with open(file_name, 'w') as output_file:
+                    output_file.writelines('/**:\n')
+                    output_file.writelines('  ros__parameters:\n')
+
+                    for i, joint in enumerate(self.joints_dict['joint_names']):
+                        self.get_logger().info('i: ' + str(i))
+                        offset_pos = self.joints_dict['joint_pos'][i]
+                        offset = f'    {joint}/offset: {offset_pos}\n'
+                        output_file.writelines(offset)
+                        self.get_logger().info(f'Joint {joint} position after calibration: {self.joints_dict["joint_pos"][i]}')
+            return # calibration done
+
         # Take the first uncalibrated joint and calibrate it
         for i, joint in enumerate(self.joints_dict['joint_names']):
             if self.joints_dict['is_calibrated'][i] == False:
                 # self.get_logger().info(f'Calibrating joint {joint}')
 
                 # Set max torque to a low value for that particular joint.
-                max_torque_per_joint_param_name = f'{joint}/max_torque'
-                new_max_torque_param = rclpy.parameter.Parameter(max_torque_per_joint_param_name,
-                                                        rclpy.Parameter.Type.DOUBLE,
-                                                        3.0) # 3 Nm (low torque)
-                self.set_parameters([new_max_torque_param])
+                if self.joints_dict['set_low_torque_param'][i] == False:
+                    max_torque_per_joint_param_name = f'{joint}/max_torque'
+                    self.update_moteus_parameter(max_torque_per_joint_param_name, LOW_TORQUE)
+                    self.joints_dict['set_low_torque_param'][i] = True
 
                 # Calibrate.
+                msg = JointTrajectory()
+                msg.header.stamp = self.get_clock().now().to_msg()
                 joint_traj_pt_msg = self.get_calibration_setpt_msg(joint, i)
                 msg.joint_names.append(joint)
                 msg.points.append(joint_traj_pt_msg)
@@ -232,11 +264,10 @@ class JointCalibration(Node):
             if self.joints_dict['is_calibrated'][i] == True:
 
                 # Set max torque to a high value for the joints that are already calibrated.
-                max_torque_per_joint_param_name = f'{joint}/max_torque'
-                new_max_torque_param = rclpy.parameter.Parameter(max_torque_per_joint_param_name,
-                                                        rclpy.Parameter.Type.DOUBLE,
-                                                        10.0)
-                self.set_parameters([new_max_torque_param])
+                if self.joints_dict['set_high_torque_param'][i] == False:
+                    max_torque_per_joint_param_name = f'{joint}/max_torque'
+                    self.update_moteus_parameter(max_torque_per_joint_param_name, HIGH_TORQUE)
+                    self.joints_dict['set_high_torque_param'][i] = True
 
                 msg.joint_names.append(joint)
                 joint_traj_pt_msg = JointTrajectoryPoint()
