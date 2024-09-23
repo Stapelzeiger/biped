@@ -5,6 +5,7 @@ launch:
     name: moteus
     param: 
       - from: $(find-pkg-share moteus_drv)/config/params.yaml
+      - from: $(find-pkg-share moteus_drv)/config/calibration.yaml
     remap:
       - from: /moteus/joint_states
         to: /joint_states
@@ -23,4 +24,10 @@ launch:
     env:
       - name: PARAM_FILE
         value: $(find-pkg-share moteus_drv)/config/params.yaml
+    output: screen
+- executable:
+    cmd: 'bash -c "while inotifywait -e close_write $PARAM_FILE ; do ros2 param load /moteus $PARAM_FILE ; done"'
+    env:
+      - name: PARAM_FILE
+        value: $(find-pkg-share moteus_drv)/config/calibration.yaml
     output: screen
