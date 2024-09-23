@@ -31,7 +31,7 @@
     # R_HAA/calib/centering_pos_deg: 20.0
     # R_HAA/calib/trigger_effort: 2.0
     # R_HAA/calib/direction: 1.0
-    R_HAA/calib/centering_pos_deg: 33.62
+    R_HAA/calib/centering_pos_deg: 38.0
     R_HAA/calib/trigger_effort: 2.5
     R_HAA/calib/direction: -1.0
 
@@ -70,7 +70,7 @@
     # L_HAA/calib/centering_pos_deg: 20.0
     # L_HAA/calib/trigger_effort: 2.0
     # L_HAA/calib/direction: -1.0
-    L_HAA/calib/centering_pos_deg: 33.62
+    L_HAA/calib/centering_pos_deg: 38.0
     L_HAA/calib/trigger_effort: 2.5
     L_HAA/calib/direction: 1.0
 
@@ -92,12 +92,3 @@
 
     L_ANKLE/can_id: 4 # dummy number
     L_ANKLE/can_bus: 1 # dummy number
-
-    R_YAW/offset: -2.826805069700096   
-    R_HAA/offset: 0.7420441847779092   
-    R_HFE/offset: 0.30159289474462014   
-    R_KFE/offset: 0.6459114495780615   
-    L_YAW/offset: 2.9970793915246627   
-    L_HAA/offset: 0.13320352851220724   
-    L_HFE/offset: -0.21048670779051615   
-    L_KFE/offset: 0.9135751436639118   
