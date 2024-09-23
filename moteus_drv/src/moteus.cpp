@@ -39,8 +39,11 @@ public:
         moteus_query_res_.resize(nb_joints_);
         joint_signs_.resize(nb_joints_);
         joint_offsets_.resize(nb_joints_);
-        joint_encoder_ambiguities_.resize(nb_joints_);
         joint_offset_from_encoder_ambiguity_.resize(nb_joints_);
+        joint_startup_ignore_time_.resize(nb_joints_);
+        for (size_t joint_idx = 0; joint_idx < nb_joints_; joint_idx++) {
+            joint_startup_ignore_time_[joint_idx] = this->now() + 0.3s;
+        }
 
         // Moteus buffers
         moteus_command_buf_.clear();
@@ -63,7 +66,7 @@ public:
 
             joint_offsets_[joint_idx] = this->get_parameter(joint_name + "/offset").as_double();
 
-            std::cout << "joint_offsets_ = " << joint_offsets_[joint_idx] << std::endl;
+            std::cout << "joint_offsets for " << joint_name << ": " << joint_offsets_[joint_idx] << std::endl;
             joint_offset_from_encoder_ambiguity_[joint_idx] = NAN;
 
             RCLCPP_INFO_STREAM(this->get_logger(), "Adding joint: " << joint_name << ", CAN bus: " << bus << ", id " << id);
@@ -145,7 +148,7 @@ private:
             if (e_stop_) {
                 continue;
             }
-            if (!isfinite(joint_offset_from_encoder_ambiguity_[joint_idx])) {
+            if (!std::isfinite(joint_offset_from_encoder_ambiguity_[joint_idx])) {
                 continue;
             }
             if (joint_traj_[joint_idx].points.size() > 0) {
@@ -216,18 +219,29 @@ private:
             auto joint_name = joint_names_[joint_idx];
             auto res = std::get<0>(moteus_query_res_[joint_idx]);
             auto timestamp = std::get<1>(moteus_query_res_[joint_idx]);
+            if (std::isfinite(res.position) && (now - timestamp).seconds() > joint_state_timeout_reset_encoder_ambiguity_) {
+                if (std::isfinite(joint_offset_from_encoder_ambiguity_[joint_idx])) {
+                    RCLCPP_WARN_STREAM(this->get_logger(), "Joint " << joint_name << " not responding, resetting encoder ambiguity");
+                }
+                joint_offset_from_encoder_ambiguity_[joint_idx] = NAN;
+                joint_startup_ignore_time_[joint_idx] = now + 0.5s;
+            }
+            if (now < joint_startup_ignore_time_[joint_idx]) {
+                continue;
+            }
             // RCLCPP_INFO_STREAM(this->get_logger(), "now: " << now.seconds());
             // RCLCPP_INFO_STREAM(this->get_logger(), "timestamp: " << timestamp.seconds());
             if (std::isfinite(res.position) && (now - timestamp).seconds() < joint_state_timeout_) {
                 msg.name.push_back(joint_name);
                 double p_enc = res.position * 2 * M_PI;
                 double sign = joint_signs_[joint_idx];
-                if (!isfinite(joint_offset_from_encoder_ambiguity_[joint_idx])) {
+                if (!std::isfinite(joint_offset_from_encoder_ambiguity_[joint_idx])) {
                     // resolve encoder ambiguity:
                     // p0 = p_enc*sign - a * k - offset + epsilon, k integer that minimizes abs(epsilon)
                     // -> k = round((p_enc*sign - p0 - offset) / a)
                     double p0 = this->get_parameter(joint_name + "/encoder_ambiguity_init_pos").as_double();
-                    double a = this->get_parameter(joint_name + "/encoder_ambiguity").as_double();
+                    double ambiguity = this->get_parameter(joint_name + "/encoder_ambiguity").as_double();
+                    double a = 2 * M_PI / ambiguity;
                     double k = std::round((p_enc * sign - p0 - joint_offsets_[joint_idx]) / a);
                     joint_offset_from_encoder_ambiguity_[joint_idx] = k * a;
                 }
@@ -243,17 +257,6 @@ private:
             } else {
                 joints_not_responding.push_back(joint_name);
             }
-            if ((now - timestamp).seconds() > joint_state_timeout_reset_encoder_ambiguity_) {
-                if (isfinite(joint_offset_from_encoder_ambiguity_[joint_idx])) {
-                    RCLCPP_WARN_STREAM(this->get_logger(), "Joint " << joint_name << " not responding, resetting encoder ambiguity");
-                }
-                joint_offset_from_encoder_ambiguity_[joint_idx] = NAN;
-            }
-        }
-        // check if all the joints are not responding:
-        if (joints_not_responding.size() == nb_joints_) {
-            RCLCPP_ERROR_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 500 /* [ms] */, "All joints not responding");
-            recompute_encoder_offsets_ = true;
         }
 
         joint_pub_->publish(msg);
@@ -326,13 +329,14 @@ private:
     std::vector<double> joint_signs_;
     std::vector<double> joint_offsets_;
     std::vector<double> joint_offset_from_encoder_ambiguity_;
+    // rclpp time vector
+    std::vector<rclcpp::Time> joint_startup_ignore_time_;
 
     std::map<size_t, size_t> joint_uid_to_joint_index_;
     double joint_state_timeout_;
     double joint_state_timeout_reset_encoder_ambiguity_;
     double joint_command_timeout_;
     bool e_stop_ = false;
-    bool recompute_encoder_offsets_ = false;
 
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_pub_;
     rclcpp::Publisher<moteus_drv::msg::StampedSensors>::SharedPtr sensors_pub_;
