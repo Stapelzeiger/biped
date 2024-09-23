@@ -1,0 +1,70 @@
+python3 -m moteus.moteus_tool -t 14 --info
+{
+  "serial_number": "AEUAKjdTUA0gMjlC",
+  "model": "800",
+  "git_hash": "26e636ddb36b702a361291b0ab842acd881f281b",
+  "git_dirty": false,
+  "git_timestamp": 1659560860,
+  "uuid": "aca1624c-81d0-40f9-b56c-09738c078e02"
+}
+
+-------------------------------------------------------------
+
+ python3 -m moteus.moteus_tool -t 11 --info
+{
+  "serial_number": "AD4AMkszUAggMTg0",
+  "model": "800",
+  "git_hash": "26e636ddb36b702a361291b0ab842acd881f281b",
+  "git_dirty": false,
+  "git_timestamp": 1659560860,
+  "uuid": "23ef31e2-2fe9-44da-b2cc-de609362aec3"
+}
+
+-------------------------------------------------------------
+
+ python3 -m moteus.moteus_tool -t 14 --info
+{
+  "serial_number": "AD0ASUFTUA0gMDBH",
+  "model": "800",
+  "git_hash": "26e636ddb36b702a361291b0ab842acd881f281b",
+  "git_dirty": false,
+  "git_timestamp": 1659560860,
+  "uuid": "13e55564-4361-4b43-a2b4-d732d42b2576"
+}
+
+-------------------------------------------------------------
+
+python3 -m moteus.moteus_tool -t 22 --info
+{
+  "serial_number": "AD0APEFTUA0gMDBH",
+  "model": "800",
+  "git_hash": "da83d0890b7ee42fc54affb4e6dc996308da1011",
+  "git_dirty": false,
+  "git_timestamp": 1668793110,
+  "uuid": "231430bd-a2a7-4449-af8d-071e32dc9f79"
+}
+
+-------------------------------------------------------------
+
+ python3 -m moteus.moteus_tool -t 23 --info
+{
+  "serial_number": "ACsAKVQwUBEgOTNO",
+  "model": "0",
+  "git_hash": "863c597794066fa77c94828c0d2eb49614d5ebb0",
+  "git_dirty": false,
+  "git_timestamp": 1718648350,
+  "uuid": "33d989e3-ce94-4537-9b8e-f4c375c30f90"
+}
+
+-------------------------------------------------------------
+
+ python3 -m moteus.moteus_tool -t 21 --info
+{
+  "serial_number": "ACgAPjdTUA0gMjlC",
+  "model": "800",
+  "git_hash": "da83d0890b7ee42fc54affb4e6dc996308da1011",
+  "git_dirty": false,
+  "git_timestamp": 1668793110,
+  "uuid": "40409b0c-aa48-4a7c-acc3-6efc448b3a1c"
+}
+
