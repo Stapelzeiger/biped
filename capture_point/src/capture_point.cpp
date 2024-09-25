@@ -119,11 +119,31 @@ public:
             "~/e_stop", 10, std::bind(&CapturePoint::e_stop_cb, this, _1));
         e_stop_ = false;
 
+        offset_foot_ = 0.0;
+        offset_sub_ = this->create_subscription<std_msgs::msg::Float32>(
+            "/offset_z", 10, std::bind(&CapturePoint::offset_cb, this, _1));
+
+        offset_foot_vel_ = 0.0;
+        offset_vel_sub_ = this->create_subscription<std_msgs::msg::Float32>(
+            "/offset_z_vel", 10, std::bind(&CapturePoint::offset_vel_cb, this, _1));
+
         std::chrono::duration<double> period = robot_params_.dt_ctrl * 1s;
         timer_ = rclcpp::create_timer(this, this->get_clock(), period, std::bind(&CapturePoint::timer_callback, this));
     }
 
 private:
+
+    void offset_cb(const std_msgs::msg::Float32::SharedPtr msg)
+    {
+        offset_foot_ = msg->data;
+    }
+
+    void offset_vel_cb(const std_msgs::msg::Float32::SharedPtr msg)
+    {
+        offset_foot_vel_ = msg->data;
+        RCLCPP_INFO(this->get_logger(), "offset_foot_vel_: %f", offset_foot_vel_);
+    }
+
     void set_starting_to_walk_params(Eigen::Vector3d swing_foot_STF)
     {
         foot_right_contact_ = false;
@@ -244,8 +264,11 @@ private:
             broadcast_transform(base_link_frame_id_, "BLF", T_BLF_to_BF.translation(), Eigen::Quaterniond(T_BLF_to_BF.rotation()));
             broadcast_transform("BLF", "STF", T_STF_to_BLF_.translation(), Eigen::Quaterniond(T_STF_to_BLF_.rotation()));
 
-            Eigen::Vector3d fin_swing_foot_pos_STF;
-            fin_swing_foot_pos_STF = Eigen::Vector3d(0.0, 0.1, 0.1);
+            Eigen::Vector3d fin_swing_foot_pos_STF, fin_swing_foot_vel_STF;
+            fin_swing_foot_pos_STF = Eigen::Vector3d(0.0, 0.1, 0.1 - offset_foot_);
+            fin_swing_foot_vel_STF = Eigen::Vector3d(0.0, 0.0, - offset_foot_vel_);
+            // RCLCPP_INFO(this->get_logger(), "fin_swing_foot_pos_STF %f %f %f", fin_swing_foot_pos_STF(0), fin_swing_foot_pos_STF(1), fin_swing_foot_pos_STF(2));
+            // RCLCPP_INFO(this->get_logger(), "fin_swing_foot_vel_STF %f %f %f", fin_swing_foot_vel_STF(0), fin_swing_foot_vel_STF(1), fin_swing_foot_vel_STF(2));
 
             Eigen::Vector3d fin_baselink_pos_STF;
             fin_baselink_pos_STF = Eigen::Vector3d(0.0, 0.0, robot_params_.robot_height);
@@ -253,7 +276,7 @@ private:
             std::string frame_id = "STF";
             publish_body_trajectories(frame_id, fin_baselink_pos_STF, Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0), Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero(),  // todo fix this so it takes the init orientation of the robot
                                         Eigen::Vector3d::Zero(), Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0), Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero(),
-                                        fin_swing_foot_pos_STF, Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0), Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero());
+                                        fin_swing_foot_pos_STF, Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0), fin_swing_foot_vel_STF, Eigen::Vector3d::Zero());
 
             biped_bringup::msg::StampedBool des_contact_msg;
             des_contact_msg.header.stamp = this->get_clock()->now();
@@ -779,6 +802,11 @@ private:
     rclcpp::Subscription<biped_bringup::msg::StampedBool>::SharedPtr contact_left_sub_;
     rclcpp::Subscription<geometry_msgs::msg::TwistStamped>::SharedPtr vel_cmd_sub_;
 
+    rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr offset_sub_;
+    rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr offset_vel_sub_;
+    double offset_foot_;
+    double offset_foot_vel_;
+
     rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr e_stop_sub_;
     bool e_stop_;
 
@@ -858,7 +886,6 @@ private:
 
     bool start_cmd_line_;
     bool walk_slow_;
-
 
 };
 
