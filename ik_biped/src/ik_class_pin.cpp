@@ -17,6 +17,7 @@ const double CLAMP_ERROR_MAG = 0.002;
 const int IT_MAX = 400;
 const double DT = 0.1;
 const double DAMP = 1e-5;
+const double DAMP_VEL = 1e-2;
 
 
 void get_singular_values(const Eigen::MatrixXd &A, Eigen::VectorXd &S)
@@ -327,8 +328,13 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
             cur_constraint_ff += 5;
         }
     }
+
     Eigen::HouseholderQR<Eigen::MatrixXd> QR_ff(J_for_ff_stacked);
-    const Eigen::VectorXd q_vel(QR_ff.solve(body_vels_stacked));
+    Eigen::MatrixXd identity_mat;
+    identity_mat = Eigen::MatrixXd::Identity(cur_constraint_ff, cur_constraint_ff);
+    Eigen::VectorXd q_vel;
+    q_vel = J_for_ff_stacked.transpose() * (J_for_ff_stacked * J_for_ff_stacked.transpose() + DAMP_VEL * identity_mat).ldlt().solve(body_vels_stacked);
+    // const Eigen::VectorXd q_vel(QR_ff.solve(body_vels_stacked));
 
     // Send the solution to the joint_trajectory velocity.
     for (auto &joint_state: joint_states)
