@@ -12,5 +12,4 @@ windows:
   - clear
   - ros2 run tf2_ros static_transform_publisher 0.0 0.0 0.01 0.0 0.0 0.0 /base_link /base_link_mocap
   - ros2 run tf2_ros static_transform_publisher 0.0 0.0 0.0 0.0 0.0 0.0 /odom /world
-  - ros2 launch spinnaker_camera_driver driver_node.launch.py camera_type:=blackfly_s serial:="'20538718'"
-  - ros2 run plotjuggler plotjuggler --layout src/biped/biped_bringup/plotjuggler/plot_rosbag.xml
+  - ros2 run plotjuggler plotjuggler --layout src/biped/biped_bringup/plotjuggler/joints_plot.xml
