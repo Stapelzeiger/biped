@@ -13,6 +13,8 @@
 #include "std_msgs/msg/float64_multi_array.hpp"
 #include "ik_class_pin.hpp"
 #include "biped_bringup/msg/stamped_bool.hpp"
+#include "tf2_ros/buffer.h"
+#include "tf2_ros/transform_listener.h"
 #include <math.h>
 
 using namespace std::placeholders;
@@ -21,7 +23,7 @@ class IKNode : public rclcpp::Node
 {
 
 public:
-    IKNode() : Node("ik_node")
+    IKNode() : Node("ik_node"), tf_buffer_(this->get_clock()), tf_listener_(tf_buffer_)
     {
         robot_desc_sub_ = this->create_subscription<std_msgs::msg::String>(
             "/robot_description", rclcpp::QoS(rclcpp::KeepLast(1)).transient_local(), std::bind(&IKNode::robot_desc_cb, this, _1));
@@ -45,16 +47,15 @@ public:
         inertia_torque_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("inertia_torque", 10);
 
         acc_foot_computed_pub_ = this->create_publisher<std_msgs::msg::Float64MultiArray>("acc_foot_computed", 10);
-
     }
 
 private:
-    void contact_cb(biped_bringup::msg::StampedBool::SharedPtr msg, const std::string &joint_name)
+    void contact_cb(biped_bringup::msg::StampedBool::ConstSharedPtr msg, const std::string &joint_name)
     {
         contact_states_[joint_name] = msg;
     }
 
-    void actual_joint_states_cb(sensor_msgs::msg::JointState::SharedPtr msg)
+    void actual_joint_states_cb(sensor_msgs::msg::JointState::ConstSharedPtr msg)
     {
         encoder_joint_states_.clear();
         for (size_t i = 0; i < msg->name.size(); i++) {
@@ -67,16 +68,12 @@ private:
         time_encoder_joint_state_ = rclcpp::Time(msg->header.stamp);
     }
 
-    void odom_baselink_cb(nav_msgs::msg::Odometry::SharedPtr msg)
+    void odom_baselink_cb(nav_msgs::msg::Odometry::ConstSharedPtr msg)
     {
-        odom_baselink_.position = Eigen::Vector3d(msg->pose.pose.position.x, msg->pose.pose.position.y, msg->pose.pose.position.z);
-        odom_baselink_.orientation = Eigen::Quaterniond(msg->pose.pose.orientation.w, msg->pose.pose.orientation.x, msg->pose.pose.orientation.y, msg->pose.pose.orientation.z);
-        odom_baselink_.linear_velocity = Eigen::Vector3d(msg->twist.twist.linear.x, msg->twist.twist.linear.y, msg->twist.twist.linear.z);
-        odom_baselink_.angular_velocity = Eigen::Vector3d(msg->twist.twist.angular.x, msg->twist.twist.angular.y, msg->twist.twist.angular.z);
-        time_odom_baselink_ = rclcpp::Time(msg->header.stamp);
+        odom_ = msg;
     }
 
-    void body_desired_cb(trajectory_msgs::msg::MultiDOFJointTrajectory::SharedPtr msg)
+    void body_desired_cb(trajectory_msgs::msg::MultiDOFJointTrajectory::ConstSharedPtr msg)
     {
         if (!robot_.has_model()) {
             RCLCPP_ERROR_SKIPFIRST_THROTTLE(this->get_logger(), *this->get_clock(), 1000 /* [ms] */, "No robot model loaded");
@@ -87,7 +84,7 @@ private:
             if (contact_subs_.find(name) == contact_subs_.end())
             {
                 contact_subs_[name] = this->create_subscription<biped_bringup::msg::StampedBool>(
-                    "~/contact_" + name, 1, [this, name](const biped_bringup::msg::StampedBool::SharedPtr msg) {contact_cb(msg, name);});
+                    "~/contact_" + name, 1, [this, name](const biped_bringup::msg::StampedBool::ConstSharedPtr msg) {contact_cb(msg, name);});
             }
         }
         // check time of contact data
@@ -102,9 +99,9 @@ private:
         }
 
         auto time_now = rclcpp::Time(msg->header.stamp);
-        if (time_now - time_odom_baselink_ > rclcpp::Duration(0.1s) || time_odom_baselink_ == rclcpp::Time(0, 0, RCL_ROS_TIME))
+        if (odom_ == nullptr || time_now - rclcpp::Time(odom_->header.stamp) > rclcpp::Duration(0.1s))
         {
-            RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 100 /* [ms] */, "odom_baselink data is too old: %f", (time_odom_baselink_ - time_now).seconds());
+            RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 100 /* [ms] */, "odom_baselink data is too old: %f", (time_now - rclcpp::Time(odom_->header.stamp)).seconds());
             return;
         }
 
@@ -182,9 +179,10 @@ private:
             for (const auto &body : bodies) {
                 RCLCPP_DEBUG_STREAM(this->get_logger(), "   " << body.name);
             }
-            if (fabs((time_odom_baselink_ - time_encoder_joint_state_).seconds()) > 0.01) {
+            auto odom_time = rclcpp::Time(odom_->header.stamp);
+            if (fabs((odom_time - time_encoder_joint_state_).seconds()) > 0.01) {
                 RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 100 /* [ms] */, "odom and joint_states are out of sync: ");
-                RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 100 /* [ms] */, "diff odom - joint_states: %f", (time_odom_baselink_ - time_encoder_joint_state_).seconds());
+                RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 100 /* [ms] */, "diff odom - joint_states: %f", (odom_time - time_encoder_joint_state_).seconds());
             }
             std::vector<Eigen::Vector3d> body_positions_solution;
             std::vector<IKRobot::JointState> joint_states_for_EL_eq;
@@ -193,8 +191,37 @@ private:
             Eigen::VectorXd inertia_torque;
             Eigen::VectorXd a_foot_computed;
 
+            // Transform odometry to desired frame
+            geometry_msgs::msg::TransformStamped T_ODOM_to_DESIRED_msg;
+            Eigen::Affine3d T_ODOM_to_DESIRED;
+            try {
+                T_ODOM_to_DESIRED_msg = tf_buffer_.lookupTransform(msg->header.frame_id, odom_->header.frame_id, tf2::TimePointZero, tf2::durationFromSec(0.0));
+                T_ODOM_to_DESIRED.translation() = Eigen::Vector3d(T_ODOM_to_DESIRED_msg.transform.translation.x,
+                                                                  T_ODOM_to_DESIRED_msg.transform.translation.y,
+                                                                  T_ODOM_to_DESIRED_msg.transform.translation.z);
+
+                T_ODOM_to_DESIRED.linear() = Eigen::Quaterniond(T_ODOM_to_DESIRED_msg.transform.rotation.w,
+                                                                T_ODOM_to_DESIRED_msg.transform.rotation.x,
+                                                                T_ODOM_to_DESIRED_msg.transform.rotation.y,
+                                                                T_ODOM_to_DESIRED_msg.transform.rotation.z).toRotationMatrix();
+
+            } catch (const tf2::TransformException &ex) {
+                RCLCPP_ERROR(this->get_logger(), "Could not transform %s to %s: %s", odom_->header.frame_id.c_str(), msg->header.frame_id.c_str(), ex.what());
+                return;
+            }
+            IKRobot::BodyState odom_baselink_ODOM;
+            odom_baselink_ODOM.name = "base_link";
+            odom_baselink_ODOM.position = Eigen::Vector3d(odom_->pose.pose.position.x, odom_->pose.pose.position.y, odom_->pose.pose.position.z);
+            odom_baselink_ODOM.orientation = Eigen::Quaterniond(odom_->pose.pose.orientation.w, odom_->pose.pose.orientation.x, odom_->pose.pose.orientation.y, odom_->pose.pose.orientation.z);
+            // todo velocity is in body frame, doesn't match convention
+            odom_baselink_ODOM.linear_velocity = Eigen::Vector3d(odom_->twist.twist.linear.x, odom_->twist.twist.linear.y, odom_->twist.twist.linear.z);
+            odom_baselink_ODOM.angular_velocity = Eigen::Vector3d(odom_->twist.twist.angular.x, odom_->twist.twist.angular.y, odom_->twist.twist.angular.z);
+            IKRobot::BodyState odom_baselink_DESIRED = odom_baselink_ODOM;
+            odom_baselink_DESIRED.position = T_ODOM_to_DESIRED * odom_baselink_ODOM.position;
+            odom_baselink_DESIRED.orientation = T_ODOM_to_DESIRED.rotation() * odom_baselink_ODOM.orientation;
+
             std::vector<IKRobot::JointState> joint_states = this->robot_.solve(bodies,
-                                                                                odom_baselink_,
+                                                                                odom_baselink_DESIRED,
                                                                                 encoder_joint_states_,
                                                                                 body_positions_solution,
                                                                                 joint_states_for_EL_eq,
@@ -305,7 +332,10 @@ private:
                     marker_array_msg.markers[i + body_positions_solution.size()].pose.position.x = bodies[i].position[0];
                     marker_array_msg.markers[i + body_positions_solution.size()].pose.position.y = bodies[i].position[1];
                     marker_array_msg.markers[i + body_positions_solution.size()].pose.position.z = bodies[i].position[2];
-                    marker_array_msg.markers[i + body_positions_solution.size()].pose.orientation.w = 1.0;
+                    marker_array_msg.markers[i + body_positions_solution.size()].pose.orientation.w = bodies[i].orientation.w();
+                    marker_array_msg.markers[i + body_positions_solution.size()].pose.orientation.x = bodies[i].orientation.x();
+                    marker_array_msg.markers[i + body_positions_solution.size()].pose.orientation.y = bodies[i].orientation.y();
+                    marker_array_msg.markers[i + body_positions_solution.size()].pose.orientation.z = bodies[i].orientation.z();
                     marker_array_msg.markers[i + body_positions_solution.size()].scale.x = 0.05;
                     marker_array_msg.markers[i + body_positions_solution.size()].scale.y = 0.05;
                     marker_array_msg.markers[i + body_positions_solution.size()].scale.z = 0.05;
@@ -322,7 +352,7 @@ private:
         this->robot_joints_pub_->publish(out_msg);
     }
 
-    void robot_desc_cb(const std_msgs::msg::String::SharedPtr msg)
+    void robot_desc_cb(const std_msgs::msg::String::ConstSharedPtr msg)
     {
         std::cout << "Robot description received!" << std::endl;
         robot_.build_model(msg->data.c_str());
@@ -337,7 +367,7 @@ private:
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_states_for_EL_eq_pub_;
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_baselink_sub_;
     std::map<std::string, rclcpp::Subscription<biped_bringup::msg::StampedBool>::SharedPtr> contact_subs_;
-    std::map<std::string, biped_bringup::msg::StampedBool::SharedPtr> contact_states_;
+    std::map<std::string, biped_bringup::msg::StampedBool::ConstSharedPtr> contact_states_;
 
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr gravity_torque_pub_;
     rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr corriolis_torque_pub_;
@@ -347,9 +377,10 @@ private:
     IKRobot robot_;
     rclcpp::Time time_encoder_joint_state_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
     std::vector<IKRobot::JointState> encoder_joint_states_;
-    IKRobot::BodyState odom_baselink_;
-    rclcpp::Time time_odom_baselink_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
+    nav_msgs::msg::Odometry::ConstSharedPtr odom_;
 
+    tf2_ros::Buffer tf_buffer_;
+    tf2_ros::TransformListener tf_listener_;
 };
 
 int main(int argc, char *argv[])

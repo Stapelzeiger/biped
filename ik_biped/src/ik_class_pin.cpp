@@ -368,6 +368,7 @@ std::vector<IKRobot::JointState> IKRobot::solve(const std::vector<IKRobot::BodyS
             }
         }
     }
+    // TODO we don't specify anywhere that this velocity is expected to be in the body frame
     q_vel_meas[base_link_joint.idx_v()] = odom_baselink.linear_velocity[0];
     q_vel_meas[base_link_joint.idx_v() + 1] = odom_baselink.linear_velocity[1];
     q_vel_meas[base_link_joint.idx_v() + 2] = odom_baselink.linear_velocity[2];

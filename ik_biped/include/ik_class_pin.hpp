@@ -32,6 +32,7 @@ public:
         std::string name;
         Eigen::Vector3d position;
         Eigen::Quaterniond orientation;
+        // velocities and accelerations are in the reference frame of position/orientation (not body frame!)
         Eigen::Vector3d linear_velocity;
         Eigen::Vector3d angular_velocity;
         Eigen::Vector3d linear_acceleration;

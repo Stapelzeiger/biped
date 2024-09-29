@@ -19,6 +19,8 @@ find_package(nav_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(biped_bringup REQUIRED)
+find_package(tf2_ros REQUIRED)
+find_package(tf2 REQUIRED)
 
 find_package(PkgConfig REQUIRED)
 find_package(pinocchio REQUIRED)
@@ -45,6 +47,8 @@ ament_target_dependencies(ik
                           nav_msgs
                           biped_bringup
                           geometry_msgs
+                          tf2_ros
+                          tf2
                           visualization_msgs)
 target_link_libraries(ik ${PINOCCHIO_LIBRARIES})
 
