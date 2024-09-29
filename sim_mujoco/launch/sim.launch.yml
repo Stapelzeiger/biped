@@ -8,7 +8,7 @@ launch:
     name: mujoco_sim
     param:
       - name: mujoco_xml_path
-        value: "$(find-pkg-share biped_robot_description)/urdf/custom_robot.mujoco.xml"
+        value: "$(find-pkg-share biped_robot_description)/urdf/custom_robot_v2.mujoco.xml"
       - name: visualize_mujoco
         value: false
       - name: sim_time_sec
