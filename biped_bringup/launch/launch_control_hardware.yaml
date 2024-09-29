@@ -10,7 +10,7 @@ launch:
     name: biped_state_publisher
     param:
     - name: "robot_description"
-      value: "$(command 'cat $(find-pkg-share biped_robot_description)/urdf/custom_robot.urdf')"
+      value: "$(command 'cat $(find-pkg-share biped_robot_description)/urdf/custom_robot_v2.urdf')"
       # value: "$(command '$(find-exec xacro) $(find-pkg-share biped_robot_description)/urdf/custom_robot.urdf')"
     - name: use_sim_time
       value: "$(var use_sim_time)"
