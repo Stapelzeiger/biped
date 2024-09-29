@@ -308,8 +308,6 @@ private:
             }
         }
 
-        RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 1000, "Walking mode: %s", mode_.c_str());
-        RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 1000, "Walk slow: %d", walk_slow_);
     }
 
     void run_capture_point_controller()
@@ -403,6 +401,7 @@ private:
         Eigen::Vector3d safe_next_footstep_STF = robot_params_.safety_radius_CP / norm_vec_STF_to_next_CP * vec_STF_to_next_CP;
 
         if (norm_vec_STF_to_next_CP > robot_params_.safety_radius_CP){
+            RCLCPP_WARN(this->get_logger(), "Next footstep is too far away from CP, limiting it");
             next_footstep_STF = safe_next_footstep_STF;
         }
 
@@ -469,6 +468,8 @@ private:
                 publish_body_trajectories(frame_id, pos_body_level_STF, quat_body_level_STF, vel_base_link_STF, acc_body_level_STF,
                                                     pos_desired_swing_foot_STF, quat_desired_swing_foot_STF, vel_desired_swing_foot_STF, acc_desired_swing_foot_STF,
                                                     pos_desired_stance_foot_STF, quat_desired_stance_foot_STF, vel_desired_stance_foot_STF, acc_desired_stance_foot_STF);
+            } else {
+                RCLCPP_WARN(this->get_logger(), "Error in DCM is too large");
             }
 
         } else {
@@ -483,6 +484,8 @@ private:
                 publish_body_trajectories(frame_id, pos_body_level_STF, quat_body_level_STF, vel_base_link_STF, acc_body_level_STF,
                                                     pos_desired_stance_foot_STF, quat_desired_stance_foot_STF, vel_desired_stance_foot_STF, acc_desired_stance_foot_STF,
                                                     pos_desired_swing_foot_STF, quat_desired_swing_foot_STF, vel_desired_swing_foot_STF, acc_desired_swing_foot_STF);
+            } else {
+                RCLCPP_WARN(this->get_logger(), "Error in DCM is too large");
             }
         }
 
