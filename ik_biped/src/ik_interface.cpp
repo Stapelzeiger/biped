@@ -99,7 +99,12 @@ private:
         }
 
         auto time_now = rclcpp::Time(msg->header.stamp);
-        if (odom_ == nullptr || time_now - rclcpp::Time(odom_->header.stamp) > rclcpp::Duration(0.1s))
+        if (odom_ == nullptr)
+        {
+            RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 100 /* [ms] */, "odom_baselink data is missing");
+            return;
+        }
+        if (time_now - rclcpp::Time(odom_->header.stamp) > rclcpp::Duration(0.1s))
         {
             RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 100 /* [ms] */, "odom_baselink data is too old: %f", (time_now - rclcpp::Time(odom_->header.stamp)).seconds());
             return;
