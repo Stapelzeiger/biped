@@ -60,6 +60,7 @@ public:
         robot_params_.swing_z_safe_box_min = this->declare_parameter<double>("swing_z_safe_box_min", 0.0);
         robot_params_.swing_z_safe_box_max = this->declare_parameter<double>("swing_z_safe_box_max", 0.2);
         robot_params_.walk_slow = this->declare_parameter<bool>("walk_slow", true);
+        robot_params_.use_adaptive_com = this->declare_parameter<bool>("use_adaptive_com", false);
 
         state_ = "INIT";
         initialization_done_ = false;
@@ -126,6 +127,8 @@ public:
         offset_foot_vel_ = 0.0;
         offset_vel_sub_ = this->create_subscription<std_msgs::msg::Float32>(
             "/offset_z_vel", 10, std::bind(&CapturePoint::offset_vel_cb, this, _1));
+
+        offset_com_baselink_ << robot_params_.offset_baselink_cog_x, robot_params_.offset_baselink_cog_y, robot_params_.offset_baselink_cog_z;
 
         std::chrono::duration<double> period = robot_params_.dt_ctrl * 1s;
         timer_ = rclcpp::create_timer(this, this->get_clock(), period, std::bind(&CapturePoint::timer_callback, this));
@@ -356,6 +359,14 @@ private:
             }
             time_since_last_step_ = 0.0;
             dcm_at_step_STF_ = dcm_STF_;
+
+            // Adaptation offset CoM baselink:
+            if (robot_params_.use_adaptive_com) {
+                auto predicted_dcm_STF = dcm_STF_ * exp(robot_params_.omega * robot_params_.t_step);
+                auto current_dcm_STF = dcm_STF_;
+                offset_com_baselink_[0] = offset_com_baselink_[0] + 0.005 * (predicted_dcm_STF[0] - current_dcm_STF[0]);
+                std::cout << offset_com_baselink_.transpose() << std::endl;
+            }
         }
 
         Eigen::Vector3d swing_foot_BF = get_eigen_transform(swing_foot_name, base_link_frame_id_).translation();
@@ -383,10 +394,8 @@ private:
         Eigen::Vector3d base_link_vel_BLF = T_BF_to_BLF.rotation() * base_link_vel_BF;
         Eigen::Vector3d vel_base_link_STF = T_STF_to_BLF_.inverse().rotation() * base_link_vel_BLF;
 
-        Eigen::Vector3d offset_com_baselink;
-        offset_com_baselink << robot_params_.offset_baselink_cog_x, robot_params_.offset_baselink_cog_y, robot_params_.offset_baselink_cog_z;
-        dcm_STF_(0) = T_STF_to_BLF_.inverse().translation()[0] + offset_com_baselink[0] + 1.0 / robot_params_.omega * vel_base_link_STF(0);
-        dcm_STF_(1) = T_STF_to_BLF_.inverse().translation()[1] + offset_com_baselink[1] + 1.0 / robot_params_.omega * vel_base_link_STF(1);
+        dcm_STF_(0) = T_STF_to_BLF_.inverse().translation()[0] + offset_com_baselink_[0] + 1.0 / robot_params_.omega * vel_base_link_STF(0);
+        dcm_STF_(1) = T_STF_to_BLF_.inverse().translation()[1] + offset_com_baselink_[1] + 1.0 / robot_params_.omega * vel_base_link_STF(1);
         dcm_STF_(2) = 0;
 
         auto next_dcm_STF_predicted = dcm_STF_ * exp(robot_params_.omega * remaining_time_in_step_);
@@ -434,8 +443,9 @@ private:
         pos_body_level_STF(2) = robot_params_.robot_height;
         Eigen::Quaterniond quat_body_level_STF = Eigen::Quaterniond(T_STF_to_BLF_.inverse().rotation());
         Eigen::Vector3d acc_body_level_STF = Eigen::Vector3d::Zero();
-        acc_body_level_STF(0) = robot_params_.omega * robot_params_.omega * (pos_body_level_STF(0) + offset_com_baselink(0));
-        acc_body_level_STF(1) = robot_params_.omega * robot_params_.omega * (pos_body_level_STF(1) + offset_com_baselink(1));
+        acc_body_level_STF(0) = robot_params_.omega * robot_params_.omega * (pos_body_level_STF(0) + offset_com_baselink_(0));
+        acc_body_level_STF(1) = robot_params_.omega * robot_params_.omega * (pos_body_level_STF(1) + offset_com_baselink_(1));
+
 
         if (walk_slow_ == true) {
             pos_body_level_STF << 0.0, 0.0, robot_params_.robot_height;
@@ -846,6 +856,7 @@ private:
         double swing_z_safe_box_min;
         double swing_z_safe_box_max;
         bool walk_slow;
+        bool use_adaptive_com;
     } robot_params_;
 
     bool foot_right_contact_ = false;
@@ -890,6 +901,7 @@ private:
     bool start_cmd_line_;
     bool walk_slow_;
 
+    Eigen::Vector3d offset_com_baselink_;
 };
 
 int main(int argc, char *argv[])

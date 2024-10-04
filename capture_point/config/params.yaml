@@ -7,7 +7,6 @@
     P_gain_scaling: 0.1
     duration_init_traj: 1.0 # seconds
     safety_radius_CP: 0.4
-    walk_slow: False # True if we do walk in place, while holding the robot.
     T_contact_ignore: 0.1
 
     r_foot_frame_id: R_FOOT_CONTACT
@@ -26,4 +25,6 @@
     swing_y_safe_box_max: 0.4
     swing_z_safe_box_min: -0.1
     swing_z_safe_box_max: 0.3
+    walk_slow: False # True if we do walk in place, while holding the robot.
     mode: WALK # options = ['WALK', 'ONE_FOOT_SWING']
+    use_adaptive_com: True
