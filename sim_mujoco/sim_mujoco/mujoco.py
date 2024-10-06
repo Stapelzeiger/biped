@@ -83,6 +83,7 @@ class MujocoNode(Node):
                 'actual_pos': 0.0,
                 'actual_vel': 0.0,
                 'actual_acc': 0.0,
+                'actual_effort': 0.0,
                 'desired_pos': 0.0,
                 'desired_vel': 0.0,
                 'feedforward_torque': 0.0,
@@ -277,7 +278,7 @@ class MujocoNode(Node):
             msg_joint_states.name.append(key)
             msg_joint_states.position.append(value['actual_pos'])
             msg_joint_states.velocity.append(value['actual_vel'])
-            msg_joint_states.effort.append(value['actual_acc'])
+            msg_joint_states.effort.append(value['actual_effort'])
         self.joint_states_pub.publish(msg_joint_states)
 
         # qfrc message
@@ -353,6 +354,7 @@ class MujocoNode(Node):
             value['actual_vel'] = self.data.qvel[self.model.jnt_dofadr[id_joint_mj]]
             actual_acc = (self.data.qvel[self.model.jnt_dofadr[id_joint_mj]] - self.previous_q_vel[self.model.jnt_dofadr[id_joint_mj]])/self.dt
             value['actual_acc'] = actual_acc
+            value['actual_effort'] = self.data.qfrc_actuator[self.model.jnt_dofadr[id_joint_mj]] + self.data.qfrc_applied[self.model.jnt_dofadr[id_joint_mj]]
             if key in self.joint_traj_msg.joint_names:
                 id_joint_msg = self.joint_traj_msg.joint_names.index(key)
                 value['desired_pos'] = self.joint_traj_msg.points[0].positions[id_joint_msg]
