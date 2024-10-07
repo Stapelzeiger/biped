@@ -255,6 +255,8 @@ private:
             set_position_limits_for_foot_in_optimization(swing_foot_name);
             swing_foot_traj_.set_desired_foot_raise_height(0.1);
             state_ = "RAMP_TO_STARTING_POS";
+            offset_com_baselink_ << robot_params_.offset_baselink_cog_x, robot_params_.offset_baselink_cog_y, robot_params_.offset_baselink_cog_z;
+
         }
 
         if (state_ == "RAMP_TO_STARTING_POS") {
