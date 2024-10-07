@@ -131,6 +131,8 @@ public:
 
         offset_com_baselink_ << robot_params_.offset_baselink_cog_x, robot_params_.offset_baselink_cog_y, robot_params_.offset_baselink_cog_z;
 
+        state_pub_ = this->create_publisher<biped_bringup::msg::StampedInt>("/state", 10);
+
         std::chrono::duration<double> period = robot_params_.dt_ctrl * 1s;
         timer_ = rclcpp::create_timer(this, this->get_clock(), period, std::bind(&CapturePoint::timer_callback, this));
     }
@@ -311,6 +313,22 @@ private:
                 RCLCPP_WARN(this->get_logger(), "Running slower than desired");
             }
         }
+
+        // std::cout << "foot_left_contact_ " << foot_left_contact_ << std::endl;
+        // std::cout << "foot_right_contact_ " << foot_right_contact_ << std::endl;
+        // std::cout << "state_ " << state_ << std::endl;
+
+        // Publish state
+        biped_bringup::msg::StampedInt state_msg;
+        state_msg.header.stamp = this->get_clock()->now();
+        if (state_ == "INIT") {
+            state_msg.data = 0;
+        } else if (state_ == "RAMP_TO_STARTING_POS") {
+            state_msg.data = 1;
+        } else if (state_ == "FOOT_IN_CONTACT") {
+            state_msg.data = 2;
+        }
+        state_pub_->publish(state_msg);
 
     }
 
@@ -814,6 +832,8 @@ private:
     rclcpp::Publisher<biped_bringup::msg::StampedBool>::SharedPtr pub_desired_left_contact_;
     rclcpp::Publisher<biped_bringup::msg::StampedBool>::SharedPtr pub_desired_right_contact_;
 
+    rclcpp::Publisher<biped_bringup::msg::StampedInt>::SharedPtr state_pub_;
+
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odometry_sub_;
     rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
     rclcpp::Subscription<biped_bringup::msg::StampedBool>::SharedPtr contact_right_sub_;
@@ -862,6 +882,7 @@ private:
         double swing_z_safe_box_max;
         bool walk_slow;
         bool use_adaptive_com;
+        double k_I_com;
     } robot_params_;
 
     bool foot_right_contact_ = false;
