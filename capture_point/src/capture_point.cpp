@@ -61,6 +61,7 @@ public:
         robot_params_.swing_z_safe_box_max = this->declare_parameter<double>("swing_z_safe_box_max", 0.2);
         robot_params_.walk_slow = this->declare_parameter<bool>("walk_slow", true);
         robot_params_.use_adaptive_com = this->declare_parameter<bool>("use_adaptive_com", false);
+        robot_params_.k_I_com = this->declare_parameter<double>("k_I_com", 0.01);
 
         state_ = "INIT";
         initialization_done_ = false;
@@ -163,6 +164,10 @@ private:
         start_opt_vel_swing_foot_ = Eigen::Vector3d::Zero();
         swing_foot_traj_.set_initial_pos_vel(start_opt_pos_swing_foot_, start_opt_vel_swing_foot_);
         dcm_at_step_STF_ << 0.0, 0.0, 0.0;
+        previous_iteration_dcm_ << 0.0, 0.0, 0.0;
+        beginning_of_step_dcm_ << 0.0, 0.0, 0.0;
+        previous_iteration_step_time_ = 0.0;
+
     }
 
     void set_position_limits_for_foot_in_optimization(std::string swing_foot_name)
@@ -246,11 +251,7 @@ private:
             swing_foot_is_left_ = true;
             auto swing_foot_name = l_foot_frame_id_;
             set_position_limits_for_foot_in_optimization(swing_foot_name);
-            if (mode_ == "WALK") {
-                swing_foot_traj_.set_desired_foot_raise_height(0.1);
-            } else {
-                swing_foot_traj_.set_desired_foot_raise_height(0.1); // todo fix, this is strange
-            }
+            swing_foot_traj_.set_desired_foot_raise_height(0.1);
             state_ = "RAMP_TO_STARTING_POS";
         }
 
@@ -316,6 +317,7 @@ private:
     void run_capture_point_controller()
     {
         bool swing_foot_contact;
+        bool step_occured = false;
         std::string swing_foot_name;
         std::string stance_foot_name;
         if (swing_foot_is_left_) {
@@ -335,6 +337,8 @@ private:
         if (time_since_last_step_ > robot_params_.T_contact_ignore && swing_foot_contact == true) {
             swing_foot_is_left_ = !swing_foot_is_left_;
             std::swap(stance_foot_name, swing_foot_name);
+            time_since_last_step_ = 0.0;
+            step_occured = true;
 
             Eigen::Vector3d stance_foot_BF = get_eigen_transform(stance_foot_name, base_link_frame_id_).translation();
             Eigen::Vector3d swing_foot_BF = get_eigen_transform(swing_foot_name, base_link_frame_id_).translation();
@@ -348,33 +352,43 @@ private:
             start_opt_pos_swing_foot_ = swing_foot_position_beginning_of_step_STF_;
             start_opt_vel_swing_foot_ = Eigen::Vector3d::Zero();
 
-            foot_traj_list_STF_.clear(); // used for markers
+            // Update swing foot trajectory start
             swing_foot_traj_.set_initial_pos_vel(start_opt_pos_swing_foot_, start_opt_vel_swing_foot_);
             set_position_limits_for_foot_in_optimization(swing_foot_name);
+            swing_foot_traj_.enable_lowering_foot_after_opt_solved(true);
+            foot_traj_list_STF_.clear(); // used for markers
 
-            if (walk_slow_ == true) {
-                swing_foot_traj_.enable_lowering_foot_after_opt_solved(true);
-            } else {
-                swing_foot_traj_.enable_lowering_foot_after_opt_solved(true);
-            }
-            time_since_last_step_ = 0.0;
             dcm_at_step_STF_ = dcm_STF_;
-
-            // Adaptation offset CoM baselink:
-            if (robot_params_.use_adaptive_com) {
-                auto predicted_dcm_STF = dcm_STF_ * exp(robot_params_.omega * robot_params_.t_step);
-                auto current_dcm_STF = dcm_STF_;
-                offset_com_baselink_[0] = offset_com_baselink_[0] + 0.005 * (predicted_dcm_STF[0] - current_dcm_STF[0]);
-                std::cout << offset_com_baselink_.transpose() << std::endl;
-            }
         }
 
+        // Update position & velocity to compute DCM
         Eigen::Vector3d swing_foot_BF = get_eigen_transform(swing_foot_name, base_link_frame_id_).translation();
         Eigen::Vector3d stance_foot_BF = get_eigen_transform(stance_foot_name, base_link_frame_id_).translation();
         Eigen::Vector3d stance_foot_BLF = T_BF_to_BLF * stance_foot_BF;
         T_STF_to_BLF_.linear() = Eigen::Matrix3d::Identity();
         T_STF_to_BLF_.translation() = stance_foot_BLF; // todo figure out if i update TSTF
         broadcast_transform("BLF", "STF", T_STF_to_BLF_.translation(), Eigen::Quaterniond(T_STF_to_BLF_.rotation()));
+
+        Eigen::Vector3d base_link_vel_BF;
+        base_link_vel_BF << base_link_odom_.linear_velocity(0), base_link_odom_.linear_velocity(1), base_link_odom_.linear_velocity(2);
+        Eigen::Vector3d base_link_vel_BLF = T_BF_to_BLF.rotation() * base_link_vel_BF;
+        Eigen::Vector3d vel_base_link_STF = T_STF_to_BLF_.inverse().rotation() * base_link_vel_BLF;
+
+        dcm_STF_(0) = T_STF_to_BLF_.inverse().translation()[0] + offset_com_baselink_[0] + 1.0 / robot_params_.omega * vel_base_link_STF(0);
+        dcm_STF_(1) = T_STF_to_BLF_.inverse().translation()[1] + offset_com_baselink_[1] + 1.0 / robot_params_.omega * vel_base_link_STF(1);
+        dcm_STF_(2) = 0;
+
+        // Adapt COM based on DCM prediction
+        if (step_occured) {
+            if (robot_params_.use_adaptive_com) {
+                auto predicted_dcm = beginning_of_step_dcm_ * exp(robot_params_.omega * previous_iteration_step_time_);
+                offset_com_baselink_ = offset_com_baselink_ - robot_params_.k_I_com * (predicted_dcm - previous_iteration_dcm_);
+                // std::cout << offset_com_baselink_.transpose() << std::endl;
+            }
+            beginning_of_step_dcm_ = dcm_STF_;
+        }
+        previous_iteration_dcm_ = dcm_STF_;
+        previous_iteration_step_time_ = time_since_last_step_;
 
         // Desired DCM Trajectory
         Eigen::Vector3d dcm_desired_STF;
@@ -388,15 +402,6 @@ private:
         geometry_msgs::msg::Vector3Stamped dcm_desired_STF_msg;
         get_vector3_msg(dcm_desired_STF, dcm_desired_STF_msg);
         pub_desired_dcm_->publish(dcm_desired_STF_msg);
-
-        Eigen::Vector3d base_link_vel_BF;
-        base_link_vel_BF << base_link_odom_.linear_velocity(0), base_link_odom_.linear_velocity(1), base_link_odom_.linear_velocity(2);
-        Eigen::Vector3d base_link_vel_BLF = T_BF_to_BLF.rotation() * base_link_vel_BF;
-        Eigen::Vector3d vel_base_link_STF = T_STF_to_BLF_.inverse().rotation() * base_link_vel_BLF;
-
-        dcm_STF_(0) = T_STF_to_BLF_.inverse().translation()[0] + offset_com_baselink_[0] + 1.0 / robot_params_.omega * vel_base_link_STF(0);
-        dcm_STF_(1) = T_STF_to_BLF_.inverse().translation()[1] + offset_com_baselink_[1] + 1.0 / robot_params_.omega * vel_base_link_STF(1);
-        dcm_STF_(2) = 0;
 
         auto next_dcm_STF_predicted = dcm_STF_ * exp(robot_params_.omega * remaining_time_in_step_);
         Eigen::Vector3d error_dcm_STF = next_dcm_STF_predicted - dcm_desired_STF;
@@ -897,6 +902,10 @@ private:
     OptimizerTrajectory swing_foot_traj_;
     Eigen::Vector3d start_opt_pos_swing_foot_, start_opt_vel_swing_foot_;
     Eigen::Vector3d stance_foot_BF_saved_;
+
+    Eigen::Vector3d previous_iteration_dcm_;
+    Eigen::Vector3d beginning_of_step_dcm_;
+    double previous_iteration_step_time_;
 
     bool start_cmd_line_;
     bool walk_slow_;
