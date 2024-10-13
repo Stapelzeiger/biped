@@ -74,6 +74,9 @@ Then run
 ./build.sh
 ```
 
+## Motion Capture System
+
+https://github.com/IMRCLab/motion_capture_tracking
 
 # Running
 
