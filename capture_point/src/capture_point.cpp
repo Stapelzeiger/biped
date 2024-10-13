@@ -346,6 +346,7 @@ private:
             start_opt_vel_swing_foot_ = Eigen::Vector3d::Zero();
 
             foot_traj_list_STF_.clear(); // used for markers
+            foot_actual_traj_list_STF_.clear(); // used for markers
             swing_foot_traj_.set_initial_pos_vel(start_opt_pos_swing_foot_, start_opt_vel_swing_foot_);
             set_position_limits_for_foot_in_optimization(swing_foot_name);
 
@@ -364,6 +365,8 @@ private:
         T_STF_to_BLF_.linear() = Eigen::Matrix3d::Identity();
         T_STF_to_BLF_.translation() = stance_foot_BLF; // todo figure out if i update TSTF
         broadcast_transform("BLF", "STF", T_STF_to_BLF_.translation(), Eigen::Quaterniond(T_STF_to_BLF_.rotation()));
+        auto swing_foot_STF = T_STF_to_BLF_.inverse() * swing_foot_BF;
+
 
         // Desired DCM Trajectory
         Eigen::Vector3d dcm_desired_STF;
@@ -500,12 +503,21 @@ private:
             safety_circle_point << robot_params_.safety_radius_CP * cos(i * 0.1), robot_params_.safety_radius_CP * sin(i * 0.1), 0.0;
             safety_circle_points.push_back(safety_circle_point);
         }
-        publish_line_traj_markers(safety_circle_points, "safety_circle", "STF", 4, Eigen::Vector3d(0.0, 1.0, 0.0), pub_markers_safety_circle_);
 
         publish_marker(marker_type, swing_foot_BF, "swing_foot", base_link_frame_id_, 5, Eigen::Vector3d(1.0, 1.0, 0.0), pub_marker_swing_foot_BF_);
         publish_marker(marker_type, stance_foot_BF, "stance_foot", base_link_frame_id_, 6, Eigen::Vector3d(1.0, 1.0, 0.0), pub_marker_stance_foot_BF_);
+
+        // Foot Trajectories.
         foot_traj_list_STF_.push_back(pos_desired_swing_foot_STF);
-        publish_line_traj_markers(foot_traj_list_STF_, "foot_trajectory", "STF", 3, Eigen::Vector3d(1.0, 0.0, 1.0), pub_markers_foot_traj_);
+        publish_line_traj_markers(foot_traj_list_STF_, "foot_trajectory", "STF", 3, Eigen::Vector3d(1.0, 0.0, 0.0), pub_markers_foot_traj_);
+        foot_actual_traj_list_STF_.push_back(swing_foot_STF);
+        publish_line_traj_markers(foot_actual_traj_list_STF_, "foot_actual_trajectory", "STF", 2, Eigen::Vector3d(0.0, 1.0, 0.0), pub_markers_foot_traj_actual_);
+
+        // Desired DCMs
+        publish_marker(marker_type, dcm_desired_STF, "desired_dcm", "STF", 7, Eigen::Vector3d(1.0, 0.0, 0.0), pub_marker_desired_dcm_);
+        publish_marker(marker_type, dcm_STF_, "dcm", "STF", 8, Eigen::Vector3d(0.0, 1.0, 0.0), pub_marker_dcm_);
+
+        publish_line_traj_markers(safety_circle_points, "safety_circle", "STF", 4, Eigen::Vector3d(0.0, 1.0, 0.0), pub_markers_safety_circle_);
     }
 
     void contact_right_callback(biped_bringup::msg::StampedBool::SharedPtr msg)
