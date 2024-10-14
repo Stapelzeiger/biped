@@ -8,9 +8,11 @@ Panels:
         - /Status1
         - /TF1/Frames1
         - /TF1/Tree1
+        - /RobotModel1/Status1
         - /RobotModel1/Mass Properties1
         - /RobotModel1/Description Topic1
         - /Odometry1/Shape1
+        - /IK_pos1/Status1
         - /IK_pos1/Topic1
         - /IK_pos1/Namespaces1
         - /Marker_dcm_desired1
@@ -67,8 +69,6 @@ Visualization Manager:
         All Enabled: true
         BLF:
           Value: true
-        L_FOOT:
-          Value: true
         L_FOOT_CONTACT:
           Value: true
         L_HIP:
@@ -78,8 +78,6 @@ Visualization Manager:
         L_SHOULDER:
           Value: true
         L_UPPER_LEG:
-          Value: true
-        R_FOOT:
           Value: true
         R_FOOT_CONTACT:
           Value: true
@@ -96,6 +94,8 @@ Visualization Manager:
         base_link:
           Value: true
         base_link_mocap:
+          Value: true
+        biped:
           Value: true
         imu:
           Value: true
@@ -118,16 +118,12 @@ Visualization Manager:
               L_SHOULDER:
                 L_UPPER_LEG:
                   L_LOWER_LEG:
-                    L_FOOT:
-                      {}
                     L_FOOT_CONTACT:
                       {}
             R_HIP:
               R_SHOULDER:
                 R_UPPER_LEG:
                   R_LOWER_LEG:
-                    R_FOOT:
-                      {}
                     R_FOOT_CONTACT:
                       {}
             base_link_mocap:
@@ -135,7 +131,8 @@ Visualization Manager:
             imu:
               {}
           world:
-            {}
+            biped:
+              {}
       Update Interval: 0
       Value: true
     - Alpha: 1
@@ -321,6 +318,19 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /capture_point/markers_desired_dcm
       Value: false
+    - Class: rviz_default_plugins/Marker
+      Enabled: true
+      Name: Marker Desired DCM
+      Namespaces:
+        desired_dcm: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /capture_point/markers_desired_dcm
+      Value: true
     - Class: rviz_default_plugins/Marker
       Enabled: true
       Name: Marker DCM
@@ -513,7 +523,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/XYOrbit
-      Distance: 3.2503204345703125
+      Distance: 1.7268694639205933
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -528,10 +538,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.3403971195220947
+      Pitch: 0.23539705574512482
       Target Frame: base_link
       Value: XYOrbit (rviz_default_plugins)
-      Yaw: 1.5167757272720337
+      Yaw: 1.819954752922058
     Saved: ~
 Window Geometry:
   Displays:
