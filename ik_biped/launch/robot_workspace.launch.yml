@@ -5,4 +5,4 @@ launch:
     name: robot_workspace
     output: screen
     # print GDB backtrace:
-    launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args
+    # launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args

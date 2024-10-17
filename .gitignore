@@ -5,4 +5,5 @@ COLCON_IGNORE
 .DS_Store
 *.pth
 *.npy
+runs
 MUJOCO_LOG.*

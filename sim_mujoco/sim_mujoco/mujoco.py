@@ -4,7 +4,7 @@ from rclpy.node import Node
 from sensor_msgs.msg import JointState, Imu
 from nav_msgs.msg import Odometry
 from trajectory_msgs.msg import MultiDOFJointTrajectoryPoint, MultiDOFJointTrajectory, JointTrajectory
-from geometry_msgs.msg import TransformStamped, Vector3, PoseStamped, PoseWithCovarianceStamped
+from geometry_msgs.msg import TransformStamped, Vector3Stamped, PoseStamped, PoseWithCovarianceStamped, TwistStamped
 
 from rosgraph_msgs.msg import Clock
 from biped_bringup.msg import StampedBool
@@ -24,6 +24,10 @@ from sim_mujoco.submodules.pid import pid as pid_ctrl
 from threading import Lock
 import math 
 
+import csv
+import os
+sys.path.insert(0, '/home/leo/biped_ws/src/biped/sim_mujoco/sim_mujoco/')
+from bc_controller import PolicyBC
 
 def setup_pid(control_rate, kp, ki, kd):
     pid = pid_ctrl()
@@ -37,9 +41,11 @@ class MujocoNode(Node):
         self.get_logger().info("Start Sim!")
         self.declare_parameter("mujoco_xml_path", rclpy.parameter.Parameter.Type.STRING)
         self.declare_parameter("sim_time_sec", rclpy.parameter.Parameter.Type.DOUBLE)
+        self.declare_parameter("visualization_rate", rclpy.parameter.Parameter.Type.DOUBLE)
         self.declare_parameter("visualize_mujoco", rclpy.parameter.Parameter.Type.BOOL)
         self.declare_parameter("publish_tf", rclpy.parameter.Parameter.Type.BOOL)
         self.visualize_mujoco = self.get_parameter("visualize_mujoco").get_parameter_value().bool_value
+        self.visualization_rate = self.get_parameter("visualization_rate").get_parameter_value().double_value
         mujoco_xml_path = self.get_parameter("mujoco_xml_path").get_parameter_value().string_value
         self.sim_time_sec = self.get_parameter("sim_time_sec").get_parameter_value().double_value
         self.publish_tf = self.get_parameter("publish_tf").get_parameter_value().bool_value
@@ -62,6 +68,15 @@ class MujocoNode(Node):
         self.time = time.time()
         self.model.opt.timestep = self.sim_time_sec
         self.dt = self.model.opt.timestep
+        self.R_b_to_I = None
+        self.v_b = None
+        self.swing_foot_BF_pos = None
+        self.stance_foot_BF_pos = None
+        self.dcm_desired_BF = None
+        self.T_since_contact_right = 0.0
+        self.T_since_contact_left = 0.0
+        self.T_since_no_contact_right = 0.0
+        self.T_since_no_contact_left = 0.0
 
         self.accel_noise_density = 0.14 * 9.81/1000 # [m/s2 * sqrt(s)]
         self.accel_bias_random_walk = 0.0004 # [m/s2 / sqrt(s)]
@@ -126,16 +141,51 @@ class MujocoNode(Node):
 
         self.joint_traj_sub = self.create_subscription(JointTrajectory, 'joint_trajectory', self.joint_traj_cb, 10)
         self.joint_traj_msg = None
+
         self.initial_pose_sub = self.create_subscription(PoseWithCovarianceStamped, 'initialpose', self.init_cb, 10)
         self.reset_sub = self.create_subscription(Empty, '~/reset', self.reset_cb, 10)
+
+        self.swing_foot_BF_sub = self.create_subscription(Vector3Stamped, "~/swing_foot_BF", self.swing_foot_BF_cb, 10)
+        self.stance_foot_BF_sub = self.create_subscription(Vector3Stamped, "~/stance_foot_BF", self.stance_foot_BF_cb, 10)
+        self.dcm_desired_BF_sub = self.create_subscription(TwistStamped, "~/dcm_desired_BF", self.dcm_desired_BF_cb, 10)
 
         self.paused = False
         self.step_sim_sub = self.create_subscription(Float64, "~/step", self.step_cb, 1)
         self.pause_sim_sub = self.create_subscription(Bool, "~/pause", self.pause_cb, 1)
 
+        self.folder_name = 'src/biped/sim_mujoco/sim_mujoco/data'
+        if not os.path.exists(self.folder_name):
+            os.makedirs(self.folder_name)
+
+        self.file = open(f'{self.folder_name}/dataset_comparison_spectral.csv', 'w', newline='')
+        self.writer = csv.writer(self.file)
+        self.write_controller_dataset_header()
+
+        self.policy_NN_output = None
+        self.use_bc_policy = True
+
+        if self.use_bc_policy == True:
+            self.policy_input_size = 41 # todo fix this hardcoded thing, prolly, just set it as a config, since it stems from run_bc.py. We can make into a constant
+            action_size = len(self.name_joints) * 3 # q_des, qdot_des, tau_ff
+            self.num_input_state = 3
+            self.policy_bc_NN = PolicyBC(self.policy_input_size, action_size, self.num_input_state)
+            self.list_policy_inputs = []
+
         self.previous_q_vel = np.zeros(self.model.nv)
 
         self.timer = self.create_timer(self.dt*2, self.timer_cb, clock=rclpy.clock.Clock(clock_type=rclpy.clock.ClockType.STEADY_TIME))
+
+        # for prev model
+        # self.previous_q_vel = np.zeros(self.model.nv)
+
+    def swing_foot_BF_cb(self, msg):
+        self.swing_foot_BF_pos = np.array([msg.vector.x, msg.vector.y, msg.vector.z])
+
+    def stance_foot_BF_cb(self, msg):
+        self.stance_foot_BF_pos = np.array([msg.vector.x, msg.vector.y, msg.vector.z])
+
+    def dcm_desired_BF_cb(self, msg):
+        self.dcm_desired_BF = np.array([msg.twist.linear.x, msg.twist.linear.y])
 
     def reset_cb(self, msg):
         with self.lock:
@@ -193,6 +243,8 @@ class MujocoNode(Node):
         self.viewer.close()
 
     def step(self):
+        tic = time.time()
+
         if not self.initialization_done:
             msg_stop_controller = Bool()
             msg_stop_controller.data = (self.initialization_timeout > 0)
@@ -209,14 +261,33 @@ class MujocoNode(Node):
                 self.model.eq_active0 = 0 # let go of the robot
                 self.data.eq_active[0] = 0 # let go of the robot
 
+        if self.visualize_mujoco is True:
+            vis_update_downsampling = int(round(1.0/self.visualization_rate/self.sim_time_sec/10))
+            if self.counter % vis_update_downsampling == 0:
+                self.viewer.sync()
+
+        if self.use_bc_policy == True:
+            if self.initialization_done and self.dcm_desired_BF is not None:
+                policy_input_one_instance = self.create_policy_input()
+
+                while len(self.list_policy_inputs) < self.policy_input_size * self.num_input_state:
+                    self.list_policy_inputs.extend(policy_input_one_instance)
+
+                self.list_policy_inputs.extend(policy_input_one_instance) # add new one
+                for i in range(self.policy_input_size):
+                    self.list_policy_inputs.pop(0) # pop the old state
+                policy_input = np.array(self.list_policy_inputs)
+                self.policy_NN_output = self.policy_bc_NN(policy_input)
+
+        # TODO: leo: think about whether we need this double for loop.
         for _ in range(2):
-            self.run_joint_controllers()
+            self.run_joint_controllers(self.policy_NN_output)
+
+            self.read_contact_states()
             self.ankle_foot_spring('L_ANKLE')
             self.ankle_foot_spring('R_ANKLE')
+
             mj.mj_step(self.model, self.data)
-            if self.visualize_mujoco is True:
-                if self.viewer.is_running():
-                    self.viewer.sync()
             self.time += self.dt
             self.counter += 1
 
@@ -239,11 +310,11 @@ class MujocoNode(Node):
         msg_odom.pose.pose.orientation.z = self.data.qpos[6]
         q = msg_odom.pose.pose.orientation
 
-        R_b_to_I = R.from_quat([q.x, q.y, q.z, q.w]).as_matrix()
-        v_b = R_b_to_I.T @ self.data.qvel[0:3] # linear vel is in inertial frame
-        msg_odom.twist.twist.linear.x = v_b[0]
-        msg_odom.twist.twist.linear.y = v_b[1]
-        msg_odom.twist.twist.linear.z = v_b[2]
+        self.R_b_to_I = R.from_quat([q.x, q.y, q.z, q.w]).as_matrix()
+        self.v_b = self.R_b_to_I.T @ self.data.qvel[0:3] # linear vel is in inertial frame
+        msg_odom.twist.twist.linear.x = self.v_b[0]
+        msg_odom.twist.twist.linear.y = self.v_b[1]
+        msg_odom.twist.twist.linear.z = self.v_b[2]
         msg_odom.twist.twist.angular.x = self.data.qvel[3] # angular vel is in body frame
         msg_odom.twist.twist.angular.y = self.data.qvel[4]
         msg_odom.twist.twist.angular.z = self.data.qvel[5]
@@ -259,7 +330,6 @@ class MujocoNode(Node):
             t.transform.rotation = msg_odom.pose.pose.orientation
             self.tf_broadcaster.sendTransform(t)
 
-        self.read_contact_states()
         msg_contact_right = StampedBool()
         msg_contact_left = StampedBool()
         msg_contact_right.header.stamp.sec = int(self.time)
@@ -332,6 +402,10 @@ class MujocoNode(Node):
         msg_imu.orientation_covariance[0] = -1 # no orientation
         self.imu_pub.publish(msg_imu)
 
+        if self.initialization_done and self.dcm_desired_BF is not None:
+            input_data = self.create_policy_input()
+            output_data = self.create_policy_output()
+            self.write_controller_dataset_entry(input_data, output_data)
         msg_fake_vicon = PoseStamped()
         msg_fake_vicon.header.stamp.sec = int(self.time)
         msg_fake_vicon.header.stamp.nanosec = int((self.time - clock_msg.clock.sec) * 1e9)
@@ -345,27 +419,119 @@ class MujocoNode(Node):
         msg_fake_vicon.pose.orientation.z = self.data.qpos[6]
         self.fake_vicon_pub.publish(msg_fake_vicon)
 
-    def run_joint_controllers(self):
+        toc = time.time()
+        self.get_logger().info(f"    Time taken for step: {toc - tic}")
+
+    def run_joint_controllers(self, policy_NN=None):
         if self.joint_traj_msg is None:
             return
-        for key, value in self.q_joints.items():
-            id_joint_mj = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_JOINT, key)
-            value['actual_pos'] = self.data.qpos[self.model.jnt_qposadr[id_joint_mj]]
-            value['actual_vel'] = self.data.qvel[self.model.jnt_dofadr[id_joint_mj]]
-            actual_acc = (self.data.qvel[self.model.jnt_dofadr[id_joint_mj]] - self.previous_q_vel[self.model.jnt_dofadr[id_joint_mj]])/self.dt
-            value['actual_acc'] = actual_acc
-            value['actual_effort'] = self.data.qfrc_actuator[self.model.jnt_dofadr[id_joint_mj]] + self.data.qfrc_applied[self.model.jnt_dofadr[id_joint_mj]]
-            if key in self.joint_traj_msg.joint_names:
-                id_joint_msg = self.joint_traj_msg.joint_names.index(key)
-                value['desired_pos'] = self.joint_traj_msg.points[0].positions[id_joint_msg]
-                if self.joint_traj_msg.points[0].velocities:
-                    value['desired_vel'] = self.joint_traj_msg.points[0].velocities[id_joint_msg]
-                if self.joint_traj_msg.points[0].effort:
-                    if math.isnan(self.joint_traj_msg.points[0].effort[id_joint_msg]) is False:
-                        value['feedforward_torque'] = self.joint_traj_msg.points[0].effort[id_joint_msg]
-                    else:
-                        value['feedforward_torque'] = 0.0
+
+        # takes about 4000 ticks to get setup.
+        # duration = 10000
+        # duration = 6000
+        duration = np.inf
+        if self.counter < duration:
+            # print('running expert, elapsed time:', duration - self.counter)
+
+            # running the expert policy
+            for key, value in self.q_joints.items():
+                id_joint_mj = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_JOINT, key)
+                value['actual_pos'] = self.data.qpos[self.model.jnt_qposadr[id_joint_mj]]
+                value['actual_vel'] = self.data.qvel[self.model.jnt_dofadr[id_joint_mj]]
+                actual_acc = (self.data.qvel[self.model.jnt_dofadr[id_joint_mj]] - self.previous_q_vel[self.model.jnt_dofadr[id_joint_mj]])/self.dt
+                value['actual_acc'] = actual_acc
+                # value['actual_acc'] = self.data.qacc[self.model.jnt_dofadr[id_joint_mj]]
+                if key in self.joint_traj_msg.joint_names:
+                    id_joint_msg = self.joint_traj_msg.joint_names.index(key)
+                    value['desired_pos'] = self.joint_traj_msg.points[0].positions[id_joint_msg]
+                    if self.joint_traj_msg.points[0].velocities:
+                        value['desired_vel'] = self.joint_traj_msg.points[0].velocities[id_joint_msg]
+                    if self.joint_traj_msg.points[0].effort:
+                        if math.isnan(self.joint_traj_msg.points[0].effort[id_joint_msg]) is False:
+                            value['feedforward_torque'] = self.joint_traj_msg.points[0].effort[id_joint_msg]
+                        else:
+                            value['feedforward_torque'] = 0.0
+        else:
+            # action_columns = [
+            #     "L_YAW_tau_ff", "L_HAA_tau_ff", "L_HFE_tau_ff", "L_KFE_tau_ff", "L_ANKLE_tau_ff",
+            #     "R_YAW_tau_ff", "R_HAA_tau_ff", "R_HFE_tau_ff", "R_KFE_tau_ff", "R_ANKLE_tau_ff",
+            #     "L_YAW_q_des", "L_HAA_q_des", "L_HFE_q_des", "L_KFE_q_des", "L_ANKLE_q_des",
+            #     "R_YAW_q_des", "R_HAA_q_des", "R_HFE_q_des", "R_KFE_q_des", "R_ANKLE_q_des",
+            #     "L_YAW_q_vel_des", "L_HAA_q_vel_des", "L_HFE_q_vel_des", "L_KFE_q_vel_des", "L_ANKLE_q_vel_des",
+            #     "R_YAW_q_vel_des", "R_HAA_q_vel_des", "R_HFE_q_vel_des", "R_KFE_q_vel_des", "R_ANKLE_q_vel_des"
+            # ]
+            # print('running learner')
+            # print(self.q_joints.keys())
+
+            # print("BOOOO")
+            # print(self.data.qpos)
+            # print(self.data.qvel)
+            # print(self.data.qacc)
+            # print()
+
+            # Weird since action_states is different here.
+            desired_pos = policy_NN[2 * len(self.name_joints): 3 * len(self.name_joints)] 
+            desired_vel = policy_NN[len(self.name_joints): 2 * len(self.name_joints)]
+            tau_ff = policy_NN[0: len(self.name_joints)]
+
+            # print("NN OUTPUT")
+            # print(desired_pos)
+            # print(desired_vel)
+            # print(tau_ff)
+            # print(flush=True)
+            # time.sleep(10)
+            # time.sleep(0.01)
+
+            # bad to duplicate code, will fix later
+            cnt = 0
+            for key, value in self.q_joints.items():
+                id_joint_mj = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_JOINT, key)
+                value['actual_pos'] = self.data.qpos[self.model.jnt_qposadr[id_joint_mj]]
+                value['actual_vel'] = self.data.qvel[self.model.jnt_dofadr[id_joint_mj]]
+                value['actual_acc'] = self.data.qacc[self.model.jnt_dofadr[id_joint_mj]]
+                if (key != 'L_ANKLE' or key != 'R_ANKLE'):
+                    value['desired_pos'] = desired_pos[cnt]
+                    value['desired_vel'] = desired_vel[cnt]
+                    value['feedforward_torque'] = tau_ff[cnt]
+                cnt += 1
+
+        # for key, value in self.q_joints.items():
+        #     id_joint_mj = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_JOINT, key)
+        #     value['actual_pos'] = self.data.qpos[self.model.jnt_qposadr[id_joint_mj]]
+        #     value['actual_vel'] = self.data.qvel[self.model.jnt_dofadr[id_joint_mj]]
+        #     actual_acc = (self.data.qvel[self.model.jnt_dofadr[id_joint_mj]] - self.previous_q_vel[self.model.jnt_dofadr[id_joint_mj]])/self.dt
+        #     value['actual_acc'] = actual_acc
+        #     value['actual_effort'] = self.data.qfrc_actuator[self.model.jnt_dofadr[id_joint_mj]] + self.data.qfrc_applied[self.model.jnt_dofadr[id_joint_mj]]
+        #     if key in self.joint_traj_msg.joint_names:
+        #         id_joint_msg = self.joint_traj_msg.joint_names.index(key)
+        #         value['desired_pos'] = self.joint_traj_msg.points[0].positions[id_joint_msg]
+        #         if self.joint_traj_msg.points[0].velocities:
+        #             value['desired_vel'] = self.joint_traj_msg.points[0].velocities[id_joint_msg]
+        #         if self.joint_traj_msg.points[0].effort:
+        #             if math.isnan(self.joint_traj_msg.points[0].effort[id_joint_msg]) is False:
+        #                 value['feedforward_torque'] = self.joint_traj_msg.points[0].effort[id_joint_msg]
+        #             else:
+        #                 value['feedforward_torque'] = 0.0
         self.previous_q_vel = self.data.qvel.copy()
+
+        # non NN model:
+        # for key, value in self.q_joints.items():
+        #     id_joint_mj = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_JOINT, key)
+        #     value['actual_pos'] = self.data.qpos[self.model.jnt_qposadr[id_joint_mj]]
+        #     value['actual_vel'] = self.data.qvel[self.model.jnt_dofadr[id_joint_mj]]
+        #     actual_acc = (self.data.qvel[self.model.jnt_dofadr[id_joint_mj]] - self.previous_q_vel[self.model.jnt_dofadr[id_joint_mj]])/self.dt
+        #     value['actual_acc'] = actual_acc
+        #     if key in self.joint_traj_msg.joint_names:
+        #         id_joint_msg = self.joint_traj_msg.joint_names.index(key)
+        #         value['desired_pos'] = self.joint_traj_msg.points[0].positions[id_joint_msg]
+        #         if self.joint_traj_msg.points[0].velocities:
+        #             value['desired_vel'] = self.joint_traj_msg.points[0].velocities[id_joint_msg]
+        #         if self.joint_traj_msg.points[0].effort:
+        #             if math.isnan(self.joint_traj_msg.points[0].effort[id_joint_msg]) is False:
+        #                 value['feedforward_torque'] = self.joint_traj_msg.points[0].effort[id_joint_msg]
+        #             else:
+        #                 value['feedforward_torque'] = 0.0
+        # self.previous_q_vel = self.data.qvel.copy()
 
         kp_moteus = 240.0
         Kp = (kp_moteus/(2*math.pi)) * np.ones(self.model.njnt - 1) # exclude root
@@ -390,11 +556,101 @@ class MujocoNode(Node):
                                                     self.data.qfrc_applied[self.model.jnt_dofadr[id_joint_mj]]
             i = i + 1
 
+    def write_controller_dataset_header(self):
+        # Dataset: 
+        #   joint states
+        #   baselink vel BF
+        #   goal vx_des_BF, vy_des BF
+        #   right & left foot: 
+        #           t since contact,
+        #           t since no contact, 
+        #           pos BF
+        #   controller: tau_ff, q_j_des, q_j_vel_des
+        #   policy network: tau_ff, q_j_des, q_j_vel_des
+        header_qs = ['q_' + str(i) for i in range(len(self.data.qpos)) ]
+        header_qd = ['qd_' + str(i) for i in range(len(self.data.qvel))]
 
-    # def stop_controller(self, actuator_name):
-    #     idx_act = mj.mj_name2id(
-    #         self.model, mj.mjtObj.mjOBJ_ACTUATOR, actuator_name)
-    #     self.data.ctrl[idx_act] = 0.0
+        header_for_joint_states = [name + '_pos' for name in self.name_joints]
+        header_for_joint_states += [name + '_vel' for name in self.name_joints]
+        header_for_baselink = ['vel_x_BF', 'vel_y_BF', 'vel_z_BF', 'normal_vec_x_BF', 'normal_vec_y_BF', 'normal_vec_z_BF', 'omega_x', 'omega_y', 'omega_z']
+        header_for_goal = ['vx_des_BF', 'vy_des_BF']
+        header_for_right_foot = ['right_foot_t_since_contact', 'right_foot_t_since_no_contact', 'right_foot_pos_x_BF', 'right_foot_pos_y_BF', 'right_foot_pos_z_BF']
+        header_for_left_foot = ['left_foot_t_since_contact', 'left_foot_t_since_no_contact', 'left_foot_pos_x_BF', 'left_foot_pos_y_BF', 'left_foot_pos_z_BF']
+        # output of /joint_trajectory.
+        header_for_tau_ff = [name + '_tau_ff' for name in self.name_joints]
+        header_for_q_j_des =  [name + '_q_des' for name in self.name_joints]
+        header_for_q_j_vel_des = [name + '_q_vel_des' for name in self.name_joints]
+        # NN policy
+        header_for_tau_ff_policy = [name + '_tau_ff_policy' for name in self.name_joints]
+        header_for_q_j_des_policy =  [name + '_q_des_policy' for name in self.name_joints]
+        header_for_q_j_vel_des_policy = [name + '_q_vel_des_policy' for name in self.name_joints]
+        # header_for_tau_ff = ['qfrc_applied_' + str(i) for i in range(len(self.data.qfrc_applied))]
+        # header_for_des_q_q_dot = ['ctrl_' + str(i) for i in range(len(self.data.ctrl))]
+        header = ['time', 'dt', 
+                        # *header_qs, 
+                        # *header_qd,
+                          *header_for_joint_states,
+                          *header_for_baselink,
+                          *header_for_goal, 
+                          *header_for_right_foot,
+                          *header_for_left_foot,
+                          *header_for_tau_ff,
+                          *header_for_q_j_des,
+                          *header_for_q_j_vel_des,
+                          *header_for_tau_ff_policy,
+                          *header_for_q_j_des_policy,
+                          *header_for_q_j_vel_des_policy
+                          ]
+        self.writer.writerow(header)
+
+    def create_policy_input(self):
+        data_for_joint_states = [self.q_joints[name]['actual_pos'] for name in self.name_joints]
+        data_for_joint_states += [self.q_joints[name]['actual_vel'] for name in self.name_joints]
+        normal_vector_I = np.array([0.0, 0.0, 1.0])
+        normal_vector_BF = self.R_b_to_I.T@normal_vector_I
+        data_for_baselink = [self.v_b[0], self.v_b[1], self.v_b[2],
+                            normal_vector_BF[0], normal_vector_BF[1], normal_vector_BF[2],
+                            self.data.qvel[3], self.data.qvel[4], self.data.qvel[5]]
+        data_for_goal = [self.dcm_desired_BF[0], self.dcm_desired_BF[1]]
+
+        # can't remove unless we also change the header.
+        data_for_right_foot = [ self.T_since_contact_right, self.T_since_no_contact_right,
+                                self.swing_foot_BF_pos[0], self.swing_foot_BF_pos[1], self.swing_foot_BF_pos[2] ]
+        # TODO: stance_foot_BF_pos
+
+        data_for_left_foot = [ self.T_since_contact_left, self.T_since_no_contact_left, 
+                               self.swing_foot_BF_pos[0], self.swing_foot_BF_pos[1], self.swing_foot_BF_pos[2]]
+
+        policy_input = [
+                        *data_for_joint_states,
+                        *data_for_baselink,
+                        # *self.data.qpos,
+                        # *self.data.qvel,
+                        *data_for_goal,
+                        *data_for_right_foot,
+                        *data_for_left_foot,
+                        ]
+        
+        return policy_input
+
+    def create_policy_output(self):
+        data_for_tau_ff = [self.q_joints[name]['feedforward_torque'] for name in self.name_joints]
+        data_for_q_j_des = [self.q_joints[name]['desired_pos'] for name in self.name_joints]
+        data_for_q_j_vel_des = [self.q_joints[name]['desired_vel'] for name in self.name_joints]
+
+        # q_frc = self.data.qfrc_applied
+        # q_ctrl = self.data.ctrl
+        # policy_output = [*q_frc, *q_ctrl]
+        policy_output = [*data_for_tau_ff, *data_for_q_j_des, *data_for_q_j_vel_des]
+        return policy_output
+
+    def write_controller_dataset_entry(self, policy_input, policy_output):
+        if self.initialization_done and self.dcm_desired_BF is not None:
+            # TODO (LEO 5/12/24): Since the model isn't trained with the data, we don't wanna save the policy_NN_output yet.
+            #                     When I train the new model, I should do this.
+            row_entry = [self.time, self.model.opt.timestep, *policy_input, *policy_output, *self.policy_NN_output]
+            # row_entry = [self.time, self.model.opt.timestep, *policy_input, *policy_output, *policy_output]
+            self.writer.writerow(row_entry)
 
     def joint_traj_cb(self, msg):
         with self.lock:
@@ -427,13 +683,29 @@ class MujocoNode(Node):
                 if geom1_list[first_entry_idx] == 'floor':
                     self.contact_states['R_FOOT'] = True
 
+        if self.contact_states['R_FOOT'] == True:
+            self.T_since_contact_right = self.T_since_contact_right + self.dt
+            self.T_since_no_contact_right = 0.0
+
+        if self.contact_states['R_FOOT'] == False:
+            self.T_since_contact_right = 0.0
+            self.T_since_no_contact_right = self.T_since_no_contact_right + self.dt
+
+        if self.contact_states['L_FOOT'] == True:
+            self.T_since_contact_left = self.T_since_contact_left + self.dt
+            # there was a typo here, this is the correct fix.
+            self.T_since_no_contact_left = 0.0
+
+        if self.contact_states['L_FOOT'] == False:
+            self.T_since_contact_left = 0.0
+            self.T_since_no_contact_left = self.T_since_no_contact_left + self.dt
+
     def get_joint_names(self):
         self.name_joints = []
         for i in range(1, self.model.njnt):  # skip root
             self.name_joints.append(mj.mj_id2name(
                 self.model, mj.mjtObj.mjOBJ_JOINT, i))
         return self.name_joints
-
 
     def ankle_foot_spring(self, foot_joint):
         'ankle modelled as a spring damped system'
