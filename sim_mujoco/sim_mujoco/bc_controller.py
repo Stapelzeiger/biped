@@ -3,7 +3,7 @@ import torch
 from pickle import load
 
 import sys
-sys.path.insert(0, '/home/leo/biped_ws/src/biped/sim_mujoco/imit_learning_setup/behavioral_cloning/')
+sys.path.insert(0, '/home/zhonghezheng13579/ros_ws/src/biped/sim_mujoco/imit_learning_setup/behavioral_cloning/')
 from bc import BC_Agent
 
 class PolicyBC:

@@ -7,3 +7,4 @@ COLCON_IGNORE
 *.npy
 runs
 MUJOCO_LOG.*
+ppo/models
