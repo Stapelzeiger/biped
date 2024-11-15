@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Usage: python3 rosbag_parser.py --path /path/to/rosbag.bag
+# Usage: python3 rosbag_parser.py --path /path/to/rosbag.bag --extract_csvs
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
