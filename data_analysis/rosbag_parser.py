@@ -44,12 +44,12 @@ if args.extract_csvs:
 
     reader.open(options, converter_options)
 
-    # Create a dataframe for each joint state
+    # Create a dataframe for each joint state.
     header_df_state = 'timestamp', 'name', 'pos', 'vel', 'eff'
     df_state = pd.DataFrame(columns=header_df_state)
     dfs_state = [df_state for _ in range(len(list_joints))]
 
-    # Create a dataframe for each joint trajectory
+    # Create a dataframe for each joint trajectory.
     header_df_traj = 'timestamp', 'name', 'pos_des', 'vel_des', 'eff_des'
     df_traj = pd.DataFrame(columns=header_df_traj)
     dfs_traj = [df_traj for _ in range(len(list_joints))]
@@ -86,14 +86,12 @@ if args.extract_csvs:
                         )
 
             counter += 1
-            pbar.update(1)  # Update progress bar
-            # if counter > 50000:
-            #     break
+            pbar.update(1)
 
     print("Finished processing messages")
     print(f"Number of messages processed: {counter}")
 
-    # Save the csvs in the same directory as the rosbag
+    # Save the csvs in the same directory as the rosbag.
     for i, df in enumerate(dfs_state):
         df.to_csv(rosbag_path + f'/{list_joints[i]}_state.csv', index=False)
 
