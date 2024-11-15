@@ -22,6 +22,7 @@
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "geometry_msgs/msg/twist_stamped.hpp"
 #include "biped_bringup/msg/stamped_bool.hpp"
+#include "biped_bringup/msg/stamped_int.hpp"
 #include "tf2_ros/transform_listener.h"
 #include "tf2_ros/buffer.h"
 #include "tf2_ros/transform_broadcaster.h"
@@ -101,6 +102,8 @@ public:
 
         pub_desired_dcm_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("~/desired_dcm", 10);
         pub_predicted_dcm_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("~/predicted_dcm", 10);
+        pub_dcm_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("~/dcm", 10);
+        pub_next_dcm_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("~/next_dcm", 10);
 
         pub_desired_left_contact_ = this->create_publisher<biped_bringup::msg::StampedBool>("~/desired_left_contact", 10);
         pub_desired_right_contact_ = this->create_publisher<biped_bringup::msg::StampedBool>("~/desired_right_contact", 10);
@@ -398,6 +401,10 @@ private:
         dcm_STF_(1) = T_STF_to_BLF_.inverse().translation()[1] + offset_com_baselink_[1] + 1.0 / robot_params_.omega * vel_base_link_STF(1);
         dcm_STF_(2) = 0;
 
+        geometry_msgs::msg::Vector3Stamped dcm_STF_msg;
+        get_vector3_msg(dcm_STF_, dcm_STF_msg);
+        pub_dcm_->publish(dcm_STF_msg);
+
         // Adapt COM based on DCM prediction
         if (step_occured) {
             if (robot_params_.use_adaptive_com) {
@@ -429,6 +436,10 @@ private:
 
         Eigen::Vector3d next_footstep_STF;
         next_footstep_STF = -dcm_desired_STF + dcm_STF_ * exp(robot_params_.omega * remaining_time_in_step_);
+
+        geometry_msgs::msg::Vector3Stamped next_dcm_STF_msg;
+        get_vector3_msg(next_dcm_STF_predicted, next_dcm_STF_msg);
+        pub_next_dcm_->publish(next_dcm_STF_msg);
 
         Eigen::Vector3d vec_STF_to_next_CP = next_footstep_STF - Eigen::Vector3d(0.0, 0.0, 0.0);
         auto norm_vec_STF_to_next_CP = sqrt(vec_STF_to_next_CP(0) * vec_STF_to_next_CP(0) + vec_STF_to_next_CP(1) * vec_STF_to_next_CP(1));
@@ -539,6 +550,8 @@ private:
 
         publish_marker(marker_type, swing_foot_BF, "swing_foot", base_link_frame_id_, 5, Eigen::Vector3d(1.0, 1.0, 0.0), pub_marker_swing_foot_BF_);
         publish_marker(marker_type, stance_foot_BF, "stance_foot", base_link_frame_id_, 6, Eigen::Vector3d(1.0, 1.0, 0.0), pub_marker_stance_foot_BF_);
+        publish_marker(marker_type, dcm_STF_, "dcm", "STF", 7, Eigen::Vector3d(1.0, 0.0, 0.0), pub_marker_dcm_);
+        publish_marker(marker_type, dcm_desired_STF, "desired_dcm", "STF", 8, Eigen::Vector3d(0.0, 1.0, 0.0), pub_marker_desired_dcm_);
         foot_traj_list_STF_.push_back(pos_desired_swing_foot_STF);
         publish_line_traj_markers(foot_traj_list_STF_, "foot_trajectory", "STF", 3, Eigen::Vector3d(1.0, 0.0, 1.0), pub_markers_foot_traj_);
     }
@@ -830,6 +843,8 @@ private:
 
     rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pub_desired_dcm_;
     rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pub_predicted_dcm_;
+    rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pub_dcm_;
+    rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pub_next_dcm_;
 
     rclcpp::Publisher<biped_bringup::msg::StampedBool>::SharedPtr pub_desired_left_contact_;
     rclcpp::Publisher<biped_bringup::msg::StampedBool>::SharedPtr pub_desired_right_contact_;
