@@ -142,6 +142,10 @@ class MujocoNode(Node):
         self.joint_traj_sub = self.create_subscription(JointTrajectory, 'joint_trajectory', self.joint_traj_cb, 10)
         self.joint_traj_msg = None
 
+        # Store the body as well. Since body_trajectories -> IK -> joint_trajectory that we take in
+        self.body_traj_sub = self.create_subscription(MultiDOFJointTrajectory, 'body_trajectories', self.body_traj_cb, 10)
+        self.body_traj_msg = None
+
         self.initial_pose_sub = self.create_subscription(PoseWithCovarianceStamped, 'initialpose', self.init_cb, 10)
         self.reset_sub = self.create_subscription(Empty, '~/reset', self.reset_cb, 10)
 
@@ -162,7 +166,7 @@ class MujocoNode(Node):
         self.write_controller_dataset_header()
 
         self.policy_NN_output = None
-        self.use_bc_policy = True
+        self.use_bc_policy = False
 
         if self.use_bc_policy == True:
             self.policy_input_size = 41 # todo fix this hardcoded thing, prolly, just set it as a config, since it stems from run_bc.py. We can make into a constant
@@ -277,7 +281,7 @@ class MujocoNode(Node):
                 for i in range(self.policy_input_size):
                     self.list_policy_inputs.pop(0) # pop the old state
                 policy_input = np.array(self.list_policy_inputs)
-                self.policy_NN_output = self.policy_bc_NN(policy_input)
+                # self.policy_NN_output = self.policy_bc_NN(policy_input)
 
         # TODO: leo: think about whether we need this double for loop.
         for _ in range(2):
@@ -405,7 +409,9 @@ class MujocoNode(Node):
         if self.initialization_done and self.dcm_desired_BF is not None:
             input_data = self.create_policy_input()
             output_data = self.create_policy_output()
-            self.write_controller_dataset_entry(input_data, output_data)
+            capture_pt_data = self.create_cp_output()
+            self.write_controller_dataset_entry(input_data, output_data, capture_pt_data)
+
         msg_fake_vicon = PoseStamped()
         msg_fake_vicon.header.stamp.sec = int(self.time)
         msg_fake_vicon.header.stamp.nanosec = int((self.time - clock_msg.clock.sec) * 1e9)
@@ -566,7 +572,7 @@ class MujocoNode(Node):
         #           t since no contact, 
         #           pos BF
         #   controller: tau_ff, q_j_des, q_j_vel_des
-        #   policy network: tau_ff, q_j_des, q_j_vel_des
+        #   policy network: tau_ff_policy, q_j_des_policy, q_j_vel_des_policy
         header_qs = ['q_' + str(i) for i in range(len(self.data.qpos)) ]
         header_qd = ['qd_' + str(i) for i in range(len(self.data.qvel))]
 
@@ -586,6 +592,19 @@ class MujocoNode(Node):
         header_for_q_j_vel_des_policy = [name + '_q_vel_des_policy' for name in self.name_joints]
         # header_for_tau_ff = ['qfrc_applied_' + str(i) for i in range(len(self.data.qfrc_applied))]
         # header_for_des_q_q_dot = ['ctrl_' + str(i) for i in range(len(self.data.ctrl))]
+
+        # Saving the CP output as well.
+        header_for_capture_point = []
+        for jt in ['base_link', 'R_ANKLE', 'L_ANKLE']:
+            header_for_capture_point.extend([
+                f'cp_{jt}_trans_x', f'cp_{jt}_trans_y', f'cp_{jt}_trans_z',
+                f'cp_{jt}_rot_x', f'cp_{jt}_rot_y', f'cp_{jt}_rot_z',
+                f'cp_{jt}_vel_x', f'cp_{jt}_vel_y', f'cp_{jt}_vel_z',
+                f'cp_{jt}_ang_vel_x', f'cp_{jt}_ang_vel_y', f'cp_{jt}_ang_vel_z',
+                f'cp_{jt}_accel_x', f'cp_{jt}_accel_y', f'cp_{jt}_accel_z',
+                f'cp_{jt}_ang_accel_x', f'cp_{jt}_ang_accel_y', f'cp_{jt}_ang_accel_z'
+            ])
+
         header = ['time', 'dt', 
                         # *header_qs, 
                         # *header_qd,
@@ -599,7 +618,9 @@ class MujocoNode(Node):
                           *header_for_q_j_vel_des,
                           *header_for_tau_ff_policy,
                           *header_for_q_j_des_policy,
-                          *header_for_q_j_vel_des_policy
+                          *header_for_q_j_vel_des_policy,
+                          # for capture point:
+                          *header_for_capture_point
                           ]
         self.writer.writerow(header)
 
@@ -643,18 +664,47 @@ class MujocoNode(Node):
         # policy_output = [*q_frc, *q_ctrl]
         policy_output = [*data_for_tau_ff, *data_for_q_j_des, *data_for_q_j_vel_des]
         return policy_output
+    
+    def create_cp_output(self):
+        rows = []
+        for point in self.body_traj_msg.points:
+            # Add data for each joint
+            for i, _ in enumerate(self.body_traj_msg.joint_names):
+                transform = point.transforms[i]
+                velocity = point.velocities[i]
+                acceleration = point.accelerations[i]
+                
+                # Add all data in order
+                rows.extend([
+                    # Transforms
+                    transform.translation.x, transform.translation.y, transform.translation.z,
+                    transform.rotation.x, transform.rotation.y, transform.rotation.z,
+                    # Twists
+                    velocity.linear.x, velocity.linear.y, velocity.linear.z,
+                    velocity.angular.x, velocity.angular.y, velocity.angular.z,
+                    # Accelerations
+                    acceleration.linear.x, acceleration.linear.y, acceleration.linear.z,
+                    acceleration.angular.x, acceleration.angular.y, acceleration.angular.z
+            ])
+        return rows
 
-    def write_controller_dataset_entry(self, policy_input, policy_output):
+
+    def write_controller_dataset_entry(self, policy_input, policy_output, capture_pt_output):
         if self.initialization_done and self.dcm_desired_BF is not None:
             # TODO (LEO 5/12/24): Since the model isn't trained with the data, we don't wanna save the policy_NN_output yet.
             #                     When I train the new model, I should do this.
-            row_entry = [self.time, self.model.opt.timestep, *policy_input, *policy_output, *self.policy_NN_output]
-            # row_entry = [self.time, self.model.opt.timestep, *policy_input, *policy_output, *policy_output]
+            # row_entry = [self.time, self.model.opt.timestep, *policy_input, *policy_output, *self.policy_NN_output]
+            row_entry = [self.time, self.model.opt.timestep, *policy_input, *policy_output, *policy_output, *capture_pt_output]
             self.writer.writerow(row_entry)
 
     def joint_traj_cb(self, msg):
         with self.lock:
             self.joint_traj_msg = msg
+
+    def body_traj_cb(self, msg):
+        # unsure if lock is needed.
+        with self.lock:
+            self.body_traj_msg = msg
 
     def read_contact_states(self):
         self.contact_states['R_FOOT'] = False
