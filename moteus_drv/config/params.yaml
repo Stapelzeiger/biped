@@ -5,19 +5,9 @@
     joint_state_timeout: 0.04
     joint_command_timeout: 0.1
     joints: ['L_YAW', 'L_HAA', 'L_HFE', 'L_KFE', 'R_YAW', 'R_HAA', 'R_HFE', 'R_KFE']
-    # joints: ['L_KFE', 'R_KFE']
-    test1/can_id: 1
-    test1/can_bus: 3
-    test1/encoder_ambiguity: 1.0
-    test1/calib/centering_pos_deg: 0.5
-
-    test2/can_id: 1
-    test2/can_bus: 4
-    test2/encoder_ambiguity: 6.0
-    test2/calib/centering_pos_deg: 0.5
 
     R_YAW/can_id: 10
-    R_YAW/can_bus: 5
+    R_YAW/can_bus: 4
     R_YAW/encoder_ambiguity: 5.0
     R_YAW/reverse: False
     R_YAW/calib/centering_pos_deg: 30.0
@@ -25,38 +15,35 @@
     R_YAW/calib/direction: 1.0
 
     R_HAA/can_id: 11
-    R_HAA/can_bus: 4
+    R_HAA/can_bus: 5
     R_HAA/encoder_ambiguity: 6.0
     R_HAA/reverse: True
-    # R_HAA/calib/centering_pos_deg: 20.0
-    # R_HAA/calib/trigger_effort: 2.0
-    # R_HAA/calib/direction: 1.0
     R_HAA/calib/centering_pos_deg: 38.0
     R_HAA/calib/trigger_effort: 2.5
     R_HAA/calib/direction: -1.0
 
     R_HFE/can_id: 12
-    R_HFE/can_bus: 4
+    R_HFE/can_bus: 5
     R_HFE/encoder_ambiguity: 6.0
     R_HFE/reverse: False
     R_HFE/calib/centering_pos_deg: 106.0
-    R_HFE/calib/trigger_effort: 2.5
+    R_HFE/calib/trigger_effort: 3.0
     R_HFE/calib/direction: 1.0
 
     R_KFE/can_id: 14
-    R_KFE/can_bus: 4
+    R_KFE/can_bus: 5
     R_KFE/encoder_ambiguity: 9.0 # 6.0 x 1.5
     R_KFE/reverse: False
     R_KFE/kp_scale: 1.0
     R_KFE/calib/centering_pos_deg: 130.0
-    R_KFE/calib/trigger_effort: 1.5
+    R_KFE/calib/trigger_effort: 2.0
     R_KFE/calib/direction: -1.0
 
     R_ANKLE/can_id: 3 # dummy number
     R_ANKLE/can_bus: 1 # dummy number
 
     L_YAW/can_id: 20
-    L_YAW/can_bus: 5
+    L_YAW/can_bus: 4
     L_YAW/encoder_ambiguity: 5.0
     L_YAW/reverse: False
     L_YAW/calib/centering_pos_deg: 30.0
@@ -64,18 +51,15 @@
     L_YAW/calib/direction: -1.0
 
     L_HAA/can_id: 21
-    L_HAA/can_bus: 3
+    L_HAA/can_bus: 2
     L_HAA/encoder_ambiguity: 6.0
     L_HAA/reverse: True
-    # L_HAA/calib/centering_pos_deg: 20.0
-    # L_HAA/calib/trigger_effort: 2.0
-    # L_HAA/calib/direction: -1.0
     L_HAA/calib/centering_pos_deg: 38.0
     L_HAA/calib/trigger_effort: 2.5
     L_HAA/calib/direction: 1.0
 
     L_HFE/can_id: 22
-    L_HFE/can_bus: 3
+    L_HFE/can_bus: 2
     L_HFE/encoder_ambiguity: 6.0
     L_HFE/reverse: True
     L_HFE/calib/centering_pos_deg: 106.0
@@ -83,11 +67,11 @@
     L_HFE/calib/direction: 1.0
 
     L_KFE/can_id: 23
-    L_KFE/can_bus: 3
+    L_KFE/can_bus: 2
     L_KFE/encoder_ambiguity: 9.0 # 6.0 x 1.5
     L_KFE/reverse: True
     L_KFE/calib/centering_pos_deg: 130.0
-    L_KFE/calib/trigger_effort: 1.5
+    L_KFE/calib/trigger_effort: 2.0
     L_KFE/calib/direction: 1.0
 
     L_ANKLE/can_id: 4 # dummy number
