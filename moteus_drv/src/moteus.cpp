@@ -155,7 +155,7 @@ private:
                 // check for timeout and index in trajectory
                 if ((now - joint_traj_[joint_idx].header.stamp).seconds() > joint_command_timeout_) {
                     joint_traj_[joint_idx].points.clear();
-                    RCLCPP_WARN_STREAM(this->get_logger(), "Joint " << joint_names_[joint_idx] << " timed out");
+                    RCLCPP_WARN_STREAM(this->get_logger(), "Joint " << joint_names_[joint_idx] << " command timed out");
                 } else {
                     const double revolutions = 1/(2*M_PI);
                     size_t traj_idx = 0; // TODO: handle multiple traj points
