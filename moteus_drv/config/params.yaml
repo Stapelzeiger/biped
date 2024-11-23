@@ -51,7 +51,7 @@
     L_YAW/calib/direction: -1.0
 
     L_HAA/can_id: 21
-    L_HAA/can_bus: 2
+    L_HAA/can_bus: 3
     L_HAA/encoder_ambiguity: 6.0
     L_HAA/reverse: True
     L_HAA/calib/centering_pos_deg: 38.0
@@ -59,7 +59,7 @@
     L_HAA/calib/direction: 1.0
 
     L_HFE/can_id: 22
-    L_HFE/can_bus: 2
+    L_HFE/can_bus: 3
     L_HFE/encoder_ambiguity: 6.0
     L_HFE/reverse: True
     L_HFE/calib/centering_pos_deg: 106.0
@@ -67,7 +67,7 @@
     L_HFE/calib/direction: 1.0
 
     L_KFE/can_id: 23
-    L_KFE/can_bus: 2
+    L_KFE/can_bus: 3
     L_KFE/encoder_ambiguity: 9.0 # 6.0 x 1.5
     L_KFE/reverse: True
     L_KFE/calib/centering_pos_deg: 130.0
