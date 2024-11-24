@@ -1,0 +1,348 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<root>
+ <tabbed_widget parent="main_window" name="Main Window">
+  <Tab tab_name="positions" containers="1">
+   <Container>
+    <DockSplitter orientation="-" count="4" sizes="0.250382;0.249618;0.250382;0.249618">
+     <DockSplitter orientation="|" count="2" sizes="0.5;0.5">
+      <DockArea name="...">
+       <plot mode="TimeSeries" flip_y="false" style="Lines" flip_x="false">
+        <range bottom="-0.068141" left="20.161572" right="120.161485" top="0.154849"/>
+        <limitY/>
+        <curve color="#1ac938" name="/joint_states/position[0]"/>
+       </plot>
+      </DockArea>
+      <DockArea name="...">
+       <plot mode="TimeSeries" flip_y="false" style="Lines" flip_x="false">
+        <range bottom="-0.126339" left="20.161572" right="120.161485" top="0.086755"/>
+        <limitY/>
+        <curve color="#1ac938" name="/joint_states/position[4]"/>
+       </plot>
+      </DockArea>
+     </DockSplitter>
+     <DockSplitter orientation="|" count="2" sizes="0.5;0.5">
+      <DockArea name="...">
+       <plot mode="TimeSeries" flip_y="false" style="Lines" flip_x="false">
+        <range bottom="-0.952280" left="20.161572" right="120.161485" top="0.119129"/>
+        <limitY/>
+        <curve color="#1ac938" name="/joint_states/position[1]"/>
+       </plot>
+      </DockArea>
+      <DockArea name="...">
+       <plot mode="TimeSeries" flip_y="false" style="Lines" flip_x="false">
+        <range bottom="-0.277591" left="20.161572" right="120.161485" top="0.931042"/>
+        <limitY/>
+        <curve color="#1ac938" name="/joint_states/position[5]"/>
+       </plot>
+      </DockArea>
+     </DockSplitter>
+     <DockSplitter orientation="|" count="2" sizes="0.5;0.5">
+      <DockArea name="...">
+       <plot mode="TimeSeries" flip_y="false" style="Lines" flip_x="false">
+        <range bottom="-0.332569" left="20.161572" right="120.161485" top="0.757312"/>
+        <limitY/>
+        <curve color="#1ac938" name="/joint_states/position[2]"/>
+       </plot>
+      </DockArea>
+      <DockArea name="...">
+       <plot mode="TimeSeries" flip_y="false" style="Lines" flip_x="false">
+        <range bottom="-0.463919" left="20.161572" right="120.161485" top="0.600892"/>
+        <limitY/>
+        <curve color="#1ac938" name="/joint_states/position[6]"/>
+       </plot>
+      </DockArea>
+     </DockSplitter>
+     <DockSplitter orientation="|" count="2" sizes="0.5;0.5">
+      <DockArea name="...">
+       <plot mode="TimeSeries" flip_y="false" style="Lines" flip_x="false">
+        <range bottom="-0.702837" left="20.161572" right="120.161485" top="-0.264773"/>
+        <limitY/>
+        <curve color="#1ac938" name="/joint_states/position[3]"/>
+       </plot>
+      </DockArea>
+      <DockArea name="...">
+       <plot mode="TimeSeries" flip_y="false" style="Lines" flip_x="false">
+        <range bottom="-0.457824" left="20.161572" right="120.161485" top="-0.150388"/>
+        <limitY/>
+        <curve color="#1ac938" name="/joint_states/position[7]"/>
+       </plot>
+      </DockArea>
+     </DockSplitter>
+    </DockSplitter>
+   </Container>
+  </Tab>
+  <Tab tab_name="velocities" containers="1">
+   <Container>
+    <DockSplitter orientation="-" count="4" sizes="0.25;0.25;0.25;0.25">
+     <DockSplitter orientation="|" count="2" sizes="0.5;0.5">
+      <DockArea name="...">
+       <plot mode="TimeSeries" flip_y="false" style="Lines" flip_x="false">
+        <range bottom="-2.579208" left="20.161572" right="120.161485" top="1.245602"/>
+        <limitY/>
+        <curve color="#1ac938" name="/joint_states/velocity[0]"/>
+       </plot>
+      </DockArea>
+      <DockArea name="...">
+       <plot mode="TimeSeries" flip_y="false" style="Lines" flip_x="false">
+        <range bottom="-1.232408" left="20.161572" right="120.161485" top="1.972253"/>
+        <limitY/>
+        <curve color="#1ac938" name="/joint_states/velocity[4]"/>
+       </plot>
+      </DockArea>
+     </DockSplitter>
+     <DockSplitter orientation="|" count="2" sizes="0.5;0.5">
+      <DockArea name="...">
+       <plot mode="TimeSeries" flip_y="false" style="Lines" flip_x="false">
+        <range bottom="-2.330001" left="20.161572" right="120.161485" top="1.979714"/>
+        <limitY/>
+        <curve color="#1ac938" name="/joint_states/velocity[1]"/>
+       </plot>
+      </DockArea>
+      <DockArea name="...">
+       <plot mode="TimeSeries" flip_y="false" style="Lines" flip_x="false">
+        <range bottom="-2.698196" left="20.161572" right="120.161485" top="2.759457"/>
+        <limitY/>
+        <curve color="#1ac938" name="/joint_states/velocity[5]"/>
+       </plot>
+      </DockArea>
+     </DockSplitter>
+     <DockSplitter orientation="|" count="2" sizes="0.5;0.5">
+      <DockArea name="...">
+       <plot mode="TimeSeries" flip_y="false" style="Lines" flip_x="false">
+        <range bottom="-2.370332" left="20.161572" right="120.161485" top="3.369358"/>
+        <limitY/>
+        <curve color="#1ac938" name="/joint_states/velocity[2]"/>
+       </plot>
+      </DockArea>
+      <DockArea name="...">
+       <plot mode="TimeSeries" flip_y="false" style="Lines" flip_x="false">
+        <range bottom="-2.892936" left="20.161572" right="120.161485" top="4.146431"/>
+        <limitY/>
+        <curve color="#1ac938" name="/joint_states/velocity[6]"/>
+       </plot>
+      </DockArea>
+     </DockSplitter>
+     <DockSplitter orientation="|" count="2" sizes="0.5;0.5">
+      <DockArea name="...">
+       <plot mode="TimeSeries" flip_y="false" style="Lines" flip_x="false">
+        <range bottom="-2.254093" left="20.161572" right="120.161485" top="2.166128"/>
+        <limitY/>
+        <curve color="#1ac938" name="/joint_states/velocity[3]"/>
+       </plot>
+      </DockArea>
+      <DockArea name="...">
+       <plot mode="TimeSeries" flip_y="false" style="Lines" flip_x="false">
+        <range bottom="-1.338004" left="20.161572" right="120.161485" top="0.891898"/>
+        <limitY/>
+        <curve color="#1ac938" name="/joint_states/velocity[7]"/>
+       </plot>
+      </DockArea>
+     </DockSplitter>
+    </DockSplitter>
+   </Container>
+  </Tab>
+  <Tab tab_name="effort" containers="1">
+   <Container>
+    <DockSplitter orientation="-" count="1" sizes="1">
+     <DockSplitter orientation="|" count="2" sizes="0.5;0.5">
+      <DockSplitter orientation="-" count="4" sizes="0.25;0.25;0.25;0.25">
+       <DockArea name="...">
+        <plot mode="TimeSeries" flip_y="false" style="Lines" flip_x="false">
+         <range bottom="-0.100000" left="20.161572" right="120.161485" top="0.100000"/>
+         <limitY/>
+         <curve color="#1ac938" name="/joint_states/effort[0]"/>
+        </plot>
+       </DockArea>
+       <DockArea name="...">
+        <plot mode="TimeSeries" flip_y="false" style="Lines" flip_x="false">
+         <range bottom="-0.100000" left="20.161572" right="120.161485" top="0.100000"/>
+         <limitY/>
+         <curve color="#1ac938" name="/joint_states/effort[1]"/>
+        </plot>
+       </DockArea>
+       <DockArea name="...">
+        <plot mode="TimeSeries" flip_y="false" style="Lines" flip_x="false">
+         <range bottom="-0.100000" left="20.161572" right="120.161485" top="0.100000"/>
+         <limitY/>
+         <curve color="#1ac938" name="/joint_states/effort[2]"/>
+        </plot>
+       </DockArea>
+       <DockArea name="...">
+        <plot mode="TimeSeries" flip_y="false" style="Lines" flip_x="false">
+         <range bottom="-0.100000" left="20.161572" right="120.161485" top="0.100000"/>
+         <limitY/>
+         <curve color="#1ac938" name="/joint_states/effort[3]"/>
+        </plot>
+       </DockArea>
+      </DockSplitter>
+      <DockSplitter orientation="-" count="4" sizes="0.25;0.25;0.25;0.25">
+       <DockArea name="...">
+        <plot mode="TimeSeries" flip_y="false" style="Lines" flip_x="false">
+         <range bottom="-0.100000" left="20.161572" right="120.161485" top="0.100000"/>
+         <limitY/>
+         <curve color="#1ac938" name="/joint_states/effort[4]"/>
+        </plot>
+       </DockArea>
+       <DockArea name="...">
+        <plot mode="TimeSeries" flip_y="false" style="Lines" flip_x="false">
+         <range bottom="-0.100000" left="20.161572" right="120.161485" top="0.100000"/>
+         <limitY/>
+         <curve color="#1ac938" name="/joint_states/effort[5]"/>
+        </plot>
+       </DockArea>
+       <DockArea name="...">
+        <plot mode="TimeSeries" flip_y="false" style="Lines" flip_x="false">
+         <range bottom="-0.100000" left="20.161572" right="120.161485" top="0.100000"/>
+         <limitY/>
+         <curve color="#1ac938" name="/joint_states/effort[6]"/>
+        </plot>
+       </DockArea>
+       <DockArea name="...">
+        <plot mode="TimeSeries" flip_y="false" style="Lines" flip_x="false">
+         <range bottom="-0.100000" left="20.161572" right="120.161485" top="0.100000"/>
+         <limitY/>
+         <curve color="#1ac938" name="/joint_states/effort[7]"/>
+        </plot>
+       </DockArea>
+      </DockSplitter>
+     </DockSplitter>
+    </DockSplitter>
+   </Container>
+  </Tab>
+  <Tab tab_name="tab2" containers="1">
+   <Container>
+    <DockSplitter orientation="-" count="1" sizes="1">
+     <DockArea name="...">
+      <plot mode="XYPlot" flip_y="false" style="Lines" flip_x="false">
+       <range bottom="-0.651165" left="-0.905705" right="1.103942" top="1.054876"/>
+       <limitY/>
+       <curve curve_y="/odometry/pose/pose/position/y" curve_x="/odometry/pose/pose/position/x" color="#1f77b4" name="/odometry/pose/pose/position/[x;y]"/>
+      </plot>
+     </DockArea>
+    </DockSplitter>
+   </Container>
+  </Tab>
+  <Tab tab_name="tab3" containers="1">
+   <Container>
+    <DockSplitter orientation="-" count="4" sizes="0.249867;0.250399;0.249867;0.249867">
+     <DockSplitter orientation="|" count="2" sizes="0.5;0.5">
+      <DockArea name="...">
+       <plot mode="TimeSeries" flip_y="false" style="Lines" flip_x="false">
+        <range bottom="-0.928722" left="20.158342" right="120.160372" top="1.124017"/>
+        <limitY/>
+        <curve color="#1f77b4" name="/odometry/pose/pose/position/x"/>
+        <curve color="#d62728" name="/poses/poses[0]/pose/position/x"/>
+       </plot>
+      </DockArea>
+      <DockArea name="...">
+       <plot mode="TimeSeries" flip_y="false" style="Lines" flip_x="false">
+        <range bottom="-1.439742" left="20.158342" right="120.160372" top="1.611242"/>
+        <limitY/>
+        <curve color="#1f77b4" name="/odometry/twist/twist/linear/x"/>
+       </plot>
+      </DockArea>
+     </DockSplitter>
+     <DockSplitter orientation="|" count="2" sizes="0.5;0.5">
+      <DockArea name="...">
+       <plot mode="TimeSeries" flip_y="false" style="Lines" flip_x="false">
+        <range bottom="-0.367464" left="20.158342" right="120.160372" top="0.774332"/>
+        <limitY/>
+        <curve color="#1f77b4" name="/odometry/pose/pose/position/y"/>
+        <curve color="#d62728" name="/poses/poses[0]/pose/position/y"/>
+       </plot>
+      </DockArea>
+      <DockArea name="...">
+       <plot mode="TimeSeries" flip_y="false" style="Lines" flip_x="false">
+        <range bottom="-0.651571" left="20.158342" right="120.160372" top="0.620471"/>
+        <limitY/>
+        <curve color="#1f77b4" name="/odometry/twist/twist/linear/y"/>
+       </plot>
+      </DockArea>
+     </DockSplitter>
+     <DockSplitter orientation="|" count="2" sizes="0.5;0.5">
+      <DockArea name="...">
+       <plot mode="TimeSeries" flip_y="false" style="Lines" flip_x="false">
+        <range bottom="-0.325961" left="20.158342" right="120.160372" top="0.372360"/>
+        <limitY/>
+        <curve color="#1f77b4" name="/poses/poses[0]/pose/orientation/x"/>
+        <curve color="#d62728" name="/odometry/pose/pose/orientation/x"/>
+       </plot>
+      </DockArea>
+      <DockArea name="...">
+       <plot mode="TimeSeries" flip_y="false" style="Lines" flip_x="false">
+        <range bottom="-0.675673" left="20.158342" right="120.160372" top="0.785102"/>
+        <limitY/>
+        <curve color="#1f77b4" name="/odometry/pose/pose/orientation/z"/>
+        <curve color="#d62728" name="/poses/poses[0]/pose/orientation/z"/>
+       </plot>
+      </DockArea>
+     </DockSplitter>
+     <DockSplitter orientation="|" count="2" sizes="0.5;0.5">
+      <DockArea name="...">
+       <plot mode="TimeSeries" flip_y="false" style="Lines" flip_x="false">
+        <range bottom="-0.298994" left="20.158342" right="120.160372" top="0.352180"/>
+        <limitY/>
+        <curve color="#1f77b4" name="/odometry/pose/pose/orientation/y"/>
+        <curve color="#d62728" name="/poses/poses[0]/pose/orientation/y"/>
+       </plot>
+      </DockArea>
+      <DockArea name="...">
+       <plot mode="TimeSeries" flip_y="false" style="Lines" flip_x="false">
+        <range bottom="0.639561" left="20.158342" right="120.160372" top="1.008777"/>
+        <limitY/>
+        <curve color="#1f77b4" name="/odometry/pose/pose/orientation/w"/>
+        <curve color="#d62728" name="/poses/poses[0]/pose/orientation/w"/>
+       </plot>
+      </DockArea>
+     </DockSplitter>
+    </DockSplitter>
+   </Container>
+  </Tab>
+  <currentTabIndex index="4"/>
+ </tabbed_widget>
+ <use_relative_time_offset enabled="1"/>
+ <!-- - - - - - - - - - - - - - - -->
+ <!-- - - - - - - - - - - - - - - -->
+ <Plugins>
+  <plugin ID="DataLoad CSV">
+   <parameters delimiter="0" time_axis=""/>
+  </plugin>
+  <plugin ID="DataLoad MCAP"/>
+  <plugin ID="DataLoad ROS2 bags">
+   <use_header_stamp value="false"/>
+   <discard_large_arrays value="true"/>
+   <max_array_size value="100"/>
+   <boolean_strings_to_number value="true"/>
+   <remove_suffix_from_strings value="true"/>
+   <selected_topics value=""/>
+  </plugin>
+  <plugin ID="DataLoad ULog"/>
+  <plugin ID="ROS2 Topic Subscriber">
+   <use_header_stamp value="true"/>
+   <discard_large_arrays value="true"/>
+   <max_array_size value="100"/>
+   <boolean_strings_to_number value="true"/>
+   <remove_suffix_from_strings value="true"/>
+   <selected_topics value="/joint_states;/odometry;/poses"/>
+  </plugin>
+  <plugin ID="UDP Server"/>
+  <plugin ID="WebSocket Server"/>
+  <plugin ID="ZMQ Subscriber"/>
+  <plugin ID="Fast Fourier Transform"/>
+  <plugin ID="Quaternion to RPY"/>
+  <plugin ID="Reactive Script Editor">
+   <library code="--[[ Helper function to create a series from arrays&#xa;&#xa; new_series: a series previously created with ScatterXY.new(name)&#xa; prefix:     prefix of the timeseries, before the index of the array&#xa; suffix_X:   suffix to complete the name of the series containing the X value. If [nil], use the index of the array.&#xa; suffix_Y:   suffix to complete the name of the series containing the Y value&#xa; timestamp:   usually the tracker_time variable&#xa;              &#xa; Example:&#xa; &#xa; Assuming we have multiple series in the form:&#xa; &#xa;   /trajectory/node.{X}/position/x&#xa;   /trajectory/node.{X}/position/y&#xa;   &#xa; where {N} is the index of the array (integer). We can create a reactive series from the array with:&#xa; &#xa;   new_series = ScatterXY.new(&quot;my_trajectory&quot;) &#xa;   CreateSeriesFromArray( new_series, &quot;/trajectory/node&quot;, &quot;position/x&quot;, &quot;position/y&quot;, tracker_time );&#xa;--]]&#xa;&#xa;function CreateSeriesFromArray( new_series, prefix, suffix_X, suffix_Y, timestamp )&#xa;  &#xa;  --- clear previous values&#xa;  new_series:clear()&#xa;  &#xa;  --- Append points to new_series&#xa;  index = 0&#xa;  while(true) do&#xa;&#xa;    x = index;&#xa;    -- if not nil, get the X coordinate from a series&#xa;    if suffix_X ~= nil then &#xa;      series_x = TimeseriesView.find( string.format( &quot;%s.%d/%s&quot;, prefix, index, suffix_X) )&#xa;      if series_x == nil then break end&#xa;      x = series_x:atTime(timestamp)&#x9; &#xa;    end&#xa;    &#xa;    series_y = TimeseriesView.find( string.format( &quot;%s.%d/%s&quot;, prefix, index, suffix_Y) )&#xa;    if series_y == nil then break end &#xa;    y = series_y:atTime(timestamp)&#xa;    &#xa;    new_series:push_back(x,y)&#xa;    index = index+1&#xa;  end&#xa;end&#xa;&#xa;--[[ Similar to the built-in function GetSeriesNames(), but select only the names with a give prefix. --]]&#xa;&#xa;function GetSeriesNamesByPrefix(prefix)&#xa;  -- GetSeriesNames(9 is a built-in function&#xa;  all_names = GetSeriesNames()&#xa;  filtered_names = {}&#xa;  for i, name in ipairs(all_names)  do&#xa;    -- check the prefix&#xa;    if name:find(prefix, 1, #prefix) then&#xa;      table.insert(filtered_names, name);&#xa;    end&#xa;  end&#xa;  return filtered_names&#xa;end&#xa;&#xa;--[[ Modify an existing series, applying offsets to all their X and Y values&#xa;&#xa; series: an existing timeseries, obtained with TimeseriesView.find(name)&#xa; delta_x: offset to apply to each x value&#xa; delta_y: offset to apply to each y value &#xa;  &#xa;--]]&#xa;&#xa;function ApplyOffsetInPlace(series, delta_x, delta_y)&#xa;  -- use C++ indeces, not Lua indeces&#xa;  for index=0, series:size()-1 do&#xa;    x,y = series:at(index)&#xa;    series:set(index, x + delta_x, y + delta_y)&#xa;  end&#xa;end&#xa;"/>
+   <scripts/>
+  </plugin>
+  <plugin ID="CSV Exporter"/>
+  <plugin ID="ROS2 Topic Re-Publisher"/>
+ </Plugins>
+ <!-- - - - - - - - - - - - - - - -->
+ <previouslyLoaded_Datafiles/>
+ <previouslyLoaded_Streamer name="ROS2 Topic Subscriber"/>
+ <!-- - - - - - - - - - - - - - - -->
+ <customMathEquations/>
+ <snippets/>
+ <!-- - - - - - - - - - - - - - - -->
+</root>
+
