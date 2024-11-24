@@ -5,7 +5,9 @@ import time
 # from launch.event_handlers import OnExecutionComplete
 
 
-list_of_topics = ['/joy',
+list_of_topics = [
+                '/robot_description',
+                '/joy',
                 '/imu',
                 '/odometry',
                 '/vel_estimation/ekf_innovations',
@@ -18,16 +20,24 @@ list_of_topics = ['/joy',
                 '/tf',
                 '/tf_static',
                 '/capture_point/markers_next_footstep',
+                '/capture_point/markers_safety_circle',
                 '/capture_point/markers_next_safe_footstep',
                 '/capture_point/markers_dcm',
                 '/capture_point/markers_desired_dcm',
                 '/capture_point/markers_traj_feet',
+                '/capture_point/markers_actual_traj_feet',
                 '/capture_point/markers_swing_foot_BF',
                 '/capture_point/markers_stance_foot_BF',
                 '/capture_point/desired_left_contact',
                 '/capture_point/desired_right_contact',
                 '/capture_point/desired_dcm',
+                '/capture_point/dcm',
+                '/capture_point/next_dcm',
                 '/capture_point/predicted_dcm',
+                '/capture_point/t_in_step',
+                '/capture_point/optimization_status',
+                '/state',
+                '/pointCloud',
                 '/ik_interface/markers',
                 '/rosout',
                 '/flir_camera/image_raw/compressed',
@@ -55,6 +65,7 @@ def generate_launch_description():
             cmd=['ln', '-s', '-fn', rosbag_file, rosbag_dir + 'latest.bag'],
             output='screen'
         )
+    print('ros2', 'bag', 'record', *list_of_topics, '--output='+rosbag_file)
     return launch.LaunchDescription([
         # test_name_launch_arg,
         run_rosbag_record,
