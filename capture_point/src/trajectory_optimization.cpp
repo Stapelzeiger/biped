@@ -271,7 +271,7 @@ void OptimizerTrajectory::enable_lowering_foot_after_opt_solved(bool enable)
     enable_lower_foot_after_opt_solved_ = enable;
 }
 
-void OptimizerTrajectory::compute_traj_pos_vel(double T_since_begin_step,
+bool OptimizerTrajectory::compute_traj_pos_vel(double T_since_begin_step,
                                             Eigen::Vector3d final_pos,
                                             Eigen::Vector3d &foot_pos,
                                             Eigen::Vector3d &foot_vel,
@@ -307,7 +307,7 @@ void OptimizerTrajectory::compute_traj_pos_vel(double T_since_begin_step,
         if (N_ <= 0)
         {
             std::cout << "Optimization problem not solved because N <= 0" << std::endl;
-            return;
+            return false;
         }
 
         int idx = std::round((T_since_begin_step - solution_opt_start_time_)/dt_);
@@ -332,7 +332,7 @@ void OptimizerTrajectory::compute_traj_pos_vel(double T_since_begin_step,
             solver_.data()->clearHessianMatrix();
             solver_.data()->clearLinearConstraintsMatrix();
             solver_.clearSolver();
-            return;
+            return false;
         }
         for (int i = 0; i < nb_total_variables_per_coord_; i = i + 3)
         {
@@ -378,6 +378,7 @@ void OptimizerTrajectory::compute_traj_pos_vel(double T_since_begin_step,
             foot_acc << 0.0, 0.0, 0.0;
         }
     }
+    return true;
 }
 
 // int main()

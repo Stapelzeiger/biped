@@ -14,8 +14,8 @@
     l_foot_frame_id: L_FOOT_CONTACT
     l_foot_urdf_frame_id: L_ANKLE
     base_link_frame_id: base_link
-    offset_baselink_cog_x: 0.02
-    offset_baselink_cog_y: 0.002
+    offset_baselink_cog_x: 0.011
+    offset_baselink_cog_y: 0.0
     offset_baselink_cog_z: 0.0
     time_no_feet_in_contact: 0.2
     foot_separation: 0.1

@@ -57,11 +57,11 @@ public:
 
     bool solve_optimization_pb(Eigen::VectorXd &qp_sol);
 
-    void compute_traj_pos_vel(double T_since_begin_step,
-                                                Eigen::Vector3d final_pos,
-                                                Eigen::Vector3d &foot_pos,
-                                                Eigen::Vector3d &foot_vel,
-                                                Eigen::Vector3d &foot_acc);
+    bool compute_traj_pos_vel(double T_since_begin_step,
+                                Eigen::Vector3d final_pos,
+                                Eigen::Vector3d &foot_pos,
+                                Eigen::Vector3d &foot_vel,
+                                Eigen::Vector3d &foot_acc);
 
     void set_initial_pos_vel(Eigen::Vector3d initial_pos,
                              Eigen::Vector3d initial_vel);

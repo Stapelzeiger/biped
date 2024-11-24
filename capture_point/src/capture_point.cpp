@@ -60,7 +60,7 @@ public:
         robot_params_.swing_y_safe_box_max = this->declare_parameter<double>("swing_y_safe_box_max", 0.2);
         robot_params_.swing_z_safe_box_min = this->declare_parameter<double>("swing_z_safe_box_min", 0.0);
         robot_params_.swing_z_safe_box_max = this->declare_parameter<double>("swing_z_safe_box_max", 0.2);
-        robot_params_.walk_slow = this->declare_parameter<bool>("walk_slow", true);
+        robot_params_.walk_slow = this->declare_parameter<bool>("walk_slow", false);
         robot_params_.use_adaptive_com = this->declare_parameter<bool>("use_adaptive_com", false);
         robot_params_.k_I_com = this->declare_parameter<double>("k_I_com", 0.01);
 
@@ -104,6 +104,8 @@ public:
         pub_predicted_dcm_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("~/predicted_dcm", 10);
         pub_dcm_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("~/dcm", 10);
         pub_next_dcm_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("~/next_dcm", 10);
+        pub_t_in_step_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("~/t_in_step", 10);
+        pub_optimization_status_ = this->create_publisher<biped_bringup::msg::StampedBool>("~/optimization_status", 10);
 
         pub_desired_left_contact_ = this->create_publisher<biped_bringup::msg::StampedBool>("~/desired_left_contact", 10);
         pub_desired_right_contact_ = this->create_publisher<biped_bringup::msg::StampedBool>("~/desired_right_contact", 10);
@@ -215,6 +217,8 @@ private:
 
     void timer_callback()
     {
+        auto now = this->get_clock()->now();
+
         if (base_link_odom_.stamp == rclcpp::Time(0, 0, RCL_ROS_TIME)) {
             RCLCPP_INFO(this->get_logger(), "Waiting for odometry...");
             return;
@@ -272,8 +276,8 @@ private:
 
             T_STF_to_BLF_.linear() = Eigen::Matrix3d::Identity();
             T_STF_to_BLF_.translation() = stance_foot_BLF;
-            broadcast_transform(base_link_frame_id_, "BLF", T_BLF_to_BF.translation(), Eigen::Quaterniond(T_BLF_to_BF.rotation()));
-            broadcast_transform("BLF", "STF", T_STF_to_BLF_.translation(), Eigen::Quaterniond(T_STF_to_BLF_.rotation()));
+            broadcast_transform(base_link_frame_id_, "BLF", T_BLF_to_BF.translation(), Eigen::Quaterniond(T_BLF_to_BF.rotation()), now);
+            broadcast_transform("BLF", "STF", T_STF_to_BLF_.translation(), Eigen::Quaterniond(T_STF_to_BLF_.rotation()), now);
 
             Eigen::Vector3d fin_swing_foot_pos_STF, fin_swing_foot_vel_STF;
             fin_swing_foot_pos_STF = Eigen::Vector3d(0.0, 0.1, 0.1 - offset_foot_);
@@ -287,10 +291,11 @@ private:
             std::string frame_id = "STF";
             publish_body_trajectories(frame_id, fin_baselink_pos_STF, Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0), Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero(),  // todo fix this so it takes the init orientation of the robot
                                         Eigen::Vector3d::Zero(), Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0), Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero(),
-                                        fin_swing_foot_pos_STF, Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0), fin_swing_foot_vel_STF, Eigen::Vector3d::Zero());
+                                        fin_swing_foot_pos_STF, Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0), fin_swing_foot_vel_STF, Eigen::Vector3d::Zero(),
+                                        now);
 
             biped_bringup::msg::StampedBool des_contact_msg;
-            des_contact_msg.header.stamp = this->get_clock()->now();
+            des_contact_msg.header.stamp = now;
             des_contact_msg.data = false;
             pub_desired_left_contact_->publish(des_contact_msg);
             des_contact_msg.data = false;
@@ -306,7 +311,7 @@ private:
 
         if (state_ == "FOOT_IN_CONTACT" && initialization_done_ == true && mode_ == "WALK") {
             auto t_start = std::chrono::high_resolution_clock::now();
-            run_capture_point_controller();
+            run_capture_point_controller(now);
             auto t_finish = std::chrono::high_resolution_clock::now();
             auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t_finish - t_start);
 
@@ -319,13 +324,9 @@ private:
             }
         }
 
-        // std::cout << "foot_left_contact_ " << foot_left_contact_ << std::endl;
-        // std::cout << "foot_right_contact_ " << foot_right_contact_ << std::endl;
-        // std::cout << "state_ " << state_ << std::endl;
-
         // Publish state
         biped_bringup::msg::StampedInt state_msg;
-        state_msg.header.stamp = this->get_clock()->now();
+        state_msg.header.stamp = now;
         if (state_ == "INIT") {
             state_msg.data = 0;
         } else if (state_ == "RAMP_TO_STARTING_POS") {
@@ -337,7 +338,7 @@ private:
 
     }
 
-    void run_capture_point_controller()
+    void run_capture_point_controller(rclcpp::Time now)
     {
         bool swing_foot_contact;
         bool step_occured = false;
@@ -354,7 +355,7 @@ private:
         }
 
         auto T_BLF_to_BF = get_BLF_to_BF();
-        broadcast_transform(base_link_frame_id_, "BLF", T_BLF_to_BF.translation(), Eigen::Quaterniond(T_BLF_to_BF.rotation()));
+        broadcast_transform(base_link_frame_id_, "BLF", T_BLF_to_BF.translation(), Eigen::Quaterniond(T_BLF_to_BF.rotation()), now);
         auto T_BF_to_BLF = T_BLF_to_BF.inverse();
 
         if (time_since_last_step_ > robot_params_.T_contact_ignore && swing_foot_contact == true) {
@@ -390,7 +391,7 @@ private:
         Eigen::Vector3d stance_foot_BLF = T_BF_to_BLF * stance_foot_BF;
         T_STF_to_BLF_.linear() = Eigen::Matrix3d::Identity();
         T_STF_to_BLF_.translation() = stance_foot_BLF; // todo figure out if i update TSTF
-        broadcast_transform("BLF", "STF", T_STF_to_BLF_.translation(), Eigen::Quaterniond(T_STF_to_BLF_.rotation()));
+        broadcast_transform("BLF", "STF", T_STF_to_BLF_.translation(), Eigen::Quaterniond(T_STF_to_BLF_.rotation()), now);
 
         Eigen::Vector3d base_link_vel_BF;
         base_link_vel_BF << base_link_odom_.linear_velocity(0), base_link_odom_.linear_velocity(1), base_link_odom_.linear_velocity(2);
@@ -402,8 +403,14 @@ private:
         dcm_STF_(2) = 0;
 
         geometry_msgs::msg::Vector3Stamped dcm_STF_msg;
-        get_vector3_msg(dcm_STF_, dcm_STF_msg);
+        get_vector3_msg(dcm_STF_, dcm_STF_msg, now);
         pub_dcm_->publish(dcm_STF_msg);
+
+        Eigen::Vector3d t_in_step_vector;
+        t_in_step_vector << time_since_last_step_, remaining_time_in_step_, robot_params_.t_step;
+        geometry_msgs::msg::Vector3Stamped t_in_step_msg;
+        get_vector3_msg(t_in_step_vector, t_in_step_msg, now);
+        pub_t_in_step_->publish(t_in_step_msg);
 
         // Adapt COM based on DCM prediction
         if (step_occured) {
@@ -427,7 +434,7 @@ private:
         }
 
         geometry_msgs::msg::Vector3Stamped dcm_desired_STF_msg;
-        get_vector3_msg(dcm_desired_STF, dcm_desired_STF_msg);
+        get_vector3_msg(dcm_desired_STF, dcm_desired_STF_msg, now);
         pub_desired_dcm_->publish(dcm_desired_STF_msg);
 
         auto next_dcm_STF_predicted = dcm_STF_ * exp(robot_params_.omega * remaining_time_in_step_);
@@ -438,7 +445,7 @@ private:
         next_footstep_STF = -dcm_desired_STF + dcm_STF_ * exp(robot_params_.omega * remaining_time_in_step_);
 
         geometry_msgs::msg::Vector3Stamped next_dcm_STF_msg;
-        get_vector3_msg(next_dcm_STF_predicted, next_dcm_STF_msg);
+        get_vector3_msg(next_dcm_STF_predicted, next_dcm_STF_msg, now);
         pub_next_dcm_->publish(next_dcm_STF_msg);
 
         Eigen::Vector3d vec_STF_to_next_CP = next_footstep_STF - Eigen::Vector3d(0.0, 0.0, 0.0);
@@ -451,7 +458,7 @@ private:
         }
 
         geometry_msgs::msg::Vector3Stamped predicted_dcm_STF_msg;
-        get_vector3_msg(dcm_at_step_STF_, predicted_dcm_STF_msg);
+        get_vector3_msg(dcm_at_step_STF_, predicted_dcm_STF_msg, now);
         pub_predicted_dcm_->publish(predicted_dcm_STF_msg);
 
         Eigen::Vector3d des_pos_foot_STF;
@@ -465,15 +472,28 @@ private:
             }
         }
 
-        Eigen::Vector3d pos_desired_swing_foot_STF;
-        Eigen::Vector3d vel_desired_swing_foot_STF;
-        Eigen::Vector3d acc_desired_swing_foot_STF;
+        Eigen::Vector3d pos_desired_swing_foot_STF, vel_desired_swing_foot_STF, acc_desired_swing_foot_STF;
+        bool success_QP_pb = swing_foot_traj_.compute_traj_pos_vel(time_since_last_step_,
+                                                                des_pos_foot_STF,
+                                                                pos_desired_swing_foot_STF,
+                                                                vel_desired_swing_foot_STF,
+                                                                acc_desired_swing_foot_STF);
 
-        swing_foot_traj_.compute_traj_pos_vel(time_since_last_step_,
-                                        des_pos_foot_STF,
-                                        pos_desired_swing_foot_STF,
-                                        vel_desired_swing_foot_STF,
-                                        acc_desired_swing_foot_STF);
+        if (success_QP_pb == true)
+        {
+            prev_pos_desired_swing_foot_STF_ = pos_desired_swing_foot_STF;
+            prev_vel_desired_swing_foot_STF_ = vel_desired_swing_foot_STF;
+            prev_acc_desired_swing_foot_STF_ = acc_desired_swing_foot_STF;
+        } else {
+            RCLCPP_WARN(this->get_logger(), "QP problem in swing foot trajectory optimization");
+            pos_desired_swing_foot_STF = prev_pos_desired_swing_foot_STF_;
+            vel_desired_swing_foot_STF = prev_vel_desired_swing_foot_STF_;
+            acc_desired_swing_foot_STF = prev_acc_desired_swing_foot_STF_;
+        }
+        biped_bringup::msg::StampedBool optimization_status_msg;
+        optimization_status_msg.header.stamp = now;
+        optimization_status_msg.data = success_QP_pb;
+        pub_optimization_status_->publish(optimization_status_msg);
 
         Eigen::Vector3d pos_body_level_STF = T_STF_to_BLF_.inverse().translation();
         pos_body_level_STF(2) = robot_params_.robot_height;
@@ -481,7 +501,6 @@ private:
         Eigen::Vector3d acc_body_level_STF = Eigen::Vector3d::Zero();
         acc_body_level_STF(0) = robot_params_.omega * robot_params_.omega * (pos_body_level_STF(0) + offset_com_baselink_(0));
         acc_body_level_STF(1) = robot_params_.omega * robot_params_.omega * (pos_body_level_STF(1) + offset_com_baselink_(1));
-
 
         if (walk_slow_ == true) {
             pos_body_level_STF << 0.0, 0.0, robot_params_.robot_height;
@@ -504,32 +523,34 @@ private:
 
         if (swing_foot_name == r_foot_frame_id_) {
             biped_bringup::msg::StampedBool des_contact_msg;
-            des_contact_msg.header.stamp = this->get_clock()->now();
+            des_contact_msg.header.stamp = now;
             des_contact_msg.data = false;
             pub_desired_right_contact_->publish(des_contact_msg);
             des_contact_msg.data = true;
             pub_desired_left_contact_->publish(des_contact_msg);
 
-            if (error_dcm_STF.squaredNorm() < 0.3)  {
+            if (error_dcm_STF.squaredNorm() < 0.5)  {
                 publish_body_trajectories(frame_id, pos_body_level_STF, quat_body_level_STF, vel_base_link_STF, acc_body_level_STF,
                                                     pos_desired_swing_foot_STF, quat_desired_swing_foot_STF, vel_desired_swing_foot_STF, acc_desired_swing_foot_STF,
-                                                    pos_desired_stance_foot_STF, quat_desired_stance_foot_STF, vel_desired_stance_foot_STF, acc_desired_stance_foot_STF);
+                                                    pos_desired_stance_foot_STF, quat_desired_stance_foot_STF, vel_desired_stance_foot_STF, acc_desired_stance_foot_STF,
+                                                    now);
             } else {
                 RCLCPP_WARN(this->get_logger(), "Error in DCM is too large");
             }
 
         } else {
             biped_bringup::msg::StampedBool des_contact_msg;
-            des_contact_msg.header.stamp = this->get_clock()->now();
+            des_contact_msg.header.stamp = now;
             des_contact_msg.data = false;
             pub_desired_left_contact_->publish(des_contact_msg);
             des_contact_msg.data = true;
             pub_desired_right_contact_->publish(des_contact_msg);
 
-            if (error_dcm_STF.squaredNorm() < 0.3)  {
+            if (error_dcm_STF.squaredNorm() < 0.5)  {
                 publish_body_trajectories(frame_id, pos_body_level_STF, quat_body_level_STF, vel_base_link_STF, acc_body_level_STF,
                                                     pos_desired_stance_foot_STF, quat_desired_stance_foot_STF, vel_desired_stance_foot_STF, acc_desired_stance_foot_STF,
-                                                    pos_desired_swing_foot_STF, quat_desired_swing_foot_STF, vel_desired_swing_foot_STF, acc_desired_swing_foot_STF);
+                                                    pos_desired_swing_foot_STF, quat_desired_swing_foot_STF, vel_desired_swing_foot_STF, acc_desired_swing_foot_STF,
+                                                    now);
             } else {
                 RCLCPP_WARN(this->get_logger(), "Error in DCM is too large");
             }
@@ -538,7 +559,7 @@ private:
         // Marker publishers
         int marker_type;
         marker_type = visualization_msgs::msg::Marker::SPHERE;
-        publish_marker(marker_type, next_footstep_STF, "next_footstep", "STF", 1, Eigen::Vector3d(1.0, 0.0, 1.0), pub_marker_next_footstep_);
+        publish_marker(marker_type, next_footstep_STF, "next_footstep", "STF", 1, Eigen::Vector3d(1.0, 0.0, 1.0), pub_marker_next_footstep_, now);
         // pub safety circle around the STF
         std::list<Eigen::Vector3d> safety_circle_points;
         for (int i = 0; i <= 2 * M_PI / 0.1; i++) {
@@ -546,14 +567,17 @@ private:
             safety_circle_point << robot_params_.safety_radius_CP * cos(i * 0.1), robot_params_.safety_radius_CP * sin(i * 0.1), 0.0;
             safety_circle_points.push_back(safety_circle_point);
         }
-        publish_line_traj_markers(safety_circle_points, "safety_circle", "STF", 4, Eigen::Vector3d(0.0, 1.0, 0.0), pub_markers_safety_circle_);
+        publish_line_traj_markers(safety_circle_points, "safety_circle", "STF", 4, Eigen::Vector3d(0.0, 1.0, 0.0), pub_markers_safety_circle_, now);
 
-        publish_marker(marker_type, swing_foot_BF, "swing_foot", base_link_frame_id_, 5, Eigen::Vector3d(1.0, 1.0, 0.0), pub_marker_swing_foot_BF_);
-        publish_marker(marker_type, stance_foot_BF, "stance_foot", base_link_frame_id_, 6, Eigen::Vector3d(1.0, 1.0, 0.0), pub_marker_stance_foot_BF_);
-        publish_marker(marker_type, dcm_STF_, "dcm", "STF", 7, Eigen::Vector3d(1.0, 0.0, 0.0), pub_marker_dcm_);
-        publish_marker(marker_type, dcm_desired_STF, "desired_dcm", "STF", 8, Eigen::Vector3d(0.0, 1.0, 0.0), pub_marker_desired_dcm_);
+        Eigen::Vector3d color_in_contact = Eigen::Vector3d(0.0, 1.0, 0.0);
+        Eigen::Vector3d color_not_in_contact = Eigen::Vector3d(1.0, 0.0, 0.0);
+
+        publish_marker(marker_type, swing_foot_BF, "swing_foot", base_link_frame_id_, 5, color_not_in_contact, pub_marker_swing_foot_BF_, now);
+        publish_marker(marker_type, stance_foot_BF, "stance_foot", base_link_frame_id_, 6, color_in_contact, pub_marker_stance_foot_BF_, now);
+        publish_marker(marker_type, dcm_STF_, "dcm", "STF", 7, Eigen::Vector3d(1.0, 0.0, 0.0), pub_marker_dcm_, now);
+        publish_marker(marker_type, dcm_desired_STF, "desired_dcm", "STF", 8, Eigen::Vector3d(0.0, 1.0, 0.0), pub_marker_desired_dcm_, now);
         foot_traj_list_STF_.push_back(pos_desired_swing_foot_STF);
-        publish_line_traj_markers(foot_traj_list_STF_, "foot_trajectory", "STF", 3, Eigen::Vector3d(1.0, 0.0, 1.0), pub_markers_foot_traj_);
+        publish_line_traj_markers(foot_traj_list_STF_, "foot_trajectory", "STF", 3, Eigen::Vector3d(1.0, 0.0, 1.0), pub_markers_foot_traj_, now);
     }
 
     void contact_right_callback(biped_bringup::msg::StampedBool::SharedPtr msg)
@@ -638,10 +662,14 @@ private:
         return transform;
     }
 
-    void broadcast_transform(std::string frame_id, std::string child_frame_id, Eigen::Vector3d pt_pos, Eigen::Quaterniond pt_quat)
+    void broadcast_transform(std::string frame_id, std::string child_frame_id,
+                             Eigen::Vector3d pt_pos,
+                             Eigen::Quaterniond pt_quat,
+                             rclcpp::Time time)
+
     {
         geometry_msgs::msg::TransformStamped t;
-        t.header.stamp = this->get_clock()->now();
+        t.header.stamp = time;
         t.header.frame_id = frame_id;
         t.child_frame_id = child_frame_id;
         t.transform.translation.x = pt_pos(0);
@@ -654,14 +682,20 @@ private:
         tf_broadcaster_->sendTransform(t);
     }
 
-    void publish_marker(int marker_type, Eigen::Vector3d pos, std::string name_marker, std::string frame_id, int id, Eigen::Vector3d color, rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub)
+    void publish_marker(int marker_type, Eigen::Vector3d pos,
+                        std::string name_marker,
+                        std::string frame_id,
+                        int id, Eigen::Vector3d color,
+                        rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub,
+                        rclcpp::Time now)
     {
         visualization_msgs::msg::Marker marker_msg;
         marker_msg.header.frame_id = frame_id;
-        marker_msg.header.stamp = this->get_clock()->now();
+        marker_msg.header.stamp = now;
         marker_msg.ns = name_marker;
         marker_msg.id = id;
         marker_msg.type = marker_type;
+        marker_msg.frame_locked = true;
         marker_msg.action = visualization_msgs::msg::Marker::ADD;
         marker_msg.pose.position.x = pos[0];
         marker_msg.pose.position.y = pos[1];
@@ -680,46 +714,22 @@ private:
         pub->publish(marker_msg);
     }
 
-    void publish_arrow_marker(Eigen::Vector3d pos_start, Eigen::Vector3d pos_end, std::string name_marker, std::string frame_id, int id, Eigen::Vector3d color, rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub)
+    void publish_line_traj_markers(std::list<Eigen::Vector3d> pos_list,
+                                    std::string name_marker,
+                                    std::string frame_id,
+                                    int id, Eigen::Vector3d color,
+                                    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub,
+                                    rclcpp::Time now)
     {
         visualization_msgs::msg::Marker marker_msg;
         marker_msg.header.frame_id = frame_id;
-        marker_msg.header.stamp = this->get_clock()->now();
-        marker_msg.ns = name_marker;
-        marker_msg.id = id;
-        marker_msg.type = visualization_msgs::msg::Marker::ARROW;
-        marker_msg.action = visualization_msgs::msg::Marker::ADD;
-
-        geometry_msgs::msg::Point p;
-        p.x = pos_start(0);
-        p.y = pos_start(1);
-        p.z = pos_start(2);
-        marker_msg.points.push_back(p);
-        p.x = pos_end(0);
-        p.y = pos_end(1);
-        p.z = pos_end(2);
-        marker_msg.points.push_back(p);
-        marker_msg.pose.orientation.w = 1;
-        marker_msg.scale.x = 0.05;
-        marker_msg.scale.y = 0.05;
-        marker_msg.scale.z = 0.05;
-        marker_msg.color.a = 1.0;
-        marker_msg.color.r = color(0);
-        marker_msg.color.g = color(1);
-        marker_msg.color.b = color(2);
-        pub->publish(marker_msg);
-    }
-
-    void publish_line_traj_markers(std::list<Eigen::Vector3d> pos_list, std::string name_marker, std::string frame_id, int id, Eigen::Vector3d color, rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub)
-    {
-        visualization_msgs::msg::Marker marker_msg;
-        marker_msg.header.frame_id = frame_id;
-        marker_msg.header.stamp = this->get_clock()->now();
+        marker_msg.header.stamp = now;
         marker_msg.ns = name_marker;
         marker_msg.id = id;
         marker_msg.type = visualization_msgs::msg::Marker::LINE_STRIP;
         marker_msg.action = visualization_msgs::msg::Marker::ADD;
         marker_msg.lifetime = rclcpp::Duration(10, 0);
+        marker_msg.frame_locked = true;
 
         marker_msg.pose.orientation.w = 1;
         marker_msg.scale.x = 0.01;
@@ -742,10 +752,11 @@ private:
 
     void publish_body_trajectories(std::string frame_id, Eigen::Vector3d pos_body, Eigen::Quaterniond quat_body, Eigen::Vector3d vel_body, Eigen::Vector3d acc_body,
                                    Eigen::Vector3d pos_right_foot, Eigen::Quaterniond quat_right_foot, Eigen::Vector3d vel_right_foot, Eigen::Vector3d acc_right_foot,
-                                   Eigen::Vector3d pos_left_foot, Eigen::Quaterniond quat_left_foot, Eigen::Vector3d vel_left_foot, Eigen::Vector3d acc_left_foot)
+                                   Eigen::Vector3d pos_left_foot, Eigen::Quaterniond quat_left_foot, Eigen::Vector3d vel_left_foot, Eigen::Vector3d acc_left_foot,
+                                   rclcpp::Time now)
     {
         trajectory_msgs::msg::MultiDOFJointTrajectory msg;
-        msg.header.stamp = this->now();
+        msg.header.stamp = now;
         msg.header.frame_id = frame_id;
         msg.joint_names.push_back(base_link_frame_id_);
         msg.joint_names.push_back(r_foot_urdf_frame_id_);
@@ -821,9 +832,9 @@ private:
         pub_body_trajectory_->publish(msg);
     }
 
-    void get_vector3_msg(Eigen::Vector3d vec, geometry_msgs::msg::Vector3Stamped &msg)
+    void get_vector3_msg(Eigen::Vector3d vec, geometry_msgs::msg::Vector3Stamped &msg, rclcpp::Time time)
     {
-        msg.header.stamp = this->now();
+        msg.header.stamp = time;
         msg.vector.x = vec(0);
         msg.vector.y = vec(1);
         msg.vector.z = vec(2);
@@ -845,6 +856,9 @@ private:
     rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pub_predicted_dcm_;
     rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pub_dcm_;
     rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pub_next_dcm_;
+    rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr pub_t_in_step_;
+
+    rclcpp::Publisher<biped_bringup::msg::StampedBool>::SharedPtr pub_optimization_status_;
 
     rclcpp::Publisher<biped_bringup::msg::StampedBool>::SharedPtr pub_desired_left_contact_;
     rclcpp::Publisher<biped_bringup::msg::StampedBool>::SharedPtr pub_desired_right_contact_;
@@ -944,6 +958,8 @@ private:
     Eigen::Vector3d previous_iteration_dcm_;
     Eigen::Vector3d beginning_of_step_dcm_;
     double previous_iteration_step_time_;
+
+    Eigen::Vector3d prev_pos_desired_swing_foot_STF_, prev_vel_desired_swing_foot_STF_, prev_acc_desired_swing_foot_STF_;
 
     bool start_cmd_line_;
     bool walk_slow_;
