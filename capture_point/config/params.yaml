@@ -7,7 +7,7 @@
     P_gain_scaling: 0.1
     duration_init_traj: 1.0 # seconds
     safety_radius_CP: 0.4
-    T_contact_ignore: 0.1
+    T_contact_ignore: 0.15
 
     r_foot_frame_id: R_FOOT_CONTACT
     r_foot_urdf_frame_id: R_ANKLE
