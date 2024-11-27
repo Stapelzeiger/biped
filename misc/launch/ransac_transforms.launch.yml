@@ -16,6 +16,12 @@ launch:
           value: 0.01
         - name: pose_base_link_mocap_name
           value: biped
+        - name: pose_right_foot_mocap_name
+          value: right_foot
+        - name: pose_left_foot_mocap_name
+          value: left_foot
+        - name: save_to_csv
+          value: True
       output: screen
       # print GDB backtrace:
       # launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args
