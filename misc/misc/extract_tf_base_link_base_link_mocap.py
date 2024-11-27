@@ -8,16 +8,6 @@ import numpy as np
 import threading
 from scipy.spatial.transform import Rotation as R
 
-BASE_LINK = 'base_link'
-R_FOOT = 'R_FOOT_CONTACT'
-L_FOOT = 'L_FOOT_CONTACT'
-FRAMES = [BASE_LINK, R_FOOT, L_FOOT]
-WORLD = 'world' # TODO: figure out if WORLD is the correct one to query.
-
-POSE_ARRAY_MOCAP_BASELINK_NAME = 'biped'
-
-DT = 0.01
-
 class TransformLookupNode(Node):
     def __init__(self):
         super().__init__('transform_lookup_node')
@@ -25,6 +15,29 @@ class TransformLookupNode(Node):
         # Initialize TF2 buffer and listener.
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
+
+        # params.
+        self.declare_parameters(
+            namespace='',
+            parameters=[
+                ('base_link_frame', 'base_link'),
+                ('r_foot_frame', 'R_FOOT_CONTACT'),
+                ('l_foot_frame', 'L_FOOT_CONTACT'),
+                ('world_frame', 'world'),
+                ('pose_base_link_mocap_name', 'biped'),
+                ('dt', 0.01),
+            ]
+        )
+        self.params = {
+            'base_link_frame': self.get_parameter('base_link_frame').get_parameter_value().string_value,
+            'r_foot_frame': self.get_parameter('r_foot_frame').get_parameter_value().string_value,
+            'l_foot_frame': self.get_parameter('l_foot_frame').get_parameter_value().string_value,
+            'world_frame': self.get_parameter('world_frame').get_parameter_value().string_value,
+            'pose_base_link_mocap_name': self.get_parameter('pose_base_link_mocap_name').get_parameter_value().string_value,
+            'dt': self.get_parameter('dt').get_parameter_value().double_value,
+        }
+        self.frames = [self.params['base_link_frame'], self.params['r_foot_frame'], self.params['l_foot_frame']]
+        self.get_logger().info(f"Parameters: {self.params}")
 
         self.lock = threading.Lock()
 
@@ -34,27 +47,27 @@ class TransformLookupNode(Node):
         self.points_base_link = []
         self.points_base_link_mocap = []
 
-        self.timer = self.create_timer(DT, self.run_ransac)
+        self.timer = self.create_timer(self.params['dt'], self.run_ransac)
 
     def vicon_callback(self, msg: NamedPoseArray):
         with self.lock:
             # Ensure all frames are available.
-            for frame in FRAMES:
+            for frame in self.frames:
                 try:
-                    self.tf_buffer.lookup_transform(frame, WORLD, rclpy.time.Time())
+                    self.tf_buffer.lookup_transform(frame, self.params['world_frame'], rclpy.time.Time())
                 except Exception as e:
                     self.get_logger().warn(f"Could not get transform: {e}")
                     return
                 
             # Check the name exists in the /poses message.
-            if not any([pose.name == POSE_ARRAY_MOCAP_BASELINK_NAME for pose in msg.poses]):
-                self.get_logger().warn(f"Could not find pose with name {POSE_ARRAY_MOCAP_BASELINK_NAME}")
+            if not any([pose.name == self.params['pose_base_link_mocap_name'] for pose in msg.poses]):
+                self.get_logger().warn(f"Could not find pose with name {self.params['pose_base_link_mocap_name']}")
                 return
 
             # Get the pose of the base_link_mocap.
             self.poses_vicon_msg = msg
             for pose in self.poses_vicon_msg.poses:
-                if pose.name == POSE_ARRAY_MOCAP_BASELINK_NAME:
+                if pose.name == self.params['pose_base_link_mocap_name']:
                    pose_base_link_mocap = pose
 
             # Compute the rotation vector. For rotation, use a unit vector in the x-direction.
@@ -73,7 +86,7 @@ class TransformLookupNode(Node):
                                                          rotated_v_motion_capture[2]]))
             
             # Get the base_link transform TF.
-            base_link_trans, base_link_rot = self.lookup_transform(WORLD, BASE_LINK)
+            base_link_trans, base_link_rot = self.lookup_transform(self.params['world_frame'], self.params['base_link_frame'])
 
             q_base_link = [base_link_rot.x, base_link_rot.y, base_link_rot.z, base_link_rot.w]
             rot = R.from_quat(q_base_link)
@@ -134,7 +147,6 @@ class TransformLookupNode(Node):
             return refined_translation, best_inliers
         else:
             raise ValueError("RANSAC failed to find a valid translation")
-        
 
     def run_ransac(self):  
         if self.poses_vicon_msg is None:

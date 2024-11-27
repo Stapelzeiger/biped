@@ -3,6 +3,19 @@ launch:
       pkg: misc
       exec: extract_tf_base_link_base_link_mocap
       name: extract_tf_base_link_base_link_mocap
+      param:
+        - name: base_link_frame
+          value: base_link
+        - name: r_foot_frame
+          value: R_FOOT_CONTACT
+        - name: l_foot_frame
+          value: L_FOOT_CONTACT
+        - name: world
+          value: world
+        - name: dt
+          value: 0.01
+        - name: pose_base_link_mocap_name
+          value: biped
       output: screen
       # print GDB backtrace:
       # launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args
