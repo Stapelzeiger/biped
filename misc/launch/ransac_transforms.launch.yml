@@ -1,0 +1,9 @@
+launch:
+  - node:
+      pkg: misc
+      exec: extract_tf_base_link_base_link_mocap
+      name: extract_tf_base_link_base_link_mocap
+      output: screen
+      # print GDB backtrace:
+      # launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args
+  

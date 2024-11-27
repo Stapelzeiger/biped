@@ -1,0 +1,13 @@
+launch:
+  - node:
+      pkg: misc
+      exec: motor_test
+      name: motor_test
+      remap:
+      -
+        from: "/motor_test/joint_trajectory"
+        to: "/joint_trajectory"
+      output: screen
+      # print GDB backtrace:
+      # launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args
+  
