@@ -12,20 +12,11 @@ launch:
     name: "sim_time_sec"
     default: "0.001"
 
-- node:
-    pkg: robot_state_publisher
-    exec: robot_state_publisher
-    name: biped_state_publisher
-    param:
-    - name: "robot_description"
-      value: "$(command 'cat $(find-pkg-share biped_robot_description)/urdf/custom_robot_v2.urdf')"
-      # value: "$(command '$(find-exec xacro) $(find-pkg-share biped_robot_description)/urdf/custom_robot.urdf')"
-    - name: use_sim_time
-      value: "$(var use_sim_time)"
-    - name: publish_frequency
-      value: 300.0
-    output: screen
-
+- include:
+    file: "$(find-pkg-share biped_robot_description)/launch/launch.yaml"
+    arg:
+      - name: "use_sim_time"
+        value: $(var use_sim_time)
 
 - include:
     file: "$(find-pkg-share sim_mujoco)/sim.launch.yml"

@@ -38,6 +38,7 @@ list_of_topics = [
                 '/capture_point/optimization_status',
                 '/state',
                 '/pointCloud',
+                '/poses',
                 '/ik_interface/markers',
                 '/rosout',
                 '/flir_camera/image_raw/compressed',
