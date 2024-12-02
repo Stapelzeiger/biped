@@ -8,9 +8,9 @@ launch:
       - from: $(find-pkg-share moteus_drv)/config/calibration.yaml
     remap:
       - from: /moteus/joint_states
-        to: /joint_states
+        to: /joint_states_raw
       - from: /moteus/joint_traj
-        to: /joint_trajectory
+        to: /joint_trajectory_compensated
       - from: /moteus/e_stop
         to: /e_stop
     output: screen
