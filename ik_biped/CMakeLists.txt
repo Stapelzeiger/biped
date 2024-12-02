@@ -64,11 +64,20 @@ ament_target_dependencies(robot_workspace
                           visualization_msgs)
 target_link_libraries(robot_workspace ${PINOCCHIO_LIBRARIES})
 
+add_executable(deformation_compensation src/deformation_compensation.cpp)
+target_include_directories(deformation_compensation PRIVATE 
+                          ${EIGEN3_INCLUDE_DIR})
+ament_target_dependencies(deformation_compensation
+                          rclcpp
+                          sensor_msgs
+                          trajectory_msgs)
+
 
 
 install(TARGETS
   ik
   robot_workspace
+  deformation_compensation
   DESTINATION lib/${PROJECT_NAME}
 )
 
