@@ -34,8 +34,6 @@ class JoyNode(Node):
         input_joystick = [0.1*joy.axes[1], 0.1*joy.axes[0], 0.1*joy.axes[4]]
         yaw_angle_foot = 0.5*joy.axes[3]
 
-        leg_choice = joy.buttons[2] # X on the gamepad
-
         msg_foot = MultiDOFJointTrajectory()
         msg_foot.header.stamp = self.get_clock().now().to_msg()
         msg_foot.header.frame_id = "base_link"
