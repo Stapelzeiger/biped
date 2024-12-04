@@ -1,4 +1,4 @@
-# Taken from waler v5 environment
+# Taken from walker v5 environment
 
 __credits__ = ["Kallinteris-Andreas"]
 
@@ -21,6 +21,7 @@ DEFAULT_CAMERA_CONFIG = {
     "elevation": -20.0,
 }
 
+debug = 0
 # Taken from Walker2dEnv on mujoco
 class BipedEnv(MujocoEnv, utils.EzPickle):
     r"""
@@ -186,9 +187,9 @@ class BipedEnv(MujocoEnv, utils.EzPickle):
         ctrl_cost_weight: float = 1e-3,
         healthy_reward: float = 1.0,
         terminate_when_unhealthy: bool = True,
-        healthy_z_range: Tuple[float, float] = (0.8, 2.0),
+        healthy_z_range: Tuple[float, float] = (0.5, 0.7),
         healthy_angle_range: Tuple[float, float] = (-1.0, 1.0),
-        reset_noise_scale: float = 5e-3,
+        reset_noise_scale: float = 5e-2,
         exclude_current_positions_from_observation: bool = True,
         **kwargs,
     ):
@@ -270,21 +271,23 @@ class BipedEnv(MujocoEnv, utils.EzPickle):
         return self.is_healthy * self._healthy_reward
 
     def control_cost(self, action):
-        control_cost = self._ctrl_cost_weight * np.sum(np.square(action))
+        control_cost = self._ctrl_cost_weight * np.sum(np.square(action)) * 0
         return control_cost
 
     @property
     def is_healthy(self):
-        z, angle = self.data.qpos[1:3]
+        # z, angle = self.data.qpos[1:3]
+        z = self.data.qpos[2]
 
         min_z, max_z = self._healthy_z_range
-        min_angle, max_angle = self._healthy_angle_range
+        # min_angle, max_angle = self._healthy_angle_range
 
         healthy_z = min_z < z < max_z
-        healthy_angle = min_angle < angle < max_angle
-        is_healthy = healthy_z and healthy_angle
+        # healthy_angle = min_angle < angle < max_angle
+        # is_healthy = healthy_z and healthy_angle
 
-        return is_healthy
+        # return is_healthy
+        return healthy_z
 
     def _get_obs(self):
         position = self.data.qpos.flatten()
@@ -316,6 +319,7 @@ class BipedEnv(MujocoEnv, utils.EzPickle):
             self.render()
         # truncation=False as the time limit is handled by the `TimeLimit` wrapper added during `make`
         return observation, reward, terminated, False, info
+        # return observation, reward, False, False, info
 
     def _get_rew(self, x_velocity: float, action):
         forward_reward = self._forward_reward_weight * x_velocity
@@ -335,6 +339,13 @@ class BipedEnv(MujocoEnv, utils.EzPickle):
         return reward, reward_info
 
     def reset_model(self):
+        # global debug
+        # try:
+        #     if debug != 0:
+        #         print(1/0)
+        #     debug += 1 
+        # except: 
+        #     raise Exception()
         noise_low = -self._reset_noise_scale
         noise_high = self._reset_noise_scale
 
@@ -345,6 +356,8 @@ class BipedEnv(MujocoEnv, utils.EzPickle):
             low=noise_low, high=noise_high, size=self.model.nv
         )
 
+        # print(qpos, qvel)
+            
         self.set_state(qpos, qvel)
 
         observation = self._get_obs()

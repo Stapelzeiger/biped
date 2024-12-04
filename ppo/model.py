@@ -57,7 +57,7 @@ if __name__ == '__main__':
     # load and wrap the gymnasium environment.
     # note: the environment version may change depending on the gymnasium version
     try:
-        env = gym.vector.make("gymnasium_env/BipedEnv", num_envs=4, asynchronous=False)
+        env = gym.make_vec("gymnasium_env/BipedEnv")
     except (gym.error.DeprecatedEnv, gym.error.VersionNotFound) as e:
         print("Can't find BipedEnv")
         
