@@ -3,22 +3,18 @@ from rclpy.node import Node
 
 from sensor_msgs.msg import JointState, Imu
 from nav_msgs.msg import Odometry
-from trajectory_msgs.msg import MultiDOFJointTrajectoryPoint, MultiDOFJointTrajectory, JointTrajectory
-from geometry_msgs.msg import TransformStamped, Vector3, PoseStamped, PoseWithCovarianceStamped
+from trajectory_msgs.msg import JointTrajectory
+from geometry_msgs.msg import TransformStamped, PoseStamped, PoseWithCovarianceStamped
 
 from rosgraph_msgs.msg import Clock
 from biped_bringup.msg import StampedBool
-from std_msgs.msg import Bool, Float64, Empty, Float32, String
-from tf2_ros import TransformBroadcaster, TransformException
-from tf2_ros.buffer import Buffer
-from tf2_ros.transform_listener import TransformListener
+from std_msgs.msg import Bool, Float64, Empty
+from tf2_ros import TransformBroadcaster
 from scipy.spatial.transform import Rotation as R
 
 import mujoco.viewer
 import mujoco as mj
 import numpy as np
-import sys
-import json
 import time
 from sim_mujoco.submodules.pid import pid as pid_ctrl
 from threading import Lock
