@@ -1,0 +1,19 @@
+launch:
+- arg:
+    name: "use_sim_time"
+    default: "True"
+
+- node:
+    pkg: capture_point
+    exec: torque_based_foot_contact.py
+    name: torque_based_foot_contact
+    param:
+      - from: $(find-pkg-share capture_point)/config/params.yaml
+      - name: use_sim_time
+        value: '$(var use_sim_time)'
+    remap:
+      - from: /torque_based_foot_contact/left_foot_contact
+        to: /contact_foot_left
+      - from: /torque_based_foot_contact/right_foot_contact
+        to: /contact_foot_right
+    output: screen
