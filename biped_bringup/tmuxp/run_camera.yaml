@@ -1,0 +1,10 @@
+session_name: run_camera
+windows:
+- layout: tiled
+  shell_command_before:
+  - source $ROS_WS/install/local_setup.bash
+  panes:
+    - ros2 launch src/biped/misc/launch/blackfly_s.launch.py camera_type:=blackfly_s serial:="'20538718'"
+    - ros2 run rqt_image_view rqt_image_view
+    - ros2 topic hz /flir_camera/image_raw -w 10
+    # - ros2 topic hz /flir_camera/image_raw/compressed
