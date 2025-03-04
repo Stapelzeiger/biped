@@ -16,16 +16,9 @@ import mujoco.viewer
 import mujoco as mj
 import numpy as np
 import time
-from sim_mujoco.submodules.pid import pid as pid_ctrl
 from threading import Lock
 import math 
 
-
-def setup_pid(control_rate, kp, ki, kd):
-    pid = pid_ctrl()
-    pid.pid_set_frequency(control_rate)
-    pid.pid_set_gains(kp, ki, kd)
-    return pid
 
 class MujocoNode(Node):
     def __init__(self):
