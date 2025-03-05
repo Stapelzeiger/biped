@@ -16,7 +16,7 @@ class Biped(MujocoEnv):
         self.data = mj.MjData(self.model)        
         self.model.opt.timestep = sim_dt
         mj.mj_printModel(self.model, 'robot_information.txt')
-        self.dt_sim = self.get_sim_dt()
+        self.dt_sim = self.get_sim_dt() # TODO: mujocoenv has its own DT, but it cannot be modified
 
         self.q_joints = {}
         self.name_joints = self.get_joint_names()
