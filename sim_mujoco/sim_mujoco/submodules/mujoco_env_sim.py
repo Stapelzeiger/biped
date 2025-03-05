@@ -1,8 +1,3 @@
-"""
-  Joystick task for Berkeley Humanoid using Numpy
-  Sorina Lupu (eslupu@caltech.edu)
-"""
-
 from gymnasium.envs.mujoco import MujocoEnv
 import mujoco as mj
 import mujoco.viewer

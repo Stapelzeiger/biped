@@ -12,12 +12,11 @@ from std_msgs.msg import Bool, Float64, Empty
 from tf2_ros import TransformBroadcaster
 from scipy.spatial.transform import Rotation as R
 
-import mujoco as mj
 import numpy as np
 import time
 from threading import Lock
 import math 
-import mujoco_env_sim as mujoco_sim
+import sim_mujoco.submodules.mujoco_env_sim as mujoco_sim
 
 
 class MujocoNode(Node):
