@@ -15,7 +15,6 @@ from scipy.spatial.transform import Rotation as R
 import numpy as np
 import time
 from threading import Lock
-import math 
 import sim_mujoco.submodules.mujoco_env_sim as mujoco_sim
 
 
@@ -89,8 +88,6 @@ class MujocoNode(Node):
         self.step_sim_sub = self.create_subscription(Float64, "~/step", self.step_cb, 1)
         self.pause_sim_sub = self.create_subscription(Bool, "~/pause", self.pause_cb, 1)
 
-        self.previous_q_vel = np.zeros(self.biped.get_nv())
-
         self.timer = self.create_timer(self.dt*2, self.timer_cb, clock=rclpy.clock.Clock(clock_type=rclpy.clock.ClockType.STEADY_TIME))
 
     def reset_cb(self, msg):
@@ -147,8 +144,12 @@ class MujocoNode(Node):
                 self.biped.zero_the_velocities()
                 self.biped.let_go_of_robot()
 
-        is_valid_traj_msg = False if self.joint_traj_msg is None else True
-        qpos, qvel = self.biped.step(is_valid_traj_msg)
+        # Step the simulation.
+        for _ in range(2):
+            is_valid_traj_msg = False if self.joint_traj_msg is None else True
+            qpos, qvel = self.biped.step(is_valid_traj_msg, self.joint_traj_msg)
+            self.time += self.dt
+            self.counter += 1
 
         # ROS publishers.
         clock_msg = Clock()

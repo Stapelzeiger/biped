@@ -1,6 +1,7 @@
 from gymnasium.envs.mujoco import MujocoEnv
 import mujoco as mj
 import mujoco.viewer
+from trajectory_msgs.msg import JointTrajectory
 
 import math
 import numpy as np
@@ -15,6 +16,7 @@ class Biped(MujocoEnv):
         self.data = mj.MjData(self.model)        
         self.model.opt.timestep = sim_dt
         mj.mj_printModel(self.model, 'robot_information.txt')
+        self.dt_sim = self.get_sim_dt()
 
         self.q_joints = {}
         self.name_joints = self.get_joint_names()
@@ -32,6 +34,7 @@ class Biped(MujocoEnv):
                 'total_tau': 0.0,
                 'qfrc_passive': 0.0
             }
+        self.previous_q_vel = np.zeros(self.get_nv())
 
         # Visualize.
         self.visualize_mujoco = visualize_mujoco
@@ -59,17 +62,15 @@ class Biped(MujocoEnv):
         self.data.eq_active[0] = 1
         mj.mj_step(self.model, self.data)
     
-    def step(self, is_valid_traj_msg: bool):
+    def step(self, is_valid_traj_msg: bool, joint_traj_msg: JointTrajectory):
         '''Steps the simulation.'''
-        for _ in range(2):
-            self.run_joint_controllers(is_valid_traj_msg)
-            self.ankle_foot_spring('L_ANKLE')
-            self.ankle_foot_spring('R_ANKLE')
-            mj.mj_step(self.model, self.data)
-            if self.visualize_mujoco is True:
-                if self.viewer.is_running():
-                    self.viewer.sync()
-                    
+        self.run_joint_controllers(is_valid_traj_msg, joint_traj_msg)
+        self.ankle_foot_spring('L_ANKLE')
+        self.ankle_foot_spring('R_ANKLE')
+        mj.mj_step(self.model, self.data)
+        if self.visualize_mujoco is True:
+            if self.viewer.is_running():
+                self.viewer.sync()
         return self.data.qpos, self.data.qvel
     
     def get_q_joints_dict(self):
@@ -103,26 +104,26 @@ class Biped(MujocoEnv):
         self.data.ctrl[idx_act] = pitch_torque_setpt
         self.data.ctrl[idx_vel_act] = 0.0
 
-    def run_joint_controllers(self, is_valid_traj_msg: bool):
+    def run_joint_controllers(self, is_valid_traj_msg: bool, joint_traj_msg: JointTrajectory):
         '''Runs the joint controllers.'''
-
+        # TODO: remove the JointTrajectory dependency
         if is_valid_traj_msg is False:
             return
         for key, value in self.q_joints.items():
             id_joint_mj = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_JOINT, key)
             value['actual_pos'] = self.data.qpos[self.model.jnt_qposadr[id_joint_mj]]
             value['actual_vel'] = self.data.qvel[self.model.jnt_dofadr[id_joint_mj]]
-            actual_acc = (self.data.qvel[self.model.jnt_dofadr[id_joint_mj]] - self.previous_q_vel[self.model.jnt_dofadr[id_joint_mj]])/self.dt
+            actual_acc = (self.data.qvel[self.model.jnt_dofadr[id_joint_mj]] - self.previous_q_vel[self.model.jnt_dofadr[id_joint_mj]])/self.dt_sim
             value['actual_acc'] = actual_acc
             value['actual_effort'] = self.data.qfrc_actuator[self.model.jnt_dofadr[id_joint_mj]] + self.data.qfrc_applied[self.model.jnt_dofadr[id_joint_mj]]
-            if key in self.joint_traj_msg.joint_names:
-                id_joint_msg = self.joint_traj_msg.joint_names.index(key)
-                value['desired_pos'] = self.joint_traj_msg.points[0].positions[id_joint_msg]
-                if self.joint_traj_msg.points[0].velocities:
-                    value['desired_vel'] = self.joint_traj_msg.points[0].velocities[id_joint_msg]
-                if self.joint_traj_msg.points[0].effort:
-                    if math.isnan(self.joint_traj_msg.points[0].effort[id_joint_msg]) is False:
-                        value['feedforward_torque'] = self.joint_traj_msg.points[0].effort[id_joint_msg]
+            if key in joint_traj_msg.joint_names:
+                id_joint_msg = joint_traj_msg.joint_names.index(key)
+                value['desired_pos'] = joint_traj_msg.points[0].positions[id_joint_msg]
+                if joint_traj_msg.points[0].velocities:
+                    value['desired_vel'] = joint_traj_msg.points[0].velocities[id_joint_msg]
+                if joint_traj_msg.points[0].effort:
+                    if math.isnan(joint_traj_msg.points[0].effort[id_joint_msg]) is False:
+                        value['feedforward_torque'] = joint_traj_msg.points[0].effort[id_joint_msg]
                     else:
                         value['feedforward_torque'] = 0.0
         self.previous_q_vel = self.data.qvel.copy()
@@ -150,7 +151,6 @@ class Biped(MujocoEnv):
                                                     self.data.qfrc_applied[self.model.jnt_dofadr[id_joint_mj]]
             i = i + 1
 
-        
     def let_go_of_robot(self):
         self.model.eq_active0 = 0 # let go of the robot
         self.data.eq_active[0] = 0 # let go of the robot
