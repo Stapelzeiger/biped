@@ -17,6 +17,7 @@ class Biped(MujocoEnv):
         mj.mj_printModel(self.model, 'robot_information.txt')
 
         self.q_joints = {}
+        self.name_joints = self.get_joint_names()
         for i in self.name_joints:
             self.q_joints[i] = {
                 'timestamp': 0.0,
@@ -80,7 +81,7 @@ class Biped(MujocoEnv):
         gyro = self.data.sensordata[self.model.sensor_adr[gyro_id]:self.model.sensor_adr[gyro_id] + 3]
         return gyro
     
-    def get_acc_data(self):
+    def get_accel_data(self):
         '''Returns the accelerometer data.'''
         accel_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_SENSOR, "accelerometer")
         accel = self.data.sensordata[self.model.sensor_adr[accel_id]:self.model.sensor_adr[accel_id] + 3]
@@ -178,12 +179,12 @@ class Biped(MujocoEnv):
             if 'L_FOOT' in geom2_list:
                 first_entry_idx = geom2_list.index('L_FOOT')
                 if geom1_list[first_entry_idx] == 'floor':
-                    self.contact_states['L_FOOT'] = True
+                    contact_states['L_FOOT'] = True
 
             if 'R_FOOT' in geom2_list:
                 first_entry_idx = geom2_list.index('R_FOOT')
                 if geom1_list[first_entry_idx] == 'floor':
-                    self.contact_states['R_FOOT'] = True
+                    contact_states['R_FOOT'] = True
                     
         return contact_states
         

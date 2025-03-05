@@ -139,7 +139,7 @@ class MujocoNode(Node):
             self.biped.lower_robot(step=self.dt)
             self.initialization_timeout -= self.dt
 
-        contact_states = self.read_contact_states()
+        contact_states = self.biped.read_contact_states()
         if contact_states['R_FOOT'] or contact_states['L_FOOT']:
             if not self.initialization_done:
                 self.get_logger().info("init done")
@@ -190,7 +190,7 @@ class MujocoNode(Node):
             t.transform.rotation = msg_odom.pose.pose.orientation
             self.tf_broadcaster.sendTransform(t)
 
-        contact_states = self.read_contact_states()
+        contact_states = self.biped.read_contact_states()
         msg_contact_right = StampedBool()
         msg_contact_left = StampedBool()
         msg_contact_right.header.stamp.sec = int(self.time)
