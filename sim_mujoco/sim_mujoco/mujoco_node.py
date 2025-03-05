@@ -92,7 +92,8 @@ class MujocoNode(Node):
 
     def reset_cb(self, msg: Empty):
         with self.lock:
-            self.init([0.0, 0.0, 0.0], q=[1.0, 0.0, 0.0, 0.0])
+            self.get_logger().info("Reset")
+            self.init(p=[0.0, 0.0, 0.0], q=[1.0, 0.0, 0.0, 0.0])
 
     def init_cb(self, msg: PoseWithCovarianceStamped):
         with self.lock:
