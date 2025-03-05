@@ -90,17 +90,17 @@ class MujocoNode(Node):
 
         self.timer = self.create_timer(self.dt*2, self.timer_cb, clock=rclpy.clock.Clock(clock_type=rclpy.clock.ClockType.STEADY_TIME))
 
-    def reset_cb(self, msg):
+    def reset_cb(self, msg: Empty):
         with self.lock:
             self.init([0.0, 0.0, 0.0], q=[1.0, 0.0, 0.0, 0.0])
 
-    def init_cb(self, msg):
+    def init_cb(self, msg: PoseWithCovarianceStamped):
         with self.lock:
             p = msg.pose.pose.position
             q = msg.pose.pose.orientation
             self.init([p.x, p.y, p.z], q=[q.w, q.x, q.y, q.z])
 
-    def init(self, p, q=[1.0, 0.0, 0.0, 0.0]):
+    def init(self, p: list, q: list =[1.0, 0.0, 0.0, 0.0]):
         self.biped.init(p, q)
         self.get_logger().info("initialize")
         self.initialization_done = False
@@ -111,7 +111,7 @@ class MujocoNode(Node):
             if not self.paused:
                 self.step()
 
-    def step_cb(self, msg):
+    def step_cb(self, msg: Float64):
         with self.lock:
             if not self.paused:
                 return
@@ -121,7 +121,7 @@ class MujocoNode(Node):
                 t -= self.dt
                 self.step()
 
-    def pause_cb(self, msg):
+    def pause_cb(self, msg: Bool):
         with self.lock:
             self.paused = msg.data
 
@@ -275,7 +275,7 @@ class MujocoNode(Node):
         msg_fake_vicon.pose.orientation.z = qpos[6]
         self.fake_vicon_pub.publish(msg_fake_vicon)
 
-    def joint_traj_cb(self, msg):
+    def joint_traj_cb(self, msg: JointTrajectory):
         with self.lock:
             self.joint_traj_msg = msg
 

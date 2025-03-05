@@ -7,7 +7,8 @@ import math
 import numpy as np
 
 class Biped(MujocoEnv):
-    def __init__(self, xml: str,
+    def __init__(self,
+                 xml: str,
                  sim_dt: float = 0.002,
                  visualize_mujoco: bool = False):
 
@@ -41,7 +42,7 @@ class Biped(MujocoEnv):
         if self.visualize_mujoco is True:
             self.viewer = mujoco.viewer.launch_passive(self.model, self.data)
 
-    def init(self, p, q=[1.0, 0.0, 0.0, 0.0]):
+    def init(self,p: list, q: list = [1.0, 0.0, 0.0, 0.0]):
         '''Initializes the robot at a given position, orientation and vel.'''
         self.model.eq_data[0][0] = p[0]
         self.model.eq_data[0][1] = p[1]
@@ -72,11 +73,11 @@ class Biped(MujocoEnv):
             if self.viewer.is_running():
                 self.viewer.sync()
         return self.data.qpos, self.data.qvel
-    
+
     def get_q_joints_dict(self):
         return self.q_joints
-    
-    def get_sensor_data(self, name:str):
+
+    def get_sensor_data(self, name: str):
         ''' Returns the sensor data.'''
         sensor_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_SENSOR, name)
         sensor_data = self.data.sensordata[self.model.sensor_adr[sensor_id]:self.model.sensor_adr[sensor_id] + 3]
