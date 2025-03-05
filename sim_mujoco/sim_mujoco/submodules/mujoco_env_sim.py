@@ -1,7 +1,6 @@
 from gymnasium.envs.mujoco import MujocoEnv
 import mujoco as mj
 import mujoco.viewer
-from trajectory_msgs.msg import JointTrajectory
 
 import math
 import numpy as np
@@ -101,7 +100,6 @@ class Biped(MujocoEnv):
 
     def run_joint_controllers(self, joint_traj_dict: dict):
         '''Runs the joint controllers.'''
-        # TODO: remove the JointTrajectory dependency
         if joint_traj_dict is None:
             return
         for key, value in self.q_joints.items():
