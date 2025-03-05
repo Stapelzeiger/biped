@@ -76,18 +76,12 @@ class Biped(MujocoEnv):
     def get_q_joints_dict(self):
         return self.q_joints
     
-    def get_gyro_data(self):
-        '''Returns the gyroscope data.'''
-        gyro_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_SENSOR, "gyro")
-        gyro = self.data.sensordata[self.model.sensor_adr[gyro_id]:self.model.sensor_adr[gyro_id] + 3]
-        return gyro
-    
-    def get_accel_data(self):
-        '''Returns the accelerometer data.'''
-        accel_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_SENSOR, "accelerometer")
-        accel = self.data.sensordata[self.model.sensor_adr[accel_id]:self.model.sensor_adr[accel_id] + 3]
-        return accel
-    
+    def get_sensor_data(self, name:str):
+        ''' Returns the sensor data.'''
+        sensor_id = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_SENSOR, name)
+        sensor_data = self.data.sensordata[self.model.sensor_adr[sensor_id]:self.model.sensor_adr[sensor_id] + 3]
+        return sensor_data
+
     def ankle_foot_spring(self, foot_joint: str):
         '''Control an ankle modelled as a spring damped system '''
         K = 0.005

@@ -240,8 +240,8 @@ class MujocoNode(Node):
             msg_qfrc_passive.effort.append(value['qfrc_passive'])
         self.qfrc_passive_pub.publish(msg_qfrc_passive)
 
-        gyro = self.biped.get_gyro_data()
-        accel = self.biped.get_accel_data()
+        gyro = self.biped.get_sensor_data(name='gyro')
+        accel = self.biped.get_sensor_data(name='accelerometer')
         self.accel_bias += np.random.normal(0, self.accel_bias_noise_std, 3)
         # accel += self.accel_bias + np.random.normal(0, self.accel_noise_std, 3)
         self.gyro_bias += np.random.normal(0, self.gyro_bias_noise_std, 3)
