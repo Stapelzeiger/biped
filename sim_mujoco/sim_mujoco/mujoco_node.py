@@ -148,11 +148,9 @@ class MujocoNode(Node):
         # Step the simulation.
         for _ in range(2):
             is_valid_traj_msg = False if self.joint_traj_msg is None else True
-
-            # build a joint_traj_dict
+            # Build a joint_traj_dict.
             if is_valid_traj_msg is True:
                 joint_traj_dict = {}
-                # Populate with names:
                 for name in self.joint_traj_msg.joint_names:
                     joint_traj_dict[name] = {
                         'pos': self.joint_traj_msg.points[0].positions[self.joint_traj_msg.joint_names.index(name)],
@@ -165,6 +163,8 @@ class MujocoNode(Node):
             qpos, qvel = self.biped.step(joint_traj_dict)
             self.time += self.dt
             self.counter += 1
+
+        self.q_joints = self.biped.get_q_joints_dict()
 
         # ROS publishers.
         clock_msg = Clock()

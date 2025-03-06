@@ -74,6 +74,7 @@ class Biped(MujocoEnv):
         return self.data.qpos, self.data.qvel
 
     def get_q_joints_dict(self):
+        '''Returns the joint data.'''
         return self.q_joints
 
     def get_sensor_data(self, name: str):
@@ -144,8 +145,8 @@ class Biped(MujocoEnv):
             i = i + 1
 
     def let_go_of_robot(self):
-        self.model.eq_active0 = 0 # let go of the robot
-        self.data.eq_active[0] = 0 # let go of the robot
+        self.model.eq_active0 = 0 # Let go of the robot.
+        self.data.eq_active[0] = 0
         
     def zero_the_velocities(self):
         self.data.qvel = [0.0]* self.model.nv
