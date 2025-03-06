@@ -33,7 +33,7 @@ class MujocoNode(Node):
         self.initialization_done = False
         self.goal_pos = [0.0, 0.0]
 
-        self.biped = mujoco_sim.Biped(mujoco_xml_path, self.sim_time_sec)
+        self.biped = mujoco_sim.Biped(mujoco_xml_path, self.sim_time_sec, self.visualize_mujoco)
 
         self.lock = Lock()
 
