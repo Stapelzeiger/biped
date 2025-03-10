@@ -20,7 +20,7 @@ optional
 sudo apt install ros-iron-pinocchio
 ```
 
-# MuJoCo latest (tested on 3.2.5)
+# MuJoCo latest (tested on 3.3.0)
 ```
 pip3 install mujoco
 ```
