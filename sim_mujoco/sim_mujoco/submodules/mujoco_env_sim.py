@@ -9,7 +9,8 @@ class Biped(MujocoEnv):
     def __init__(self,
                  xml: str,
                  sim_dt: float = 0.002,
-                 visualize_mujoco: bool = False):
+                 visualize_mujoco: bool = False,
+                 use_RL: bool = False):
 
         # Initialize the Mujoco environment.
         self.model = mj.MjModel.from_xml_path(xml)
@@ -17,6 +18,10 @@ class Biped(MujocoEnv):
         self.model.opt.timestep = sim_dt
         mj.mj_printModel(self.model, 'robot_information.txt')
         self.dt_sim = self.get_sim_dt() # TODO: mujocoenv has its own DT, but it cannot be modified
+        self.use_RL = use_RL
+
+        self.default_q_joints = np.array(self.model.keyframe("home").qpos[7:])
+        print('Default q joints:', self.default_q_joints)
 
         self.q_joints = {}
         self.name_joints = self.get_joint_names()
@@ -64,7 +69,11 @@ class Biped(MujocoEnv):
 
     def step(self, joint_traj_dict: dict):
         '''Steps the simulation.'''
-        self.run_joint_controllers(joint_traj_dict)
+
+        if self.use_RL == True:
+            self.run_joint_controllers_RL(joint_traj_dict)
+        else:
+            self.run_joint_controllers(joint_traj_dict)
         self.ankle_foot_spring('L_ANKLE')
         self.ankle_foot_spring('R_ANKLE')
         mj.mj_step(self.model, self.data)
@@ -98,6 +107,17 @@ class Biped(MujocoEnv):
 
         self.data.ctrl[idx_act] = pitch_torque_setpt
         self.data.ctrl[idx_vel_act] = 0.0
+
+    def run_joint_controllers_RL(self, joint_traj_dict: dict):
+        if joint_traj_dict is None:
+            return
+        for key, value in self.q_joints.items():
+            if key in joint_traj_dict.keys():
+                value['desired_pos'] = joint_traj_dict[key]['pos']
+
+        for key, value in self.q_joints.items():
+            if key != 'L_ANKLE' and key != 'R_ANKLE':
+                self.data.ctrl[self.q_actuator_addr[str(key)]] = value['desired_pos']
 
     def run_joint_controllers(self, joint_traj_dict: dict):
         '''Runs the joint controllers.'''

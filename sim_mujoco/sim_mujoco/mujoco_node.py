@@ -17,7 +17,6 @@ import time
 from threading import Lock
 import sim_mujoco.submodules.mujoco_env_sim as mujoco_sim
 
-
 class MujocoNode(Node):
     def __init__(self):
         super().__init__('mujoco_sim')
@@ -26,14 +25,15 @@ class MujocoNode(Node):
         self.declare_parameter("sim_time_sec", rclpy.parameter.Parameter.Type.DOUBLE)
         self.declare_parameter("visualize_mujoco", rclpy.parameter.Parameter.Type.BOOL)
         self.declare_parameter("publish_tf", rclpy.parameter.Parameter.Type.BOOL)
+        self.declare_parameter("use_RL_controller", rclpy.parameter.Parameter.Type.BOOL)
         self.visualize_mujoco = self.get_parameter("visualize_mujoco").get_parameter_value().bool_value
         mujoco_xml_path = self.get_parameter("mujoco_xml_path").get_parameter_value().string_value
         self.sim_time_sec = self.get_parameter("sim_time_sec").get_parameter_value().double_value
         self.publish_tf = self.get_parameter("publish_tf").get_parameter_value().bool_value
+        self.use_RL_controller = self.get_parameter("use_RL_controller").get_parameter_value().bool_value
         self.initialization_done = False
-        self.goal_pos = [0.0, 0.0]
 
-        self.biped = mujoco_sim.Biped(mujoco_xml_path, self.sim_time_sec, self.visualize_mujoco)
+        self.biped = mujoco_sim.Biped(mujoco_xml_path, self.sim_time_sec, self.visualize_mujoco, self.use_RL_controller)
 
         self.lock = Lock()
 

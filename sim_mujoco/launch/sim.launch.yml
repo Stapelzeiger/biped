@@ -8,13 +8,15 @@ launch:
     name: mujoco_sim
     param:
       - name: mujoco_xml_path
-        value: "$(find-pkg-share biped_robot_description)/urdf/custom_robot_v2.mujoco.xml"
+        value: "$(find-pkg-share biped_robot_description)/urdf/scene_mjx_feetonly_flat_terrain_RL.xml"
       - name: visualize_mujoco
         value: false
       - name: sim_time_sec
         value: $(var sim_time_sec)
       - name: publish_tf
         value: '$(var publish_tf)'
+      - name: use_RL_controller
+        value: true
     remap:
       - from: /mujoco_sim/contact_foot_right
         to: /poll_R_FOOT/gpio
