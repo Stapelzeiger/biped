@@ -48,7 +48,7 @@ class JoyNode(Node):
         msg_twist.header.stamp = self.get_clock().now().to_msg()
         msg_twist.header.frame_id = "base_link"
         msg_twist.twist.linear.x = 0.5 * joy.axes[1]
-        msg_twist.twist.linear.y = 0.1 * joy.axes[0]
+        msg_twist.twist.linear.y = 0.2 * joy.axes[0]
         msg_twist.twist.linear.z = 0.0
         msg_twist.twist.angular.x = 0.0
         msg_twist.twist.angular.y = 0.0
