@@ -10,7 +10,7 @@ launch:
       - name: mujoco_xml_path
         value: "$(find-pkg-share biped_robot_description)/urdf/scene_mjx_feetonly_flat_terrain_RL.xml"
       - name: visualize_mujoco
-        value: false
+        value: true
       - name: sim_time_sec
         value: $(var sim_time_sec)
       - name: publish_tf

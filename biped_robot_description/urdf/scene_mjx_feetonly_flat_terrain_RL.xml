@@ -20,7 +20,8 @@
   </asset>
 
   <worldbody>
-    <geom name="floor" size="0 0 0.01" type="plane" material="groundplane" contype="1" conaffinity="0" priority="1" friction="1 0.1 0.1" condim="3"/>
+    <geom name="floor" size="0 0 0.01" type="plane" material="groundplane" 
+        contype="1" conaffinity="0" priority="1" friction="0.6" condim="3"/>
   </worldbody>
 
   <keyframe>

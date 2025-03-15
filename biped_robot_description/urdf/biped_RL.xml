@@ -1,8 +1,6 @@
 <mujoco model="biped">
   <compiler angle="radian" meshdir="../meshes_v2/" autolimits="true"/>
-  <option iterations="3" ls_iterations="5" timestep="0.001" integrator="Euler">
-    <flag eulerdamp="disable"/>
-  </option>
+  <option integrator="RK4"/>
   <default/>
   <asset>
     <mesh name="base_link_v2" file="base_link_v2.STL"/>
@@ -25,8 +23,8 @@
   </asset>
 
   <sensor>
-    <gyro name="gyro" site="imu_location" />
-    <accelerometer name="accelerometer" site="imu_location" />
+    <gyro name="gyro" site="imu_location_vectornav" />
+    <accelerometer name="accelerometer" site="imu_location_vectornav" />
     <velocimeter site="imu_location" name="local_linvel"/>
     <framezaxis objtype="site" objname="imu_location" name="upvector"/>
     <framexaxis objtype="site" objname="imu_location" name="forwardvector"/>
@@ -42,9 +40,9 @@
     <framepos objtype="site" objname="r_foot" name="r_foot_pos"/>
 
   </sensor>
-      <equality>
+      <!-- <equality>
 		<weld body1="base_link" solimp="1.0 1.0 1.0" solref="0.06 1"></weld>
-	</equality>
+	</equality> -->
 
   <worldbody>
 
@@ -55,6 +53,7 @@
       <geom name="base_link" type="mesh" contype="0" conaffinity="0" rgba="1 1 1 1" mesh="base_link_v2"/>
       <joint armature="0" damping="0" limited="false" name="root" pos="0 0 0" stiffness="0" type="free"/>
       <site name="imu_location" pos="0 0 0" euler="0 0 0" size="0.01" type="sphere" rgba="1 0 0 1"/>
+      <site name="imu_location_vectornav" pos="0 0 0" euler="-3.141592 0 0" size="0.01" type="sphere" rgba="1 0 0 1"/>
 
       <body name="L_HIP" pos="0 0.07 -0.005">
         <inertial pos="-0.0542 0 -0.072" mass="0.624" diaginertia="0.0018 0.001 0.001"/>
@@ -162,13 +161,13 @@
       <position name="L_HAA" joint="L_HAA" kp="38.1" kv="3.18"/>
       <position name="L_HFE" joint="L_HFE" kp="38.1" kv="3.18"/>
       <position name="L_KFE" joint="L_KFE" kp="38.1" kv="0.95"/>
-      <position name="L_ANKLE" joint="L_ANKLE" kp="0.1" kv="0.005"/>
+      <position name="L_ANKLE" joint="L_ANKLE" kp="0.005" kv="0.005"/>
 
       <position name="R_YAW" joint="R_YAW" kp="38.1" kv="0.5"/>
       <position name="R_HAA" joint="R_HAA" kp="38.1" kv="3.18"/>
       <position name="R_HFE" joint="R_HFE" kp="38.1" kv="3.18"/>
       <position name="R_KFE" joint="R_KFE" kp="38.1" kv="0.95"/>
-      <position name="R_ANKLE" joint="R_ANKLE" kp="0.1" kv="0.005"/>
+      <position name="R_ANKLE" joint="R_ANKLE" kp="0.005" kv="0.005"/>
     </actuator>
 
 </mujoco>
