@@ -6,6 +6,19 @@ launch:
     param:
       - name: use_sim_time
         value: '$(var use_sim_time)'
+    remap:
+      - from: /rl_controller/contact_foot_right
+        to: /poll_R_FOOT/gpio
+      - from: /rl_controller/contact_foot_left
+        to: /poll_L_FOOT/gpio
+      - from: /rl_controller/imu
+        to: /imu
+      - from: /rl_controller/joint_states
+        to: /joint_states
+      - from: /rl_controller/odometry
+        to: /odometry
+      - from: /rl_controller/gravity
+        to: /gravity
     output: screen
     # print GDB backtrace:
     # launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args
