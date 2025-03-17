@@ -67,6 +67,11 @@ if args.extract_csvs:
     df_dcm_next = pd.DataFrame(columns=header_df_dcm_next)
     df_dcm_predicted = pd.DataFrame(columns=header_df_dcm_predicted)
 
+    header_traj_feet = 'timestamp', 'foot_x', 'foot_y', 'foot_z'
+    df_traj_feet = pd.DataFrame(columns=header_traj_feet)
+    header_actual_feet = 'timestamp', 'foot_x', 'foot_y', 'foot_z'
+    df_actual_feet = pd.DataFrame(columns=header_actual_feet)
+
     t_init = None
     counter = 0.0
     with tqdm(total=total_messages, desc="Processing messages") as pbar:
@@ -122,6 +127,18 @@ if args.extract_csvs:
                 row_data = [time, msg.vector.x, msg.vector.y]
                 df_dcm_predicted = pd.concat([df_dcm_predicted, pd.DataFrame([row_data], columns=header_df_dcm_predicted)], ignore_index=True)
 
+            if topic == '/capture_point/markers_traj_feet':
+                msg = deserialize_message(msg, Marker)
+                time = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
+                row = [time, msg.pose.position.x, msg.pose.position.y, msg.pose.position.z]
+                df_traj_feet = pd.concat([df_traj_feet, pd.DataFrame([row], columns=header_traj_feet)], ignore_index=True)
+
+            if topic == '/capture_point/markers_actual_traj_feet':
+                msg = deserialize_message(msg, Marker)
+                time = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
+                row = [time, msg.pose.position.x, msg.pose.position.y, msg.pose.position.z]
+                df_actual_feet = pd.concat([df_actual_feet, pd.DataFrame([row], columns=header_actual_feet)], ignore_index=True)
+
             counter += 1
 
             pbar.update(1)
@@ -140,6 +157,8 @@ if args.extract_csvs:
     df_dcm_next.to_csv(rosbag_path + '/dcm_next.csv', index=False)
     df_dcm_predicted.to_csv(rosbag_path + '/dcm_predicted.csv', index=False)
     df_dcm.to_csv(rosbag_path + '/dcm.csv', index=False)
+    df_traj_feet.to_csv(rosbag_path + '/markers_traj_feet.csv', index=False)
+    df_actual_feet.to_csv(rosbag_path + '/markers_actual_traj_feet.csv', index=False)
 
 
 def plot_data(rosbag_path):
@@ -209,13 +228,18 @@ def plot_data(rosbag_path):
     fig, ax = plt.subplots(1, 1, figsize=(10, 10))
     fig.suptitle('Capture Point Data' + rosbag_path)
     # ax.plot(df_dcm_next['timestamp'], df_dcm_next['next_footstep_x'], '*', label='next_footstep')
-    ax.plot(df_dcm_desired['timestamp'], df_dcm_desired['dcm_x'], 'go', label='desired_dcm')
-    ax.plot(df_dcm['timestamp'], df_dcm['dcm_x'], 'r*', label='dcm')
+    ax.plot(df_dcm_desired['timestamp'], df_dcm_desired['dcm_y'], 'go', label='desired_dcm')
+    ax.plot(df_dcm['timestamp'], df_dcm['dcm_y'], 'r.', label='dcm')
 
+    fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+    fig.suptitle('Capture Point Data' + rosbag_path)
+    # ax.plot(df_dcm_next['timestamp'], df_dcm_next['next_footstep_x'], '*', label='next_footstep')
+    ax.plot(df_dcm_desired['timestamp'], df_dcm_desired['dcm_y'], 'go', label='desired_dcm')
+    ax.plot(df_dcm['timestamp'], df_dcm['dcm_y'], 'r.', label='dcm')
 
 if args.plot_data:
 
-    # rosbag_path_old = '/home/sorina/Documents/code/biped_hardware/bags/20241013-11-33-35.bag'
+    rosbag_path = '/home/sorina/Documents/code/biped_hardware/bags/20241201-20-23-31.bag'
     # plot_data(rosbag_path_old)
 
     plot_data(rosbag_path)
