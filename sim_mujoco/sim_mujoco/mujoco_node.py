@@ -187,7 +187,7 @@ class MujocoNode(Node):
         gravity_msg.header.stamp.sec = int(self.time)
         gravity_msg.header.stamp.nanosec = int((self.time - clock_msg.clock.sec) * 1e9)
         self._imu_site_id = self.biped.model.site('imu_location').id
-        gravity = self.biped.data.site_xmat[self._imu_site_id].reshape(3,3).T @ np.array([0, 0, -1])
+        gravity = self.biped.data.site_xmat[self._imu_site_id].reshape(3, 3).T @ np.array([0, 0, -1])
         gravity_msg.vector.x = gravity[0]
         gravity_msg.vector.y = gravity[1]
         gravity_msg.vector.z = gravity[2]
