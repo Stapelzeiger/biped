@@ -139,44 +139,38 @@ class MujocoNode(Node):
         self.biped.viewer.close()
 
     def step(self):
-        # if not self.initialization_done:
-        #     msg_stop_controller = Bool()
-        #     msg_stop_controller.data = (self.initialization_timeout > 0)
-        #     self.stop_pub.publish(msg_stop_controller)
-        #     self.biped.lower_robot(step=self.dt)
-        #     self.initialization_timeout -= self.dt
+        if not self.initialization_done:
+            msg_stop_controller = Bool()
+            msg_stop_controller.data = (self.initialization_timeout > 0)
+            self.stop_pub.publish(msg_stop_controller)
+            self.biped.lower_robot(step=self.dt)
+            self.initialization_timeout -= self.dt
 
-        self.initialization_done = True
+        contact_states = self.biped.read_contact_states()
+        if contact_states['R_FOOT'] or contact_states['L_FOOT']:
+            if not self.initialization_done:
+                self.get_logger().info("init done")
+                self.initialization_done = True
+                self.biped.zero_the_velocities()
+                self.biped.let_go_of_the_robot()
 
-        # contact_states = self.biped.read_contact_states()
-        # if contact_states['R_FOOT'] or contact_states['L_FOOT']:
-        #     if not self.initialization_done:
-        #         self.get_logger().info("init done")
-        #         self.initialization_done = True
-        #         self.biped.zero_the_velocities()
-        #         self.biped.let_go_of_robot()
         # Step the simulation.
         for _ in range(2):
-            # is_valid_traj_msg = False if self.joint_traj_msg is None else True
+            is_valid_traj_msg = False if self.joint_traj_msg is None else True
             # # Build a joint_traj_dict.
-            # if is_valid_traj_msg is True:
-            #     joint_traj_dict = {}
-            #     for name in self.joint_traj_msg.joint_names:
-            #         joint_traj_dict[name] = {
-            #             'pos': self.joint_traj_msg.points[0].positions[self.joint_traj_msg.joint_names.index(name)],
-            #             'vel': self.joint_traj_msg.points[0].velocities[self.joint_traj_msg.joint_names.index(name)],
-            #             'effort': self.joint_traj_msg.points[0].effort[self.joint_traj_msg.joint_names.index(name)]
-            #         }
-            # else:
-            
-            joint_traj_dict = None
-            if self.cmd is None:
-                command = np.zeros(3)
+            if is_valid_traj_msg is True:
+                joint_traj_dict = {}
+                for name in self.joint_traj_msg.joint_names:
+                    joint_traj_dict[name] = {
+                        'pos': self.joint_traj_msg.points[0].positions[self.joint_traj_msg.joint_names.index(name)],
+                        'vel': self.joint_traj_msg.points[0].velocities[self.joint_traj_msg.joint_names.index(name)],
+                        'effort': self.joint_traj_msg.points[0].effort[self.joint_traj_msg.joint_names.index(name)]
+                    }
             else:
-                command = self.cmd.copy()
 
-            # self.get_logger().warning('My log message {0}'.format(command), skip_first=True)
-            qpos, qvel = self.biped.step(joint_traj_dict, command)
+                joint_traj_dict = None
+
+            qpos, qvel = self.biped.step(joint_traj_dict)
             self.time += self.dt
             self.counter += 1
 

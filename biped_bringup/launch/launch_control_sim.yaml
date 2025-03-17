@@ -12,6 +12,10 @@ launch:
     name: "sim_time_sec"
     default: "0.001"
 
+- arg:
+    name: "mujoco_xml_path"
+    default: "$(find-pkg-share biped_robot_description)/urdf/custom_robot_v2.mujoco.xml"
+
 - include:
     file: "$(find-pkg-share biped_robot_description)/launch/launch.yaml"
     arg:
@@ -23,6 +27,10 @@ launch:
     arg:
       - name: "publish_tf"
         value: '$(var use_sim_tf)'
+      - name: "mujoco_xml_path"
+        value: '$(var mujoco_xml_path)'
+      - name: "use_RL_controller"
+        value: "False"
 
 - include:
     file: "$(find-pkg-share ik_biped)/launch/ik.launch.yml"
