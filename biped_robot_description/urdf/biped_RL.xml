@@ -16,10 +16,9 @@
     <mesh name="L_FOOT" file="L_FOOT.STL"/>
 
     <texture type="skybox" builtin="gradient" width="128" height="128" rgb1=".4 .6 .8" rgb2="0 0 0"/>
-  
+
     <texture builtin="checker" height="100" name="texplane" rgb1="0.14 0.31 0.27" rgb2="0.47 0.63 0.6" type="2d" width="100"/>
     <material name="MatPlane" reflectance="0.5" shininess="1" specular="1" texrepeat="60 60"  texture="texplane"/>
-
   </asset>
 
   <sensor>
@@ -40,9 +39,9 @@
     <framepos objtype="site" objname="r_foot" name="r_foot_pos"/>
 
   </sensor>
-      <!-- <equality>
+      <equality>
 		<weld body1="base_link" solimp="1.0 1.0 1.0" solref="0.06 1"></weld>
-	</equality> -->
+	</equality>
 
   <worldbody>
 
@@ -161,13 +160,13 @@
       <position name="L_HAA" joint="L_HAA" kp="38.1" kv="3.18"/>
       <position name="L_HFE" joint="L_HFE" kp="38.1" kv="3.18"/>
       <position name="L_KFE" joint="L_KFE" kp="38.1" kv="0.95"/>
-      <position name="L_ANKLE" joint="L_ANKLE" kp="0.005" kv="0.005"/>
+      <position name="L_ANKLE" joint="L_ANKLE" kp="0.1" kv="0.005"/>
 
       <position name="R_YAW" joint="R_YAW" kp="38.1" kv="0.5"/>
       <position name="R_HAA" joint="R_HAA" kp="38.1" kv="3.18"/>
       <position name="R_HFE" joint="R_HFE" kp="38.1" kv="3.18"/>
       <position name="R_KFE" joint="R_KFE" kp="38.1" kv="0.95"/>
-      <position name="R_ANKLE" joint="R_ANKLE" kp="0.005" kv="0.005"/>
+      <position name="R_ANKLE" joint="R_ANKLE" kp="0.1" kv="0.005"/>
     </actuator>
 
 </mujoco>

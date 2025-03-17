@@ -299,7 +299,7 @@ name="base_link">
       xyz="0 1 0" />
     <limit
       lower="-2.2"
-      upper="-0.1"
+      upper="2.2"
       effort="20"
       velocity="20" />
   </joint>
@@ -602,7 +602,7 @@ name="base_link">
       xyz="0 1 0" />
     <limit
       lower="-2.2"
-      upper="-0.1"
+      upper="2.2"
       effort="20"
       velocity="20" />
   </joint>
