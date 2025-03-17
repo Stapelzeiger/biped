@@ -4,8 +4,9 @@ from rclpy.node import Node
 from sensor_msgs.msg import JointState, Imu
 from nav_msgs.msg import Odometry
 from trajectory_msgs.msg import JointTrajectory
-from geometry_msgs.msg import TransformStamped, PoseStamped, PoseWithCovarianceStamped, TwistStamped
-
+from geometry_msgs.msg import TransformStamped, PoseStamped, \
+                              PoseWithCovarianceStamped, TwistStamped, \
+                              Vector3Stamped
 from rosgraph_msgs.msg import Clock
 from biped_bringup.msg import StampedBool
 from std_msgs.msg import Bool, Float64, Empty
@@ -70,6 +71,7 @@ class MujocoNode(Node):
         self.qfrc_actuators_pub = self.create_publisher(JointState, '~/qfrc_actuators', 10)
         self.tau_actuators_pub = self.create_publisher(JointState, '~/tau_actuators', 10)
         self.qfrc_passive_pub = self.create_publisher(JointState, '~/qfrc_passive', 10)
+        self.gravity_pub = self.create_publisher(Vector3Stamped, '~/gravity', 10)
 
         self.stop_pub = self.create_publisher(Bool, '~/stop', 10)
 
@@ -110,7 +112,7 @@ class MujocoNode(Node):
             q = msg.pose.pose.orientation
             self.init([p.x, p.y, p.z], q=[q.w, q.x, q.y, q.z])
 
-    def init(self, p: list, q: list =[1.0, 0.0, 0.0, 0.0]):
+    def init(self, p: list, q: list=[1.0, 0.0, 0.0, 0.0]):
         self.biped.init(p, q)
         self.get_logger().info("initialize")
         self.initialization_done = False
@@ -167,7 +169,6 @@ class MujocoNode(Node):
                         'effort': self.joint_traj_msg.points[0].effort[self.joint_traj_msg.joint_names.index(name)]
                     }
             else:
-
                 joint_traj_dict = None
 
             qpos, qvel = self.biped.step(joint_traj_dict)
@@ -181,6 +182,16 @@ class MujocoNode(Node):
         clock_msg.clock.sec = int(self.time)
         clock_msg.clock.nanosec = int((self.time - clock_msg.clock.sec) * 1e9)
         self.clock_pub.publish(clock_msg)
+
+        gravity_msg = Vector3Stamped()
+        gravity_msg.header.stamp.sec = int(self.time)
+        gravity_msg.header.stamp.nanosec = int((self.time - clock_msg.clock.sec) * 1e9)
+        self._imu_site_id = self.biped.model.site('imu_location').id
+        gravity = self.biped.data.site_xmat[self._imu_site_id].reshape(3,3).T @ np.array([0, 0, -1])
+        gravity_msg.vector.x = gravity[0]
+        gravity_msg.vector.y = gravity[1]
+        gravity_msg.vector.z = gravity[2]
+        self.gravity_pub.publish(gravity_msg)
 
         msg_odom = Odometry()
         msg_odom.header.stamp.sec = int(self.time)
