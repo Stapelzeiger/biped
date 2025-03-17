@@ -282,8 +282,6 @@ private:
             Eigen::Vector3d fin_swing_foot_pos_STF, fin_swing_foot_vel_STF;
             fin_swing_foot_pos_STF = Eigen::Vector3d(0.0, 0.1, 0.1 - offset_foot_);
             fin_swing_foot_vel_STF = Eigen::Vector3d(0.0, 0.0, - offset_foot_vel_);
-            // RCLCPP_INFO(this->get_logger(), "fin_swing_foot_pos_STF %f %f %f", fin_swing_foot_pos_STF(0), fin_swing_foot_pos_STF(1), fin_swing_foot_pos_STF(2));
-            // RCLCPP_INFO(this->get_logger(), "fin_swing_foot_vel_STF %f %f %f", fin_swing_foot_vel_STF(0), fin_swing_foot_vel_STF(1), fin_swing_foot_vel_STF(2));
 
             Eigen::Vector3d fin_baselink_pos_STF;
             fin_baselink_pos_STF = Eigen::Vector3d(0.0, 0.0, robot_params_.robot_height);
@@ -442,6 +440,7 @@ private:
 
         Eigen::Vector3d next_footstep_STF;
         next_footstep_STF = -dcm_desired_STF + dcm_STF_ * exp(robot_params_.omega * remaining_time_in_step_);
+        next_footstep_STF(2) = 0.0;
 
         geometry_msgs::msg::Vector3Stamped next_dcm_STF_msg;
         get_vector3_msg(next_dcm_STF_predicted, next_dcm_STF_msg, now);
