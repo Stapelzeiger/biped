@@ -1,4 +1,4 @@
-session_name: biped_sim
+session_name: biped_RL_sim
 windows:
 - layout: tiled
   # shell_command_before:
