@@ -14,6 +14,8 @@ from etils import epath
 import json
 import threading
 
+from scipy.spatial.transform import Rotation as R
+
 import xml.etree.ElementTree as ET
 from std_msgs.msg import String
 from geometry_msgs.msg import Vector3Stamped
@@ -127,12 +129,12 @@ class JointTrajectoryPublisher(Node):
             self.odom_cb,
             1)
 
-        self.gravity_msg = None
-        self.gravity_sub = self.create_subscription(
-            Vector3Stamped,
-            '~/gravity',
-            self.gravity_cb,
-            1)
+        # self.gravity_msg = None
+        # self.gravity_sub = self.create_subscription(
+        #     Vector3Stamped,
+        #     '~/gravity',
+        #     self.gravity_cb,
+        #     1)
 
         gait_freq = 1.5
         phase_dt = 2 * np.pi * DT_CTRL * gait_freq
@@ -146,12 +148,12 @@ class JointTrajectoryPublisher(Node):
         self.last_action = np.zeros(self.action_size)
 
         # Default joint angles.
-        # self.default_q_joints = np.array([0.0, 0.0, -0.463, 0.983, -0.350, \
-                                        #   0.0, 0.0, -0.463, 0.983, -0.350])
-        self.start_q_joints = np.array([0.0, -0.03, 0.944, -1.598, 0.654, \
-                                          0.0, 0.23, 0.534, -0.92, 0.386])
-        self.default_q_joints = np.array([0.0, 0.0, 0.5, -0.92, 0.386, \
-                                        0.0, 0.0, 0.5, -0.92, 0.386])
+        self.default_q_joints = np.array([0.0, 0.0, -0.463, 0.983, -0.350, \
+                                          0.0, 0.0, -0.463, 0.983, -0.350])
+        # self.start_q_joints = np.array([0.0, -0.03, 0.944, -1.598, 0.654, \
+                                        #   0.0, 0.23, 0.534, -0.92, 0.386])
+        # self.default_q_joints = np.array([0.0, 0.0, 0.5, -0.92, 0.386, \
+                                        # 0.0, 0.0, 0.5, -0.92, 0.386])
         self.start_q_joints = self.default_q_joints.copy()
         self.timeout_for_no_feet_in_contact = 0.0
 
@@ -194,9 +196,9 @@ class JointTrajectoryPublisher(Node):
         with self.lock:
             self.imu_msg = msg
 
-    def gravity_cb(self, msg: Vector3Stamped):
-        with self.lock:
-            self.gravity_msg = msg
+    # def gravity_cb(self, msg: Vector3Stamped):
+    #     with self.lock:
+    #         self.gravity_msg = msg
 
     def joint_states_cb(self, msg: JointState):
         with self.lock:
@@ -206,7 +208,12 @@ class JointTrajectoryPublisher(Node):
         ''' Runs the PPO controller. '''
         lin_vel_B = np.array([self.odom_msg.twist.twist.linear.x, self.odom_msg.twist.twist.linear.y, self.odom_msg.twist.twist.linear.z])
         gyro = np.array([self.imu_msg.angular_velocity.x, self.imu_msg.angular_velocity.y, self.imu_msg.angular_velocity.z])
-        gravity = np.array([self.gravity_msg.vector.x, self.gravity_msg.vector.y, self.gravity_msg.vector.z])
+
+        quat = self.odom_msg.pose.pose.orientation
+        r = R.from_quat([quat.x, quat.y, quat.z, quat.w])
+        rot_matrix = r.as_matrix()
+        gravity_v2 = rot_matrix.T @ np.array([0, 0, -1])
+        # gravity = np.array([self.gravity_msg.vector.x, self.gravity_msg.vector.y, self.gravity_msg.vector.z])
         joints_pos = self.joints_msg.position
         joints_vel = self.joints_msg.velocity
 
@@ -216,11 +223,11 @@ class JointTrajectoryPublisher(Node):
         sin = np.sin(self.info["phase"])
         phase = np.concatenate([cos, sin])
 
-        command = np.array([0.2, 0.0, 0.0])
+        command = np.array([0.1, 0.0, 0.0])
         input_ppo = np.hstack([
             lin_vel_B,   # 3
             gyro,     # 3
-            gravity,  # 3
+            gravity_v2,  # 3
             command,  # 3
             joints_pos - self.default_q_joints,  # 10
             joints_vel,  # 10
@@ -259,9 +266,9 @@ class JointTrajectoryPublisher(Node):
             self.get_logger().warn('Odometry data not received. Skipping this step.')
             return
 
-        if self.gravity_msg is None:
-            self.get_logger().warn('Gravity data not received. Skipping this step.')
-            return
+        # if self.gravity_msg is None:
+        #     self.get_logger().warn('Gravity data not received. Skipping this step.')
+        #     return
 
         # # Check for old data.
         imu_time = self.imu_msg.header.stamp.sec + self.imu_msg.header.stamp.nanosec / 1e9
@@ -280,10 +287,10 @@ class JointTrajectoryPublisher(Node):
             self.get_logger().warn('Odometry data is old. Skipping this step.')
             return
 
-        gravity_time = self.gravity_msg.header.stamp.sec + self.gravity_msg.header.stamp.nanosec / 1e9
-        if abs(time_now - gravity_time) > 0.1:
-            self.get_logger().warn('Gravity data is old. Skipping this step.')
-            return
+        # gravity_time = self.gravity_msg.header.stamp.sec + self.gravity_msg.header.stamp.nanosec / 1e9
+        # if abs(time_now - gravity_time) > 0.1:
+        #     self.get_logger().warn('Gravity data is old. Skipping this step.')
+        #     return
 
         if (self.foot_left_contact == False and self.foot_right_contact == False):
             self.timeout_for_no_feet_in_contact -= DT_CTRL
@@ -327,11 +334,11 @@ class JointTrajectoryPublisher(Node):
         for i, joint_name in enumerate(self.joint_names_PPO):
             min_limit, max_limit = self.joints_from_urdf[joint_name]
             if joints_out[i] < float(min_limit):
+                self.get_logger().warn(f'Joint {joint_name} is below the min limit {min_limit}. It wants to be {joints_out[i]}. Setting to min limit')
                 joints_out[i] = float(min_limit)
-                self.get_logger().warn(f'Joint {joint_name} is below the min limit {min_limit}. Setting to min limit')
             if joints_out[i] > float(max_limit):
+                self.get_logger().warn(f'Joint {joint_name} is above the max limit {max_limit}. It wants to be {joints_out[i]}. Setting to max limit')
                 joints_out[i] = float(max_limit)
-                self.get_logger().warn(f'Joint {joint_name} is above the max limit {max_limit}. Setting to max limit')
 
         point.positions = joints_out
         point.velocities = [0.0] * len(joints_out)
