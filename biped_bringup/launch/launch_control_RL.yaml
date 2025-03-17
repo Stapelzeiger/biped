@@ -1,0 +1,43 @@
+launch:
+
+- arg:
+    name: "use_sim_tf"
+    default: "False"
+
+- arg:
+    name: "use_sim_time"
+    default: "True"
+
+- arg:
+    name: "sim_time_sec"
+    default: "0.001"
+
+- include:
+    file: "$(find-pkg-share biped_robot_description)/launch/launch.yaml"
+    arg:
+      - name: "use_sim_time"
+        value: $(var use_sim_time)
+
+- include:
+    file: "$(find-pkg-share sim_mujoco)/sim.launch.yml"
+    arg:
+      - name: "publish_tf"
+        value: '$(var use_sim_tf)'
+
+# - include:
+#     file: "$(find-pkg-share kinematic_odometry)/launch/kinematic_odometry.launch.yml"
+#     arg:
+#       - name: "publish_tf"
+#         value: "$(eval 'not $(var use_sim_tf)')"
+
+# - include:
+#     file: "$(find-pkg-share mocap_odometry)/launch/mocap_odometry.launch.yml"
+#     arg:
+#       - name: "publish_tf"
+#         value: "$(eval 'not $(var use_sim_tf)')"
+
+- include:
+    file: "$(find-pkg-share metrics)/metrics.launch.yml"
+
+- include:
+    file: "$(find-pkg-share pos_ctrl)/pos_ctrl.launch.yml"
