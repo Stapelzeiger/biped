@@ -12,6 +12,10 @@ launch:
     name: "sim_time_sec"
     default: "0.001"
 
+- arg:
+    name: "mujoco_xml_path"
+    default: "$(find-pkg-share biped_robot_description)/urdf/scene_mjx_feetonly_flat_terrain_RL.xml"
+
 - include:
     file: "$(find-pkg-share biped_robot_description)/launch/launch.yaml"
     arg:
@@ -23,12 +27,16 @@ launch:
     arg:
       - name: "publish_tf"
         value: '$(var use_sim_tf)'
+      - name: "mujoco_xml_path"
+        value: '$(var mujoco_xml_path)'
+      - name: "use_RL_controller"
+        value: "True"
 
-# - include:
-#     file: "$(find-pkg-share kinematic_odometry)/launch/kinematic_odometry.launch.yml"
-#     arg:
-#       - name: "publish_tf"
-#         value: "$(eval 'not $(var use_sim_tf)')"
+- include:
+    file: "$(find-pkg-share kinematic_odometry)/launch/kinematic_odometry.launch.yml"
+    arg:
+      - name: "publish_tf"
+        value: "$(eval 'not $(var use_sim_tf)')"
 
 # - include:
 #     file: "$(find-pkg-share mocap_odometry)/launch/mocap_odometry.launch.yml"
