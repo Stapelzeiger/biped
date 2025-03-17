@@ -214,8 +214,16 @@ class JointTrajectoryPublisher(Node):
         rot_matrix = r.as_matrix()
         gravity_v2 = rot_matrix.T @ np.array([0, 0, -1])
         # gravity = np.array([self.gravity_msg.vector.x, self.gravity_msg.vector.y, self.gravity_msg.vector.z])
-        joints_pos = self.joints_msg.position
-        joints_vel = self.joints_msg.velocity
+
+        joints_pos = []
+        joints_vel = []
+        for joint_name in self.joint_names_PPO:
+            if joint_name in self.joints_msg.name:
+                joints_pos.append(self.joints_msg.position[self.joints_msg.name.index(joint_name)])
+                joints_vel.append(self.joints_msg.velocity[self.joints_msg.name.index(joint_name)])
+            else:
+                joints_pos.append(0)
+                joints_vel.append(0)
 
         phase_tp1 = self.info["phase"] + self.info["phase_dt"]
         self.info["phase"] = np.fmod(phase_tp1 + np.pi, 2 * np.pi) - np.pi
@@ -318,6 +326,7 @@ class JointTrajectoryPublisher(Node):
         if (self.state == "FOOT_IN_CONTACT" and self.initialization_done == True):
             time_now = self.get_clock().now().nanoseconds / 1e9
             self.run_ppo_ctrl()
+            # self.get_logger().info('Running PPO controller')
             dt_ctrl = self.get_clock().now().nanoseconds / 1e9 - time_now
             if abs(dt_ctrl) > DT_CTRL:
                 self.get_logger().warn(f'Controller took too long: {dt_ctrl} s')
