@@ -1,0 +1,18 @@
+session_name: biped_RL_hardware
+windows:
+- layout: tiled
+  shell_command_before:
+  - source $ROS_WS/install/local_setup.bash
+  panes:
+  - ros2 launch biped_bringup launch_control_RL.yaml
+  - rviz2 -d src/biped/biped_bringup/rviz/biped.rviz
+  - ros2 run joy joy_node
+  - python3 src/biped/sim_mujoco/sim_mujoco/joynode_drive.py --ros-args --remap /joy_command/pause_sim:=/mujoco_sim/pause --remap /joy_command/step_sim:=/mujoco_sim/step --remap /joy_command/reset_sim:=/mujoco_sim/reset --remap /joy_command/commanded_twist:=/vel_cmd --remap /joy_command/stop:=/e_stop
+  - ros2 launch rl_controller rl.launch.yml use_sim_time:=False \
+  - ros2 run tf2_ros static_transform_publisher 0.0 0.0 0.01 0.0 0.0 0.0 /base_link /base_link_mocap
+  - ros2 run tf2_ros static_transform_publisher 0.0 0.0 0.0 0.0 0.0 0.0 /odom /world
+  - ros2 launch src/biped/biped_bringup/launch/rosbag_record.py \
+  - ros2 launch spinnaker_camera_driver driver_node.launch.py camera_type:=blackfly_s serial:="'20538718'"
+  # - ros2 launch ik_biped deformation_comp.launch.yml
+
+
