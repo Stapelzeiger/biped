@@ -32,7 +32,7 @@ print(str(jax.local_devices()[0]))
 # TODO: makes these parameters configurable.
 RESULTS_FOLDER_PATH ='/home/sorina/Documents/code/biped_hardware/ros2_ws/src/biped/rl_controller/results'
 DT_CTRL = 0.002
-TIME_NO_FEET_IN_CONTACT = 0.3
+TIME_NO_FEET_IN_CONTACT = 0.2
 
 class JointTrajectoryPublisher(Node):
     def __init__(self):
@@ -305,13 +305,15 @@ class JointTrajectoryPublisher(Node):
         else:
             self.timeout_for_no_feet_in_contact = TIME_NO_FEET_IN_CONTACT
             self.state = "FOOT_IN_CONTACT"
+            self.initialization_done = True
 
-        if (self.timeout_for_no_feet_in_contact <= 0):
+        if (self.timeout_for_no_feet_in_contact < 0):
             self.get_logger().info("No feet in contact for too long")
             if (self.state == "FOOT_IN_CONTACT"):
                 self.get_logger().info("Switching to INIT")
                 self.state = "INIT"
                 self.initialization_done = False
+                self.t_init_traj_ = 0
 
         if (self.state == "INIT"):
             self.t_init_traj = 0.0
