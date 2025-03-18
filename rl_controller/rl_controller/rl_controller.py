@@ -129,13 +129,6 @@ class JointTrajectoryPublisher(Node):
             self.odom_cb,
             1)
 
-        # self.gravity_msg = None
-        # self.gravity_sub = self.create_subscription(
-        #     Vector3Stamped,
-        #     '~/gravity',
-        #     self.gravity_cb,
-        #     1)
-
         gait_freq = 1.5
         phase_dt = 2 * np.pi * DT_CTRL * gait_freq
         phase = np.array([0, np.pi])
@@ -196,10 +189,6 @@ class JointTrajectoryPublisher(Node):
         with self.lock:
             self.imu_msg = msg
 
-    # def gravity_cb(self, msg: Vector3Stamped):
-    #     with self.lock:
-    #         self.gravity_msg = msg
-
     def joint_states_cb(self, msg: JointState):
         with self.lock:
             self.joints_msg = msg
@@ -212,8 +201,7 @@ class JointTrajectoryPublisher(Node):
         quat = self.odom_msg.pose.pose.orientation
         r = R.from_quat([quat.x, quat.y, quat.z, quat.w])
         rot_matrix = r.as_matrix()
-        gravity_v2 = rot_matrix.T @ np.array([0, 0, -1])
-        # gravity = np.array([self.gravity_msg.vector.x, self.gravity_msg.vector.y, self.gravity_msg.vector.z])
+        gravity_B = rot_matrix.T @ np.array([0, 0, -1])
 
         joints_pos = []
         joints_vel = []
@@ -235,7 +223,7 @@ class JointTrajectoryPublisher(Node):
         input_ppo = np.hstack([
             lin_vel_B,   # 3
             gyro,     # 3
-            gravity_v2,  # 3
+            gravity_B,  # 3
             command,  # 3
             joints_pos - self.default_q_joints,  # 10
             joints_vel,  # 10
@@ -274,10 +262,6 @@ class JointTrajectoryPublisher(Node):
             self.get_logger().warn('Odometry data not received. Skipping this step.')
             return
 
-        # if self.gravity_msg is None:
-        #     self.get_logger().warn('Gravity data not received. Skipping this step.')
-        #     return
-
         # # Check for old data.
         imu_time = self.imu_msg.header.stamp.sec + self.imu_msg.header.stamp.nanosec / 1e9
         if abs(time_now - imu_time) > 0.1:
@@ -294,11 +278,6 @@ class JointTrajectoryPublisher(Node):
         if abs(time_now - odom_time) > 0.1:
             self.get_logger().warn('Odometry data is old. Skipping this step.')
             return
-
-        # gravity_time = self.gravity_msg.header.stamp.sec + self.gravity_msg.header.stamp.nanosec / 1e9
-        # if abs(time_now - gravity_time) > 0.1:
-        #     self.get_logger().warn('Gravity data is old. Skipping this step.')
-        #     return
 
         if (self.foot_left_contact == False and self.foot_right_contact == False):
             self.timeout_for_no_feet_in_contact -= DT_CTRL
@@ -328,7 +307,6 @@ class JointTrajectoryPublisher(Node):
         if (self.state == "FOOT_IN_CONTACT" and self.initialization_done == True):
             time_now = self.get_clock().now().nanoseconds / 1e9
             self.run_ppo_ctrl()
-            # self.get_logger().info('Running PPO controller')
             dt_ctrl = self.get_clock().now().nanoseconds / 1e9 - time_now
             if abs(dt_ctrl) > DT_CTRL:
                 self.get_logger().warn(f'Controller took too long: {dt_ctrl} s')
