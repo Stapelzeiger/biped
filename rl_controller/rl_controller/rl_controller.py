@@ -301,8 +301,9 @@ class JointTrajectoryPublisher(Node):
         if (self.state == "RAMP_TO_STARTING_POS"):
             self.publish_joints(self.start_q_joints)
             self.t_init_traj += DT_CTRL
-            if (self.t_init_traj >= 2.0): # give it some time to ramp up
+            if (self.t_init_traj > 1.0): # give it some time to ramp up
                 self.initialization_done = True
+                self.t_init_traj = 1.0
 
         if (self.state == "FOOT_IN_CONTACT" and self.initialization_done == True):
             time_now = self.get_clock().now().nanoseconds / 1e9
