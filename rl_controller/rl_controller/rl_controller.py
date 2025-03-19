@@ -87,8 +87,7 @@ class JointTrajectoryPublisher(Node):
         self.joints_from_urdf = {}
 
         # State machine.
-        self.state = "INIT"
-        self.initialization_done = False
+        self.state = "RAMP_TO_STARTING_POS"
 
         # Lock.
         self.lock = threading.Lock()
@@ -279,33 +278,25 @@ class JointTrajectoryPublisher(Node):
             self.get_logger().warn('Odometry data is old. Skipping this step.')
             return
 
-        if (self.foot_left_contact == False and self.foot_right_contact == False):
+        feet_in_contact = self.foot_left_contact or self.foot_right_contact
+        if not feet_in_contact:
             self.timeout_for_no_feet_in_contact -= DT_CTRL
         else:
             self.timeout_for_no_feet_in_contact = TIME_NO_FEET_IN_CONTACT
-            self.state = "FOOT_IN_CONTACT"
-            self.initialization_done = True
 
-        if (self.timeout_for_no_feet_in_contact < 0):
-            self.get_logger().info("No feet in contact for too long")
-            if (self.state == "FOOT_IN_CONTACT"):
-                self.get_logger().info("Switching to INIT")
-                self.state = "INIT"
-                self.initialization_done = False
-                self.t_init_traj_ = 0
+        if self.state == "RAMP_TO_STARTING_POS":
+            if feet_in_contact:
+                self.state = "WALKING"
+                # set the global max torque parameter
+        elif self.state == "WALKING":
+            if self.timeout_for_no_feet_in_contact < 0:
+                self.get_logger().info("No feet in contact for too long")
+                self.state = "RAMP_TO_STARTING_POS"
+                # set the global max torque parameter
 
-        if (self.state == "INIT"):
-            self.t_init_traj = 0.0
-            self.state = "RAMP_TO_STARTING_POS"
-
-        if (self.state == "RAMP_TO_STARTING_POS"):
+        if self.state == "RAMP_TO_STARTING_POS":
             self.publish_joints(self.start_q_joints)
-            self.t_init_traj += DT_CTRL
-            if (self.t_init_traj > 1.0): # give it some time to ramp up
-                self.initialization_done = True
-                self.t_init_traj = 1.0
-
-        if (self.state == "FOOT_IN_CONTACT" and self.initialization_done == True):
+        elif self.state == "WALKING":
             time_now = self.get_clock().now().nanoseconds / 1e9
             self.run_ppo_ctrl()
             dt_ctrl = self.get_clock().now().nanoseconds / 1e9 - time_now
