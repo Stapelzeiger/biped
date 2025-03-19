@@ -246,7 +246,7 @@ class JointTrajectoryPublisher(Node):
         sin = np.sin(self.info["phase"])
         phase = np.concatenate([cos, sin])
 
-        command = np.array([0.0, 0.0, 0.0])
+        command = np.array([0.1, 0.0, 0.0])
         input_ppo = np.hstack([
             lin_vel_B,   # 3
             gyro,     # 3
