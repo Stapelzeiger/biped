@@ -18,10 +18,12 @@ from scipy.spatial.transform import Rotation as R
 
 import xml.etree.ElementTree as ET
 from std_msgs.msg import String
-from geometry_msgs.msg import Vector3Stamped
 from sensor_msgs.msg import Imu
 from sensor_msgs.msg import JointState
 from nav_msgs.msg import Odometry
+
+from rcl_interfaces.srv import SetParameters
+from rclpy.parameter import Parameter
 
 # Check JAX devices and set the CPU.
 jax.config.update('jax_platform_name', 'cpu')
@@ -33,6 +35,7 @@ print(str(jax.local_devices()[0]))
 RESULTS_FOLDER_PATH ='/home/sorina/Documents/code/biped_hardware/ros2_ws/src/biped/rl_controller/results'
 DT_CTRL = 0.002
 TIME_NO_FEET_IN_CONTACT = 0.2
+TIME_INIT_TRAJ = 1.0 # Time to ramp up to the starting position.
 
 class JointTrajectoryPublisher(Node):
     def __init__(self):
@@ -91,6 +94,12 @@ class JointTrajectoryPublisher(Node):
 
         # Lock.
         self.lock = threading.Lock()
+
+        # Params update.
+        self.moteus_set_param = self.create_client(SetParameters, '/moteus/set_parameters')
+        while not self.moteus_set_param.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('service not available, waiting again...')
+        self.moteus_param_requests = []
 
         # Subscribers.
         self.foot_left_contact = False
@@ -153,6 +162,25 @@ class JointTrajectoryPublisher(Node):
         self.timer = self.create_timer(DT_CTRL, self.step_controller)
 
         self.counter = 0
+
+    def update_moteus_parameter(self, name_param, value):
+        req = SetParameters.Request()
+        req.parameters = [Parameter(name=name_param, value=value).to_parameter_msg()]
+        self.moteus_param_requests.append(self.moteus_set_param.call_async(req))
+
+    def check_moteus_param_requests(self):
+        requests_open = []
+        for i, req in enumerate(self.moteus_param_requests):
+            if req.done():
+                try:
+                    response = req.result()
+                except Exception as e:
+                    self.get_logger().error(f'Service call failed {str(e)}')
+                else:
+                    self.get_logger().info(f'Parameter updated')
+            else:
+                requests_open.append(req)
+        self.moteus_param_requests = requests_open
 
     def foot_left_contact_callback(self, msg: StampedBool):
         self.foot_left_contact = msg.data
@@ -218,7 +246,7 @@ class JointTrajectoryPublisher(Node):
         sin = np.sin(self.info["phase"])
         phase = np.concatenate([cos, sin])
 
-        command = np.array([0.1, 0.0, 0.0])
+        command = np.array([0.0, 0.0, 0.0])
         input_ppo = np.hstack([
             lin_vel_B,   # 3
             gyro,     # 3
