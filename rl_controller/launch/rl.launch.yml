@@ -17,8 +17,6 @@ launch:
         to: /joint_states
       - from: /rl_controller/odometry
         to: /odometry
-      - from: /rl_controller/gravity
-        to: /gravity
     output: screen
     # print GDB backtrace:
     # launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args
