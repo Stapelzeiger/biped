@@ -33,13 +33,29 @@ print(str(jax.local_devices()[0]))
 
 # TODO: makes these parameters configurable.
 RESULTS_FOLDER_PATH ='/home/sorina/Documents/code/biped_hardware/ros2_ws/src/biped/rl_controller/results'
-DT_CTRL = 0.002
-TIME_NO_FEET_IN_CONTACT = 0.2
-TIME_INIT_TRAJ = 1.0 # Time to ramp up to the starting position.
+# DT_CTRL = 0.002
+# TIME_NO_FEET_IN_CONTACT = 0.2
+# TIME_INIT_TRAJ = 1.0 # Time to ramp up to the starting position.
+# LOW_TORQUE = 2.0
+# HIGH_TORQUE = 3.0
 
 class JointTrajectoryPublisher(Node):
     def __init__(self):
         super().__init__('joint_trajectory_publisher_rl')
+
+        # Parameters.
+        self.declare_parameter("low_torque", rclpy.parameter.Parameter.Type.DOUBLE)
+        self.declare_parameter("high_torque", rclpy.parameter.Parameter.Type.DOUBLE)
+        self.declare_parameter("dt_ctrl", rclpy.parameter.Parameter.Type.DOUBLE)
+        self.declare_parameter("time_init_traj", rclpy.parameter.Parameter.Type.DOUBLE)
+        self.declare_parameter("time_no_feet_in_contact", rclpy.parameter.Parameter.Type.DOUBLE)
+
+        self.use_sim_time = self.get_parameter("use_sim_time").get_parameter_value().bool_value
+        self.low_torque = self.get_parameter("low_torque").get_parameter_value().double_value
+        self.high_torque = self.get_parameter("high_torque").get_parameter_value().double_value
+        self.dt_ctrl = self.get_parameter("dt_ctrl").get_parameter_value().double_value
+        self.time_init_traj = self.get_parameter("time_init_traj").get_parameter_value().double_value
+        self.time_no_feet_in_contact = self.get_parameter("time_no_feet_in_contact").get_parameter_value().double_value
 
         # Load PPO policy.
         self.get_logger().info('Loading PPO policy...')
@@ -96,10 +112,12 @@ class JointTrajectoryPublisher(Node):
         self.lock = threading.Lock()
 
         # Params update.
-        self.moteus_set_param = self.create_client(SetParameters, '/moteus/set_parameters')
-        while not self.moteus_set_param.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('service not available, waiting again...')
-        self.moteus_param_requests = []
+        if self.use_sim_time == False:
+            self.moteus_set_param = self.create_client(SetParameters, '/moteus/set_parameters')
+            while not self.moteus_set_param.wait_for_service(timeout_sec=1.0):
+                self.get_logger().info('service not available, waiting again...')
+            self.moteus_param_requests = []
+            self.update_moteus_parameter('global_max_torque', self.high_torque)
 
         # Subscribers.
         self.foot_left_contact = False
@@ -138,7 +156,7 @@ class JointTrajectoryPublisher(Node):
             1)
 
         gait_freq = 1.5
-        phase_dt = 2 * np.pi * DT_CTRL * gait_freq
+        phase_dt = 2 * np.pi * self.dt_ctrl * gait_freq
         phase = np.array([0, np.pi])
 
         self.info = {
@@ -159,7 +177,7 @@ class JointTrajectoryPublisher(Node):
         self.timeout_for_no_feet_in_contact = 0.0
 
         self.publisher_joints = self.create_publisher(JointTrajectory, 'joint_trajectory', 10)
-        self.timer = self.create_timer(DT_CTRL, self.step_controller)
+        self.timer = self.create_timer(self.dt_ctrl, self.step_controller)
 
         self.counter = 0
 
@@ -308,19 +326,24 @@ class JointTrajectoryPublisher(Node):
 
         feet_in_contact = self.foot_left_contact or self.foot_right_contact
         if not feet_in_contact:
-            self.timeout_for_no_feet_in_contact -= DT_CTRL
+            self.timeout_for_no_feet_in_contact -= self.dt_ctrl
         else:
-            self.timeout_for_no_feet_in_contact = TIME_NO_FEET_IN_CONTACT
+            self.timeout_for_no_feet_in_contact = self.time_no_feet_in_contact
 
         if self.state == "RAMP_TO_STARTING_POS":
             if feet_in_contact:
                 self.state = "WALKING"
-                # set the global max torque parameter
+                if self.use_sim_time == False:
+                    self.get_logger().info("Feet in contact. Setting high torque.")
+                    self.update_moteus_parameter('global_max_torque', self.high_torque)
+
         elif self.state == "WALKING":
             if self.timeout_for_no_feet_in_contact < 0:
                 self.get_logger().info("No feet in contact for too long")
                 self.state = "RAMP_TO_STARTING_POS"
-                # set the global max torque parameter
+                if self.use_sim_time == False:
+                    self.get_logger().info("No feet in contact for too long. Setting low torque.")
+                    self.update_moteus_parameter('global_max_torque', self.low_torque)
 
         if self.state == "RAMP_TO_STARTING_POS":
             self.publish_joints(self.start_q_joints)
@@ -328,7 +351,7 @@ class JointTrajectoryPublisher(Node):
             time_now = self.get_clock().now().nanoseconds / 1e9
             self.run_ppo_ctrl()
             dt_ctrl = self.get_clock().now().nanoseconds / 1e9 - time_now
-            if abs(dt_ctrl) > DT_CTRL:
+            if abs(dt_ctrl) > self.dt_ctrl:
                 self.get_logger().warn(f'Controller took too long: {dt_ctrl} s')
 
     def publish_joints(self, joints: list):

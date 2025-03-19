@@ -6,6 +6,16 @@ launch:
     param:
       - name: use_sim_time
         value: '$(var use_sim_time)'
+      - name: low_torque
+        value: 2.0
+      - name: high_torque
+        value: 3.0
+      - name: dt_ctrl
+        value: 0.002
+      - name: time_init_traj
+        value: 1.0
+      - name: time_no_feet_in_contact
+        value: 0.2
     remap:
       - from: /rl_controller/contact_foot_right
         to: /poll_R_FOOT/gpio
