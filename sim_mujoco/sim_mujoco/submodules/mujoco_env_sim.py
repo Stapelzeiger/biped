@@ -9,9 +9,6 @@ import os
 from etils import epath
 import sys
 
-
-RESULTS_FOLDER_PATH ='/home/sorina/Documents/code/biped_hardware/ros2_ws/src/biped/rl_controller/results'
-
 class Biped(MujocoEnv):
     def __init__(self,
                  xml: str,
