@@ -94,3 +94,11 @@ force time sync:
 ```
 chronyc -a makestep
 ```
+
+
+## RL Policy path
+
+Set the policy path in bashrc.
+```
+export POLICY_PATH={policy_path}
+```
