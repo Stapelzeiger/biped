@@ -1,4 +1,3 @@
-from gymnasium.envs.mujoco import MujocoEnv
 import mujoco as mj
 import mujoco.viewer
 
@@ -9,7 +8,7 @@ import os
 from etils import epath
 import sys
 
-class Biped(MujocoEnv):
+class Biped():
     def __init__(self,
                  xml: str,
                  sim_dt: float = 0.002,
