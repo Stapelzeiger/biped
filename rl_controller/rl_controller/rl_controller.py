@@ -31,13 +31,10 @@ os.environ['JAX_PLATFORM_NAME'] = 'cpu'
 print("Available devices:", jax.devices())
 print(str(jax.local_devices()[0]))
 
-# TODO: makes these parameters configurable.
-RESULTS_FOLDER_PATH ='/home/sorina/Documents/code/biped_hardware/ros2_ws/src/biped/rl_controller/results'
-# DT_CTRL = 0.002
-# TIME_NO_FEET_IN_CONTACT = 0.2
-# TIME_INIT_TRAJ = 1.0 # Time to ramp up to the starting position.
-# LOW_TORQUE = 2.0
-# HIGH_TORQUE = 3.0
+# Load results folder path from environment variable with fallback
+POLICY_PATH = os.getenv('POLICY_PATH',
+                        '~/.ros/policy')
+
 
 class JointTrajectoryPublisher(Node):
     def __init__(self):
@@ -59,25 +56,25 @@ class JointTrajectoryPublisher(Node):
 
         # Load PPO policy.
         self.get_logger().info('Loading PPO policy...')
-        latest_results_folder = sorted(os.listdir(RESULTS_FOLDER_PATH))[-1]
+        latest_results_folder = sorted(os.listdir(POLICY_PATH))[-1]
         self.get_logger().info(f'    Latest results folder: {latest_results_folder}')
-        folders = sorted(os.listdir(epath.Path(RESULTS_FOLDER_PATH) / latest_results_folder))
-        folders = [f for f in folders if os.path.isdir(epath.Path(RESULTS_FOLDER_PATH) / latest_results_folder / f)]
+        folders = sorted(os.listdir(epath.Path(POLICY_PATH) / latest_results_folder))
+        folders = [f for f in folders if os.path.isdir(epath.Path(POLICY_PATH) / latest_results_folder / f)]
         if len(folders) == 0:
-            raise ValueError(f'No folders found in {epath.Path(RESULTS_FOLDER_PATH) / latest_results_folder}')
+            raise ValueError(f'No folders found in {epath.Path(POLICY_PATH) / latest_results_folder}')
         if len(folders) > 1:
             latest_weights_folder = folders[-1]
         else:
             latest_weights_folder = folders
         self.get_logger().info(f'    Latest weights folder: {latest_weights_folder}')
-        path = epath.Path(RESULTS_FOLDER_PATH) / latest_results_folder / latest_weights_folder
+        path = epath.Path(POLICY_PATH) / latest_results_folder / latest_weights_folder
         self.get_logger().info(f'    Loading policy from: {path}')
         self.policy_fn = ppo_checkpoint.load_policy(path)
         self.jit_policy = jax.jit(self.policy_fn)
         self.rng = jax.random.PRNGKey(1)
 
         # Load params of the PPO policy.
-        config_file_path = epath.Path(RESULTS_FOLDER_PATH) / latest_results_folder / 'ppo_network_config.json'
+        config_file_path = epath.Path(POLICY_PATH) / latest_results_folder / 'ppo_network_config.json'
         with open(config_file_path) as f:
             self.config = json.load(f)
         self.get_logger().info(f'    Action size: {self.config["action_size"]}, Observation size: {self.config["observation_size"]}')
