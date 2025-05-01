@@ -10,8 +10,6 @@ launch:
         value: 2.0
       - name: high_torque
         value: 3.0
-      - name: dt_ctrl
-        value: 0.02
       - name: time_init_traj
         value: 1.0
       - name: time_no_feet_in_contact
