@@ -35,6 +35,8 @@ print(str(jax.local_devices()[0]))
 POLICY_PATH = os.getenv('POLICY_PATH',
                         '~/.ros/policy')
 
+HORIZON_STATE = 4
+
 
 class JointTrajectoryPublisher(Node):
     def __init__(self):
@@ -57,7 +59,6 @@ class JointTrajectoryPublisher(Node):
         # Load PPO policy.
         self.get_logger().info('Loading PPO policy...')
         latest_results_folder = sorted(os.listdir(POLICY_PATH))[-1]
-        self.get_logger().info(f'    Latest results folder: {latest_results_folder}')
         folders = sorted(os.listdir(epath.Path(POLICY_PATH) / latest_results_folder))
         folders = [f for f in folders if os.path.isdir(epath.Path(POLICY_PATH) / latest_results_folder / f)]
         if len(folders) == 0:
@@ -69,22 +70,37 @@ class JointTrajectoryPublisher(Node):
         self.get_logger().info(f'    Latest weights folder: {latest_weights_folder}')
         path = epath.Path(POLICY_PATH) / latest_results_folder / latest_weights_folder
         self.get_logger().info(f'    Loading policy from: {path}')
+
+        # Go through the sharding and replace the CUDA with CPU.
+        for shard in os.listdir(path):
+            if shard.endswith('sharding'):
+                with open(os.path.join(path, shard), 'r') as f:
+                    content = f.read()
+                    print(content)
+                    content = content.replace('cuda:0', 'TFRT_CPU_0')
+                    with open(os.path.join(path, shard), 'w') as f:
+                        f.write(content)
         self.policy_fn = ppo_checkpoint.load_policy(path)
         self.jit_policy = jax.jit(self.policy_fn)
         self.rng = jax.random.PRNGKey(1)
+
+        # Actuator mapping.
+        actuator_mapping_PPO_file = epath.Path(POLICY_PATH) / latest_results_folder / 'policy_actuator_mapping.json'
+        with open(actuator_mapping_PPO_file) as f:
+            self.actuator_mapping_PPO = json.load(f)
+        self.actuator_mapping_PPO = self.actuator_mapping_PPO['joint_names_to_policy_idx']
+        print('actuator_mapping_PPO', self.actuator_mapping_PPO)
 
         # Load params of the PPO policy.
         config_file_path = epath.Path(POLICY_PATH) / latest_results_folder / 'ppo_network_config.json'
         with open(config_file_path) as f:
             self.config = json.load(f)
-        self.get_logger().info(f'    Action size: {self.config["action_size"]}, Observation size: {self.config["observation_size"]}')
+        self.get_logger().info(f'    Action size: {self.config["action_size"]}, Observation size: {self.config["observation_size"]["state"]}, Privileged state size: {self.config["observation_size"]["privileged_state"]}')
         self.action_size = self.config['action_size']
         self.obs = {
             'privileged_state': jp.zeros(self.config['observation_size']['privileged_state']),
             'state': jp.zeros(self.config['observation_size']['state'])
         }
-        self.joint_names_PPO = ['L_YAW', 'L_HAA', 'L_HFE', 'L_KFE', 'L_ANKLE', \
-                                'R_YAW', 'R_HAA', 'R_HFE', 'R_KFE', 'R_ANKLE'] # TODO: don't make this hardcoded, save it in a config file.
 
         # Read the URDF file for the robot to ensure we have the correct joint names.
         qos_profile = QoSProfile(
@@ -163,20 +179,30 @@ class JointTrajectoryPublisher(Node):
 
         self.last_action = np.zeros(self.action_size)
 
+
         # Default joint angles.
-        self.default_q_joints = np.array([0.0, 0.0, -0.463, 0.983, -0.350, \
-                                          0.0, 0.0, -0.463, 0.983, -0.350])
-        # self.start_q_joints = np.array([0.0, -0.03, 0.944, -1.598, 0.654, \
-                                        #   0.0, 0.23, 0.534, -0.92, 0.386])
-        # self.default_q_joints = np.array([0.0, 0.0, 0.5, -0.92, 0.386, \
-                                        # 0.0, 0.0, 0.5, -0.92, 0.386])
+        self.default_q_joints = {
+            'L_YAW': 0.0,
+            'L_HAA': 0.0,
+            'L_HFE': -0.463,
+            'L_KFE': 0.983,
+            'L_ANKLE': -0.350,
+            'R_YAW': 0.0,
+            'R_HAA': 0.0,
+            'R_HFE': -0.463,
+            'R_KFE': 0.983,
+            'R_ANKLE': -0.350
+        }
+
         self.start_q_joints = self.default_q_joints.copy()
         self.timeout_for_no_feet_in_contact = 0.0
 
         self.publisher_joints = self.create_publisher(JointTrajectory, 'joint_trajectory', 10)
         self.timer = self.create_timer(self.dt_ctrl, self.step_controller)
 
-        self.counter = 0
+        # Initialize state history
+        self.state_history = None
+        self.state_size = self.config['observation_size']['state'][0]
 
     def update_moteus_parameter(self, name_param, value):
         req = SetParameters.Request()
@@ -220,8 +246,8 @@ class JointTrajectoryPublisher(Node):
         except ET.ParseError as e:
             self.get_logger().error(f"Failed to parse URDF: {e}")
         self.get_logger().info(f'Extracted Joints: {self.joints_from_urdf}')
-        assert len(self.joints_from_urdf.keys()) == self.action_size, \
-            f"Number of joints in URDF ({len(self.joints_from_urdf.keys())}) does not match the action size ({self.action_size})."
+        # assert len(self.joints_from_urdf.keys()) == self.action_size, \
+        #     f"Number of joints in URDF ({len(self.joints_from_urdf.keys())}) does not match the action size ({self.action_size})."
 
     def odom_cb(self, msg: Odometry):
         with self.lock:
@@ -237,17 +263,26 @@ class JointTrajectoryPublisher(Node):
 
     def run_ppo_ctrl(self):
         ''' Runs the PPO controller. '''
-        lin_vel_B = np.array([self.odom_msg.twist.twist.linear.x, self.odom_msg.twist.twist.linear.y, self.odom_msg.twist.twist.linear.z])
-        gyro = np.array([self.imu_msg.angular_velocity.x, self.imu_msg.angular_velocity.y, self.imu_msg.angular_velocity.z])
+        # Linear velocity.
+        lin_vel_B = np.array([self.odom_msg.twist.twist.linear.x,
+                             self.odom_msg.twist.twist.linear.y,
+                             self.odom_msg.twist.twist.linear.z])
+        # Angular velocity.
+        gyro = np.array([self.imu_msg.angular_velocity.x,
+                        self.imu_msg.angular_velocity.y,
+                        self.imu_msg.angular_velocity.z])
 
+        # Up vector in body frame.
         quat = self.odom_msg.pose.pose.orientation
         r = R.from_quat([quat.x, quat.y, quat.z, quat.w])
         rot_matrix = r.as_matrix()
-        gravity_B = rot_matrix.T @ np.array([0, 0, -1])
+        up_B = rot_matrix.T @ np.array([0, 0, 1])
 
+        # Joints position and velocity.
         joints_pos = []
         joints_vel = []
-        for joint_name in self.joint_names_PPO:
+        for joint_name in self.default_q_joints.keys():
+            # Get the joint position and velocity from the joint state message.
             if joint_name in self.joints_msg.name:
                 joints_pos.append(self.joints_msg.position[self.joints_msg.name.index(joint_name)])
                 joints_vel.append(self.joints_msg.velocity[self.joints_msg.name.index(joint_name)])
@@ -255,35 +290,54 @@ class JointTrajectoryPublisher(Node):
                 joints_pos.append(0)
                 joints_vel.append(0)
 
+        # Phase.
         phase_tp1 = self.info["phase"] + self.info["phase_dt"]
         self.info["phase"] = np.fmod(phase_tp1 + np.pi, 2 * np.pi) - np.pi
         cos = np.cos(self.info["phase"])
         sin = np.sin(self.info["phase"])
         phase = np.concatenate([cos, sin])
 
-        command = np.array([0.1, 0.0, 0.0])
-        input_ppo = np.hstack([
+        # Command.
+        command = np.array([0.0, 0.0, 0.0])
+
+        # Input to the PPO policy.
+        current_state = np.hstack([
             lin_vel_B,   # 3
             gyro,     # 3
-            gravity_B,  # 3
+            up_B,  # 3
             command,  # 3
-            joints_pos - self.default_q_joints,  # 10
+            joints_pos - np.array(list(self.default_q_joints.values())),  # 10
             joints_vel,  # 10
-            self.last_action,  # 10
+            self.last_action,  # 8
             phase,
         ])
 
+        # Initialize state history if needed.
+        if self.state_history is None:
+            self.get_logger().info(f'Initializing state history with shape: {(HORIZON_STATE, current_state.shape[0])}')
+            self.state_history = jp.zeros((HORIZON_STATE, current_state.shape[0]))
+
+        # Update state history.
+        self.state_history = jp.roll(self.state_history, -1, axis=0)
+        self.state_history = self.state_history.at[-1].set(current_state)
+
         self.obs = {
             'privileged_state': jp.zeros(self.config['observation_size']['privileged_state']),
-            'state': jp.array(input_ppo)
+            'state': self.state_history.ravel()
         }
 
         act_rng, self.rng = jax.random.split(self.rng)
         action_ppo, _ = self.jit_policy(self.obs, act_rng)
         action_ppo_np = np.array(action_ppo)
-        motor_targets = self.default_q_joints + action_ppo_np * 0.5
+
+        # Map the action to the joint names.
+        motor_targets = self.default_q_joints.copy()
+        for joint_name, idx in self.actuator_mapping_PPO.items():
+            if idx is not None:  # Skip None values (like for ANKLE joints)
+                motor_targets[joint_name] += action_ppo_np[idx]
         self.publish_joints(motor_targets)
         self.last_action = action_ppo_np.copy()
+
 
     def step_controller(self):
         time_now = self.get_clock().now().nanoseconds / 1e9
@@ -351,30 +405,31 @@ class JointTrajectoryPublisher(Node):
             if abs(dt_ctrl) > self.dt_ctrl:
                 self.get_logger().warn(f'Controller took too long: {dt_ctrl} s')
 
-    def publish_joints(self, joints: list):
+    def publish_joints(self, joints: dict):
         ''' Publishes the joint angles to the robot. '''
         msg = JointTrajectory()
-        msg.joint_names = self.joint_names_PPO
+        msg.joint_names = list(joints.keys())
         msg.header.stamp = self.get_clock().now().to_msg()
         point = JointTrajectoryPoint()
 
         # Ensure the limits are satisfied.
-        joints_out = joints.copy()
-        for i, joint_name in enumerate(self.joint_names_PPO):
+        joints_out = []
+        for joint_name in joints.keys():
+            value = joints[joint_name]
             min_limit, max_limit = self.joints_from_urdf[joint_name]
-            if joints_out[i] < float(min_limit):
-                self.get_logger().warn(f'Joint {joint_name} is below the min limit {min_limit}. It wants to be {joints_out[i]}. Setting to min limit')
-                joints_out[i] = float(min_limit)
-            if joints_out[i] > float(max_limit):
-                self.get_logger().warn(f'Joint {joint_name} is above the max limit {max_limit}. It wants to be {joints_out[i]}. Setting to max limit')
-                joints_out[i] = float(max_limit)
+            if value < float(min_limit):
+                self.get_logger().warn(f'Joint {joint_name} is below the min limit {min_limit}. It wants to be {value}. Setting to min limit')
+                value = float(min_limit)
+            if value > float(max_limit):
+                self.get_logger().warn(f'Joint {joint_name} is above the max limit {max_limit}. It wants to be {value}. Setting to max limit')
+                value = float(max_limit)
+            joints_out.append(value)
 
         point.positions = joints_out
         point.velocities = [0.0] * len(joints_out)
         point.effort = [0.0] * len(joints_out)
         msg.points.append(point)
         self.publisher_joints.publish(msg)
-        self.counter += 1
 
 
 def main(args=None):
