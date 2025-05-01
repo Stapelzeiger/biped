@@ -35,9 +35,6 @@ print(str(jax.local_devices()[0]))
 POLICY_PATH = os.getenv('POLICY_PATH',
                         '~/.ros/policy')
 
-HORIZON_STATE = 4
-
-
 class JointTrajectoryPublisher(Node):
     def __init__(self):
         super().__init__('joint_trajectory_publisher_rl')
@@ -45,14 +42,12 @@ class JointTrajectoryPublisher(Node):
         # Parameters.
         self.declare_parameter("low_torque", rclpy.parameter.Parameter.Type.DOUBLE)
         self.declare_parameter("high_torque", rclpy.parameter.Parameter.Type.DOUBLE)
-        self.declare_parameter("dt_ctrl", rclpy.parameter.Parameter.Type.DOUBLE)
         self.declare_parameter("time_init_traj", rclpy.parameter.Parameter.Type.DOUBLE)
         self.declare_parameter("time_no_feet_in_contact", rclpy.parameter.Parameter.Type.DOUBLE)
 
         self.use_sim_time = self.get_parameter("use_sim_time").get_parameter_value().bool_value
         self.low_torque = self.get_parameter("low_torque").get_parameter_value().double_value
         self.high_torque = self.get_parameter("high_torque").get_parameter_value().double_value
-        self.dt_ctrl = self.get_parameter("dt_ctrl").get_parameter_value().double_value
         self.time_init_traj = self.get_parameter("time_init_traj").get_parameter_value().double_value
         self.time_no_feet_in_contact = self.get_parameter("time_no_feet_in_contact").get_parameter_value().double_value
 
@@ -89,18 +84,37 @@ class JointTrajectoryPublisher(Node):
         with open(actuator_mapping_PPO_file) as f:
             self.actuator_mapping_PPO = json.load(f)
         self.actuator_mapping_PPO = self.actuator_mapping_PPO['joint_names_to_policy_idx']
-        print('actuator_mapping_PPO', self.actuator_mapping_PPO)
 
         # Load params of the PPO policy.
-        config_file_path = epath.Path(POLICY_PATH) / latest_results_folder / 'ppo_network_config.json'
-        with open(config_file_path) as f:
-            self.config = json.load(f)
-        self.get_logger().info(f'    Action size: {self.config["action_size"]}, Observation size: {self.config["observation_size"]["state"]}, Privileged state size: {self.config["observation_size"]["privileged_state"]}')
-        self.action_size = self.config['action_size']
+        network_config_file_path = epath.Path(POLICY_PATH) / latest_results_folder / 'ppo_network_config.json'
+        with open(network_config_file_path) as f:
+            self.network_config = json.load(f)
+        self.get_logger().info(f'Network config: {self.network_config}')
+        self.action_size = self.network_config['action_size']
         self.obs = {
-            'privileged_state': jp.zeros(self.config['observation_size']['privileged_state']),
-            'state': jp.zeros(self.config['observation_size']['state'])
+            'privileged_state': jp.zeros(self.network_config['observation_size']['privileged_state']),
+            'state': jp.zeros(self.network_config['observation_size']['state'])
         }
+
+        # Initialize state history
+        self.state_history = None
+        self.state_size = self.network_config['observation_size']['state'][0]
+
+        # Config default joint angles.
+        default_joint_angles_file = epath.Path(POLICY_PATH) / latest_results_folder / 'initial_qpos.json'
+        with open(default_joint_angles_file) as f:
+            self.default_q_joints = json.load(f)
+            # Remove root joint.
+            self.default_q_joints = {k: v for k, v in self.default_q_joints.items() if k != 'root'}
+        self.get_logger().info(f'Default joint angles: {self.default_q_joints}')
+        # Configs for the controller.
+        configs_training = epath.Path(POLICY_PATH) / latest_results_folder / 'config.json'
+        with open(configs_training) as f:
+            self.configs_training = json.load(f)
+        self.get_logger().info(f'Configs training: {self.configs_training}')
+
+        self.dt_ctrl = self.configs_training['ctrl_dt']
+        self.history_len = self.configs_training['history_len']
 
         # Read the URDF file for the robot to ensure we have the correct joint names.
         qos_profile = QoSProfile(
@@ -180,29 +194,12 @@ class JointTrajectoryPublisher(Node):
         self.last_action = np.zeros(self.action_size)
 
 
-        # Default joint angles.
-        self.default_q_joints = {
-            'L_YAW': 0.0,
-            'L_HAA': 0.0,
-            'L_HFE': -0.463,
-            'L_KFE': 0.983,
-            'L_ANKLE': -0.350,
-            'R_YAW': 0.0,
-            'R_HAA': 0.0,
-            'R_HFE': -0.463,
-            'R_KFE': 0.983,
-            'R_ANKLE': -0.350
-        }
-
         self.start_q_joints = self.default_q_joints.copy()
         self.timeout_for_no_feet_in_contact = 0.0
 
         self.publisher_joints = self.create_publisher(JointTrajectory, 'joint_trajectory', 10)
         self.timer = self.create_timer(self.dt_ctrl, self.step_controller)
 
-        # Initialize state history
-        self.state_history = None
-        self.state_size = self.config['observation_size']['state'][0]
 
     def update_moteus_parameter(self, name_param, value):
         req = SetParameters.Request()
@@ -314,15 +311,15 @@ class JointTrajectoryPublisher(Node):
 
         # Initialize state history if needed.
         if self.state_history is None:
-            self.get_logger().info(f'Initializing state history with shape: {(HORIZON_STATE, current_state.shape[0])}')
-            self.state_history = jp.zeros((HORIZON_STATE, current_state.shape[0]))
+            self.get_logger().info(f'Initializing state history with shape: {(self.history_len, current_state.shape[0])}')
+            self.state_history = jp.zeros((self.history_len, current_state.shape[0]))
 
         # Update state history.
         self.state_history = jp.roll(self.state_history, -1, axis=0)
         self.state_history = self.state_history.at[-1].set(current_state)
 
         self.obs = {
-            'privileged_state': jp.zeros(self.config['observation_size']['privileged_state']),
+            'privileged_state': jp.zeros(self.network_config['observation_size']['privileged_state']),
             'state': self.state_history.ravel()
         }
 
