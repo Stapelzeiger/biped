@@ -3,6 +3,7 @@ import mujoco.viewer
 
 import math
 import numpy as np
+from collections import deque
 
 import os
 from etils import epath
@@ -13,7 +14,8 @@ class Biped():
                  xml: str,
                  sim_dt: float = 0.002,
                  visualize_mujoco: bool = False,
-                 use_RL: bool = False):
+                 use_RL: bool = False,
+                 control_delay: float = 0.01):  # Control delay in seconds
 
         # Initialize the Mujoco environment.
         self.model = mj.MjModel.from_xml_path(xml)
@@ -22,6 +24,12 @@ class Biped():
         mj.mj_printModel(self.model, 'robot_information.txt')
         self.dt_sim = self.get_sim_dt() # TODO: mujocoenv has its own DT, but it cannot be modified
         self.use_RL = use_RL
+
+        # Initialize control delay
+        self.control_delay = control_delay
+        self.delay_buffer_size = max(1, int(control_delay / sim_dt))
+        self.control_buffer = deque(maxlen=self.delay_buffer_size)
+        self.control_buffer.append({})  # Initialize with empty control dict
 
         self.q_joints = {}
         self.name_joints = self.get_joint_names()
@@ -71,10 +79,16 @@ class Biped():
         ''' Steps the simulation.'''
         self.set_joint_state()
 
+        # Add current control to buffer
+        self.control_buffer.append(joint_traj_dict)
+
+        # Get delayed control from buffer
+        delayed_control = self.control_buffer[0]
+
         if self.use_RL == True:
-            self.run_joint_controllers_RL(joint_traj_dict)
+            self.run_joint_controllers_RL(delayed_control)
         else:
-            self.run_joint_controllers(joint_traj_dict)
+            self.run_joint_controllers(delayed_control)
             self.ankle_foot_spring('L_ANKLE')
             self.ankle_foot_spring('R_ANKLE')
 
