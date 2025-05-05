@@ -318,9 +318,11 @@ class JointTrajectoryPublisher(Node):
         self.state_history = jp.roll(self.state_history, -1, axis=0)
         self.state_history = self.state_history.at[-1].set(current_state)
 
+        state_history_raveled = self.state_history.ravel()
+
         self.obs = {
             'privileged_state': jp.zeros(self.network_config['observation_size']['privileged_state']),
-            'state': self.state_history.ravel()
+            'state': state_history_raveled
         }
 
         act_rng, self.rng = jax.random.split(self.rng)
