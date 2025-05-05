@@ -6,7 +6,9 @@ from nav_msgs.msg import Odometry
 from trajectory_msgs.msg import JointTrajectory
 from geometry_msgs.msg import TransformStamped, PoseStamped, \
                               PoseWithCovarianceStamped, TwistStamped, \
-                              Vector3Stamped
+                              Vector3Stamped, \
+                              WrenchStamped
+
 from rosgraph_msgs.msg import Clock
 from biped_bringup.msg import StampedBool
 from std_msgs.msg import Bool, Float64, Empty
@@ -83,8 +85,12 @@ class MujocoNode(Node):
         # Subscribers.
         self.joint_traj_sub = self.create_subscription(JointTrajectory, 'joint_trajectory', self.joint_traj_cb, 10)
         self.joint_traj_msg = None
+
         self.initial_pose_sub = self.create_subscription(PoseWithCovarianceStamped, 'initialpose', self.init_cb, 10)
         self.reset_sub = self.create_subscription(Empty, '~/reset', self.reset_cb, 10)
+
+        self.wrench_perturbation_sub = self.create_subscription(WrenchStamped, '/wrench_perturbation_I', self.wrench_perturbation_cb, 10)
+        self.wrench_perturbation = np.zeros(6)
 
         self.paused = False
         self.step_sim_sub = self.create_subscription(Float64, "~/step", self.step_cb, 1)
@@ -171,7 +177,7 @@ class MujocoNode(Node):
             else:
                 joint_traj_dict = None
 
-            qpos, qvel = self.biped.step(joint_traj_dict)
+            qpos, qvel = self.biped.step(joint_traj_dict, wrench_perturbation=self.wrench_perturbation)
             self.time += self.dt
             self.counter += 1
 
@@ -314,6 +320,16 @@ class MujocoNode(Node):
     def joint_traj_cb(self, msg: JointTrajectory):
         with self.lock:
             self.joint_traj_msg = msg
+
+    def wrench_perturbation_cb(self, msg: WrenchStamped):
+        with self.lock:
+            self.wrench_perturbation = np.zeros(6)
+            self.wrench_perturbation[0] = msg.wrench.force.x
+            self.wrench_perturbation[1] = msg.wrench.force.y
+            self.wrench_perturbation[2] = msg.wrench.force.z
+            self.wrench_perturbation[3] = msg.wrench.torque.x
+            self.wrench_perturbation[4] = msg.wrench.torque.y
+            self.wrench_perturbation[5] = msg.wrench.torque.z
 
 def main(args=None):
     rclpy.init(args=args)
