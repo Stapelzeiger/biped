@@ -193,11 +193,11 @@ class JointTrajectoryPublisher(Node):
 
         self.last_action = np.zeros(self.action_size)
 
-
         self.start_q_joints = self.default_q_joints.copy()
         self.timeout_for_no_feet_in_contact = 0.0
 
         self.publisher_joints = self.create_publisher(JointTrajectory, 'joint_trajectory', 10)
+        self.publisher_joints_ppo = self.create_publisher(JointTrajectory, '~/joint_trajectory_ppo', 10)
         self.timer = self.create_timer(self.dt_ctrl, self.step_controller)
 
 
@@ -331,10 +331,14 @@ class JointTrajectoryPublisher(Node):
 
         # Map the action to the joint names.
         motor_targets = self.default_q_joints.copy()
+        motor_targets_ppo = {}
         for joint_name, idx in self.actuator_mapping_PPO.items():
             if idx is not None:  # Skip None values (like for ANKLE joints)
                 motor_targets[joint_name] += action_ppo_np[idx]
+                motor_targets_ppo[joint_name] = action_ppo_np[idx]
         self.publish_joints(motor_targets)
+        self.publish_ppo_residual_joints(motor_targets_ppo)
+
         self.last_action = action_ppo_np.copy()
 
 
@@ -430,6 +434,14 @@ class JointTrajectoryPublisher(Node):
         msg.points.append(point)
         self.publisher_joints.publish(msg)
 
+    def publish_ppo_residual_joints(self, joints_ppo: dict):
+        msg = JointTrajectory()
+        msg.joint_names = list(joints_ppo.keys())
+        msg.header.stamp = self.get_clock().now().to_msg()
+        point = JointTrajectoryPoint()
+        point.positions = list(joints_ppo.values())
+        msg.points.append(point)
+        self.publisher_joints_ppo.publish(msg)
 
 def main(args=None):
     rclpy.init(args=args)
