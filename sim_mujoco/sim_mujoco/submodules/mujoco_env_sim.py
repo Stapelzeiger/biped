@@ -49,6 +49,8 @@ class Biped():
             }
         self.previous_q_vel = np.zeros(self.get_nv())
 
+        self.time_ = 0.0
+
         # Visualize.
         self.visualize_mujoco = visualize_mujoco
         if self.visualize_mujoco is True:
@@ -75,7 +77,7 @@ class Biped():
         self.data.eq_active[0] = 1
         mj.mj_step(self.model, self.data)
 
-    def step(self, joint_traj_dict: dict):
+    def step(self, joint_traj_dict: dict, wrench_perturbation: np.ndarray = None):
         ''' Steps the simulation.'''
         self.set_joint_state()
 
@@ -92,11 +94,22 @@ class Biped():
             self.ankle_foot_spring('L_ANKLE')
             self.ankle_foot_spring('R_ANKLE')
 
+        # Apply an external wrench perturbation to the robot.
+        if wrench_perturbation is not None:
+            self.apply_wrench_perturbation_to_base_link(wrench_perturbation)
+
         mj.mj_step(self.model, self.data)
         if self.visualize_mujoco is True:
             if self.viewer.is_running():
                 self.viewer.sync()
+        self.time_ += self.dt_sim
+
         return self.data.qpos, self.data.qvel
+
+    def apply_wrench_perturbation_to_base_link(self, wrench_perturbation: np.ndarray):
+        '''Applies a wrench perturbation to the robot.'''
+        base_link_idx = self.get_base_link_addr()
+        self.data.xfrc_applied[base_link_idx] = wrench_perturbation
 
     def get_q_joints_dict(self):
         '''Returns the joint data.'''
@@ -261,3 +274,7 @@ class Biped():
         for name in self.name_joints:
             self.q_pos_addr_joints[name] = self.model.jnt_qposadr[mj.mj_name2id(
                 self.model, mj.mjtObj.mjOBJ_JOINT, name)]
+
+    def get_base_link_addr(self):
+        ''' Returns the address of the base link.'''
+        return self.data.body("base_link").id
