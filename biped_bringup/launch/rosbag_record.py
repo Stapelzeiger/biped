@@ -36,6 +36,7 @@ list_of_topics = [
                 '/capture_point/predicted_dcm',
                 '/capture_point/t_in_step',
                 '/capture_point/optimization_status',
+                '/rl_controller/joint_trajectory_ppo',
                 '/state',
                 '/pointCloud',
                 '/poses',
