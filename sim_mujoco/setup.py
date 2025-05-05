@@ -26,7 +26,8 @@ setup(
         'console_scripts': [
             'mujoco = sim_mujoco.mujoco_node:main',
             'joy = sim_mujoco.joynode:main',
-            'joint_publisher = sim_mujoco.joint_publisher:main'
+            'joint_publisher = sim_mujoco.joint_publisher:main',
+            'perturbation = sim_mujoco.perturbation_node:main'
         ],
     },
 )
