@@ -1,0 +1,6 @@
+launch:
+- node:
+    pkg: sim_mujoco
+    exec: perturbation
+    name: perturbation
+    output: screen
