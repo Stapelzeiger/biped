@@ -26,7 +26,7 @@
     R_HFE/can_bus: 5
     R_HFE/encoder_ambiguity: 6.0
     R_HFE/reverse: False
-    R_HFE/calib/centering_pos_deg: 106.0
+    R_HFE/calib/centering_pos_deg: 112.0
     R_HFE/calib/trigger_effort: 3.1
     R_HFE/calib/direction: 1.0
 
@@ -62,8 +62,8 @@
     L_HFE/can_bus: 3
     L_HFE/encoder_ambiguity: 6.0
     L_HFE/reverse: True
-    L_HFE/calib/centering_pos_deg: 106.0
-    L_HFE/calib/trigger_effort: 2.9
+    L_HFE/calib/centering_pos_deg: 112.0
+    L_HFE/calib/trigger_effort: 3.0
     L_HFE/calib/direction: 1.0
 
     L_KFE/can_id: 23
