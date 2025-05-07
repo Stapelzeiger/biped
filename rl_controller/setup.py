@@ -2,13 +2,12 @@ from setuptools import setup
 from glob import glob
 import os
 
-package_name = 'sim_mujoco'
-submodules = "sim_mujoco/submodules"
+package_name = 'rl_controller'
 
 setup(
     name=package_name,
     version='0.0.0',
-    packages=[package_name, submodules],
+    packages=[package_name],
     data_files=[
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
@@ -17,18 +16,14 @@ setup(
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='Sorina Lupu',
-    maintainer_email='lupusorina@yahoo.com',
+    maintainer='pa',
+    maintainer_email='lupusorina@gmail.com',
     description='TODO: Package description',
     license='TODO: License declaration',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'mujoco = sim_mujoco.mujoco_node:main',
-            'joy = sim_mujoco.joynode:main',
-            'joint_publisher = sim_mujoco.joint_publisher:main',
-            'perturbation = sim_mujoco.perturbation_node:main'
+            'rl_controller = rl_controller.rl_controller:main'
         ],
     },
 )
-

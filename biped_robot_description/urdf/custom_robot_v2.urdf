@@ -80,7 +80,7 @@ name="base_link">
       <mass
         value="0.624" />
       <inertia
-        ixx="0.002"
+        ixx="0.0018"
         ixy="0.0"
         ixz="0.0"
         iyy="0.001"
@@ -254,12 +254,12 @@ name="base_link">
       <mass
         value="0.118" />
       <inertia
-        ixx="0.0017"
+        ixx="0.001"
         ixy="0.0"
         ixz="0.0"
-        iyy="0.0017"
+        iyy="0.001"
         iyz="0.0"
-        izz="0.0000001" />
+        izz="0.00001" />
     </inertial>
     <visual>
       <origin
@@ -299,7 +299,7 @@ name="base_link">
       xyz="0 1 0" />
     <limit
       lower="-2.2"
-      upper="-0.1"
+      upper="2.2"
       effort="20"
       velocity="20" />
   </joint>
@@ -383,7 +383,7 @@ name="base_link">
       <mass
         value="0.624" />
       <inertia
-        ixx="0.002"
+        ixx="0.0018"
         ixy="0.0"
         ixz="0.0"
         iyy="0.001"
@@ -436,7 +436,7 @@ name="base_link">
     name="L_SHOULDER">
     <inertial>
       <origin
-        xyz="-0.0020134 0.022813 -0.00077458"
+        xyz="-0.0020134 -0.022813 -0.00077458"
         rpy="0 0 0" />
       <mass
         value="0.524" />
@@ -557,12 +557,12 @@ name="base_link">
       <mass
         value="0.118" />
       <inertia
-        ixx="0.0017"
+        ixx="0.001"
         ixy="0.0"
         ixz="0.0"
-        iyy="0.0017"
+        iyy="0.001"
         iyz="0.0"
-        izz="0.0000001" />
+        izz="0.00001" />
     </inertial>
     <visual>
       <origin
@@ -602,7 +602,7 @@ name="base_link">
       xyz="0 1 0" />
     <limit
       lower="-2.2"
-      upper="-0.1"
+      upper="2.2"
       effort="20"
       velocity="20" />
   </joint>

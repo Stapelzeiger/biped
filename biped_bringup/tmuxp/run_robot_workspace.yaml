@@ -1,9 +1,0 @@
-session_name: robot_workspace
-windows:
-- layout: tiled
-  shell_command_before:
-  - source $ROS_WS/install/local_setup.bash
-  panes:
-  - ros2 launch ik_biped robot_workspace.launch.yml
-  - ros2 launch biped_robot_description launch_workspace.yaml
-  - clear

@@ -1,0 +1,30 @@
+launch:
+- node:
+    pkg: rl_controller
+    exec: rl_controller
+    name: rl_controller
+    param:
+      - name: use_sim_time
+        value: '$(var use_sim_time)'
+      - name: low_torque
+        value: 2.0
+      - name: high_torque
+        value: 3.0
+      - name: time_init_traj
+        value: 1.0
+      - name: time_no_feet_in_contact
+        value: 0.2
+    remap:
+      - from: /rl_controller/contact_foot_right
+        to: /poll_R_FOOT/gpio
+      - from: /rl_controller/contact_foot_left
+        to: /poll_L_FOOT/gpio
+      - from: /rl_controller/imu
+        to: /imu
+      - from: /rl_controller/joint_states
+        to: /joint_states
+      - from: /rl_controller/odometry
+        to: /odometry
+    output: screen
+    # print GDB backtrace:
+    # launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args

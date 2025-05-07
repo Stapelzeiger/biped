@@ -1,14 +1,15 @@
-session_name: biped_sim
+session_name: biped_RL_sim
 windows:
 - layout: tiled
   # shell_command_before:
   # - source $ROS_WS/install/local_setup.bash
   panes:
-  - ros2 launch biped_bringup launch_control_sim.yaml
+  - ros2 launch biped_bringup launch_control_RL.yaml
   - rviz2 -d src/biped/biped_bringup/rviz/biped.rviz --ros-args --param use_sim_time:=true
   - ros2 run joy joy_node; ros2 param set /joy_node use_sim_time:=true
   - python3 src/biped/sim_mujoco/sim_mujoco/joynode_drive.py --ros-args --remap /joy_command/pause_sim:=/mujoco_sim/pause --remap /joy_command/step_sim:=/mujoco_sim/step --remap /joy_command/reset_sim:=/mujoco_sim/reset --remap /joy_command/commanded_twist:=/vel_cmd --remap /joy_command/stop:=/e_stop
   - ros2 launch src/biped/biped_bringup/launch/rosbag_record.py \
+  - ros2 launch rl_controller rl.launch.yml use_sim_time:=True
   - sleep 10s; ros2 launch sim_mujoco perturbation.launch.yml
   - clear
   - ros2 run tf2_ros static_transform_publisher 0.0 0.0 0.01 0.0 0.0 0.0 /base_link /base_link_mocap

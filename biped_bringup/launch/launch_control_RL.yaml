@@ -14,7 +14,7 @@ launch:
 
 - arg:
     name: "mujoco_xml_path"
-    default: "$(find-pkg-share biped_robot_description)/urdf/custom_robot_v2.mujoco.xml"
+    default: "$(find-pkg-share biped_robot_description)/urdf/scene_mjx_feetonly_flat_terrain_RL.xml"
 
 - include:
     file: "$(find-pkg-share biped_robot_description)/launch/launch.yaml"
@@ -30,10 +30,7 @@ launch:
       - name: "mujoco_xml_path"
         value: '$(var mujoco_xml_path)'
       - name: "use_RL_controller"
-        value: "False"
-
-- include:
-    file: "$(find-pkg-share ik_biped)/launch/ik.launch.yml"
+        value: "True"
 
 - include:
     file: "$(find-pkg-share kinematic_odometry)/launch/kinematic_odometry.launch.yml"
@@ -46,10 +43,6 @@ launch:
 #     arg:
 #       - name: "publish_tf"
 #         value: "$(eval 'not $(var use_sim_tf)')"
-
-
-- include:
-    file: "$(find-pkg-share capture_point)/launch/cp.launch.yml"
 
 - include:
     file: "$(find-pkg-share metrics)/metrics.launch.yml"

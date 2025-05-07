@@ -27,5 +27,5 @@
     swing_z_safe_box_max: 0.3
     walk_slow: False # True if we do walk in place, while holding the robot.
     mode: WALK # options = ['WALK', 'ONE_FOOT_SWING']
-    use_adaptive_com: False
+    use_adaptive_com: True
     k_I_com: 0.1

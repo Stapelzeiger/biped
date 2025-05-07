@@ -136,7 +136,7 @@ public:
 
         offset_com_baselink_ << robot_params_.offset_baselink_cog_x, robot_params_.offset_baselink_cog_y, robot_params_.offset_baselink_cog_z;
 
-        state_pub_ = this->create_publisher<biped_bringup::msg::StampedInt>("/state", 10);
+        state_pub_ = this->create_publisher<biped_bringup::msg::StampedInt>("~/state", 10);
 
         std::chrono::duration<double> period = robot_params_.dt_ctrl * 1s;
         timer_ = rclcpp::create_timer(this, this->get_clock(), period, std::bind(&CapturePoint::timer_callback, this));
@@ -282,8 +282,6 @@ private:
             Eigen::Vector3d fin_swing_foot_pos_STF, fin_swing_foot_vel_STF;
             fin_swing_foot_pos_STF = Eigen::Vector3d(0.0, 0.1, 0.1 - offset_foot_);
             fin_swing_foot_vel_STF = Eigen::Vector3d(0.0, 0.0, - offset_foot_vel_);
-            // RCLCPP_INFO(this->get_logger(), "fin_swing_foot_pos_STF %f %f %f", fin_swing_foot_pos_STF(0), fin_swing_foot_pos_STF(1), fin_swing_foot_pos_STF(2));
-            // RCLCPP_INFO(this->get_logger(), "fin_swing_foot_vel_STF %f %f %f", fin_swing_foot_vel_STF(0), fin_swing_foot_vel_STF(1), fin_swing_foot_vel_STF(2));
 
             Eigen::Vector3d fin_baselink_pos_STF;
             fin_baselink_pos_STF = Eigen::Vector3d(0.0, 0.0, robot_params_.robot_height);
@@ -417,7 +415,6 @@ private:
             if (robot_params_.use_adaptive_com) {
                 auto predicted_dcm = beginning_of_step_dcm_ * exp(robot_params_.omega * previous_iteration_step_time_);
                 offset_com_baselink_ = offset_com_baselink_ - robot_params_.k_I_com * (predicted_dcm - previous_iteration_dcm_);
-                // std::cout << offset_com_baselink_.transpose() << std::endl;
             }
             beginning_of_step_dcm_ = dcm_STF_;
         }
@@ -443,6 +440,7 @@ private:
 
         Eigen::Vector3d next_footstep_STF;
         next_footstep_STF = -dcm_desired_STF + dcm_STF_ * exp(robot_params_.omega * remaining_time_in_step_);
+        next_footstep_STF(2) = 0.0;
 
         geometry_msgs::msg::Vector3Stamped next_dcm_STF_msg;
         get_vector3_msg(next_dcm_STF_predicted, next_dcm_STF_msg, now);
