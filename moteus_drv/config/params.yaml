@@ -1,7 +1,7 @@
 /**:
   ros__parameters:
     update_rate: 300.0
-    global_max_torque: 3.0
+    global_max_torque: 3.5
     joint_state_timeout: 0.04
     joint_command_timeout: 0.1
     joints: ['L_YAW', 'L_HAA', 'L_HFE', 'L_KFE', 'R_YAW', 'R_HAA', 'R_HFE', 'R_KFE']
@@ -11,7 +11,7 @@
     R_YAW/encoder_ambiguity: 5.0
     R_YAW/reverse: False
     R_YAW/calib/centering_pos_deg: 30.0
-    R_YAW/calib/trigger_effort: 1.5
+    R_YAW/calib/trigger_effort: 1.0
     R_YAW/calib/direction: 1.0
 
     R_HAA/can_id: 11
@@ -27,7 +27,7 @@
     R_HFE/encoder_ambiguity: 6.0
     R_HFE/reverse: False
     R_HFE/calib/centering_pos_deg: 106.0
-    R_HFE/calib/trigger_effort: 3.0
+    R_HFE/calib/trigger_effort: 3.1
     R_HFE/calib/direction: 1.0
 
     R_KFE/can_id: 14
@@ -47,7 +47,7 @@
     L_YAW/encoder_ambiguity: 5.0
     L_YAW/reverse: False
     L_YAW/calib/centering_pos_deg: 30.0
-    L_YAW/calib/trigger_effort: 1.5
+    L_YAW/calib/trigger_effort: 1.0
     L_YAW/calib/direction: -1.0
 
     L_HAA/can_id: 21
@@ -63,7 +63,7 @@
     L_HFE/encoder_ambiguity: 6.0
     L_HFE/reverse: True
     L_HFE/calib/centering_pos_deg: 106.0
-    L_HFE/calib/trigger_effort: 2.8
+    L_HFE/calib/trigger_effort: 2.9
     L_HFE/calib/direction: 1.0
 
     L_KFE/can_id: 23
