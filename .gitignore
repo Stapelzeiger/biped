@@ -6,3 +6,4 @@ COLCON_IGNORE
 *.pth
 *.npy
 MUJOCO_LOG.*
+policy_path
