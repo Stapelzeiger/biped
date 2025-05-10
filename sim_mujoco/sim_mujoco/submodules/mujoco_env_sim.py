@@ -15,7 +15,7 @@ class Biped():
                  sim_dt: float = 0.002,
                  visualize_mujoco: bool = False,
                  use_RL: bool = False,
-                 control_delay: float = 0.01):  # Control delay in seconds
+                 control_delay: float = 0.0):  # Control delay in seconds
 
         # Initialize the Mujoco environment.
         self.model = mj.MjModel.from_xml_path(xml)
