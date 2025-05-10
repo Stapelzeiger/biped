@@ -345,17 +345,15 @@ class JointTrajectoryPublisher(Node):
         # Initialize state history if needed.
         if self.state_history is None:
             self.get_logger().info(f'Initializing state history with shape: {(self.history_len, current_state.shape[0])}')
-            self.state_history = jp.zeros((self.history_len, current_state.shape[0]))
+            self.state_history = np.zeros((self.history_len, current_state.shape[0]))
 
         # Update state history.
-        self.state_history = jp.roll(self.state_history, -1, axis=0)
-        self.state_history = self.state_history.at[-1].set(current_state)
-
-        state_history_raveled = self.state_history.ravel()
+        self.state_history = np.roll(self.state_history, -1, axis=0)
+        self.state_history[-1] = current_state
 
         self.obs = {
             'privileged_state': jp.zeros(self.network_config['observation_size']['privileged_state']),
-            'state': state_history_raveled
+            'state': jp.array(self.state_history.ravel())
         }
 
         act_rng, self.rng = jax.random.split(self.rng)
