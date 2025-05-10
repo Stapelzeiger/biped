@@ -260,6 +260,39 @@ class JointTrajectoryPublisher(Node):
 
     def run_ppo_ctrl(self):
         ''' Runs the PPO controller. '''
+        time_now = self.get_clock().now().nanoseconds / 1e9
+        # Add robustness to run only when odom is available.
+        if self.odom_msg is None:
+            self.get_logger().warn('Odometry data not received. Skipping this step.')
+            return
+
+        # Add robustness to run only when imu is available.
+        if self.imu_msg is None:
+            self.get_logger().warn('IMU data not received. Skipping this step.')
+            return
+
+        # Add robustness to run only when joints are available.
+        if self.joints_msg is None:
+            self.get_logger().warn('Joint data not received. Skipping this step.')
+            return
+
+        # Old messages.
+        imu_time = self.imu_msg.header.stamp.sec + self.imu_msg.header.stamp.nanosec / 1e9
+        if abs(time_now - imu_time) > 0.1:
+            self.get_logger().warn('timenow {}, imu time {}'.format(time_now, self.imu_msg.header.stamp.sec))
+            self.get_logger().warn('IMU data is old. Skipping this step.')
+            return
+
+        joints_state_time = self.joints_msg.header.stamp.sec + self.joints_msg.header.stamp.nanosec / 1e9
+        if abs(time_now - joints_state_time) > 0.1:
+            self.get_logger().warn('Joint state data is old. Skipping this step.')
+            return
+
+        odom_time = self.odom_msg.header.stamp.sec + self.odom_msg.header.stamp.nanosec / 1e9
+        if abs(time_now - odom_time) > 0.1:
+            self.get_logger().warn('Odometry data is old. Skipping this step.')
+            return
+
         # Linear velocity.
         lin_vel_B = np.array([self.odom_msg.twist.twist.linear.x,
                              self.odom_msg.twist.twist.linear.y,
