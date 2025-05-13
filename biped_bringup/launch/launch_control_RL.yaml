@@ -14,7 +14,7 @@ launch:
 
 - arg:
     name: "mujoco_xml_path"
-    default: "$(find-pkg-share biped_robot_description)/urdf/scene_mjx_feetonly_flat_terrain_RL.xml"
+    default: "$(find-pkg-share biped_robot_description)/urdf/biped_RL.xml"
 
 - include:
     file: "$(find-pkg-share biped_robot_description)/launch/launch.yaml"
