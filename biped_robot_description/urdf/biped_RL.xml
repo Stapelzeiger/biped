@@ -71,31 +71,41 @@
         <joint name="L_YAW" pos="0 0 0" axis="0 0 1" limited="true" range="-0.3 0.3"/>
         <geom name="L_HIP" type="mesh" contype="0" conaffinity="0" rgba="1 1 1 1" mesh="L_HIP"/>
 
-        <body name="L_SHOULDER" pos="0.005 0 -0.086">
-          <inertial pos="-0.0020134 -0.022813 -0.00077458" quat="0.5 0.5 0.5 0.5" mass="0.524" diaginertia="0.00068 0.00048 0.0003"/>
-          <joint name="L_HAA" pos="0 0 0" axis="1 0 0" limited="true" range="-0.25 0.25"/>
-          <geom name="L_SHOULDER" type="mesh" contype="0" conaffinity="0" rgba="1 0 0 1" mesh="L_SHOULDER"/>
+        <body name="L_SPRING_ROLL" pos="0 0 0">
+          <geom name="L_SPRING_ROLL" type="cylinder" contype="2" rgba="1 1 1 1" size="0.01 0.01"/>
+          <joint name="L_SPRING_ROLL" pos="0 0 0" axis="1 0 0"/>
 
-          <body name="L_UPPER_LEG" pos="0 0 0">
-            <inertial pos="3.4626e-05 0.058 -0.054" mass="0.88" diaginertia="0.008 0.008 0.001"/>
-            <joint name="L_HFE" pos="0 0 0" axis="0 1 0" limited="true" range="-1.5 1.5"/>
-            <geom name="L_UPPER_LEG" type="mesh" contype="0" conaffinity="0"  rgba="1 0 0 1" mesh="L_UPPER_LEG"/>
-            
-            <body name="L_LOWER_LEG" pos="0 0.0589 -0.23405">
-              <inertial pos="-1.356e-05 -0.017 -0.15" mass="0.118" diaginertia="0.001 0.001 1e-05"/>
-              <joint name="L_KFE" pos="0 0 0" axis="0 1 0" limited="true" range="-2.2 2.2"/>
-              <geom name="L_LOWER_LEG" type="mesh" contype="0" conaffinity="0" rgba="0.792157 0.819608 0.933333 1" mesh="L_LOWER_LEG"/>
-              
-              <body name="L_FOOT" pos="0.0019 -0.0173 -0.30326">
-                <inertial pos="-0.00185 -4.9998e-05 -0.0083528" quat="0.710914 0 0.703279 0" mass="0.03134" diaginertia="3.39896e-05 3.35525e-05 1.53506e-06"/>
-                <joint name="L_ANKLE" pos="0 0 0" axis="0 1 0" limited="true" range="-0.7 0.7"/>
-                <geom name="L_FOOT" friction="1. 0.3 0.3" size="0.015 0.05" pos="0 0 -0.01" quat="0.710914 0 0.703279 0"  type="capsule" rgba="0.8 0.8 0.8 1"/>
-                <site name="l_foot" quat="0.710914 0 0.703279 0"/>
+          <body name="L_SPRING_PITCH" pos="0 0 0">
+            <geom name="L_SPRING_PITCH" type="cylinder" contype="2" rgba="1 1 1 1" size="0.01 0.01"/>
+            <joint name="L_SPRING_PITCH" pos="0 0 0" axis="0 1 0"/>
 
-              </body> <!--  L_FOOT -->
-            </body> <!--  L_LOWER_LEG -->
-          </body> <!--  L_UPPER_LEG -->
-        </body> <!--  L_SHOULDER -->
+            <body name="L_SHOULDER" pos="0.005 0 -0.086">
+              <inertial pos="-0.0020134 -0.022813 -0.00077458" quat="0.5 0.5 0.5 0.5" mass="0.524" diaginertia="0.00068 0.00048 0.0003"/>
+              <joint name="L_HAA" pos="0 0 0" axis="1 0 0" limited="true" range="-0.25 0.25"/>
+              <geom name="L_SHOULDER" type="mesh" contype="0" conaffinity="0" rgba="1 0 0 1" mesh="L_SHOULDER"/>
+
+              <body name="L_UPPER_LEG" pos="0 0 0">
+                <inertial pos="3.4626e-05 0.058 -0.054" mass="0.88" diaginertia="0.008 0.008 0.001"/>
+                <joint name="L_HFE" pos="0 0 0" axis="0 1 0" limited="true" range="-1.5 1.5"/>
+                <geom name="L_UPPER_LEG" type="mesh" contype="0" conaffinity="0"  rgba="1 0 0 1" mesh="L_UPPER_LEG"/>
+
+                <body name="L_LOWER_LEG" pos="0 0.0589 -0.23405">
+                  <inertial pos="-1.356e-05 -0.017 -0.15" mass="0.118" diaginertia="0.001 0.001 1e-05"/>
+                  <joint name="L_KFE" pos="0 0 0" axis="0 1 0" limited="true" range="-2.2 2.2"/>
+                  <geom name="L_LOWER_LEG" type="mesh" contype="0" conaffinity="0" rgba="0.792157 0.819608 0.933333 1" mesh="L_LOWER_LEG"/>
+
+                  <body name="L_FOOT" pos="0.0019 -0.0173 -0.30326">
+                    <inertial pos="-0.00185 -4.9998e-05 -0.0083528" quat="0.710914 0 0.703279 0" mass="0.03134" diaginertia="3.39896e-05 3.35525e-05 1.53506e-06"/>
+                    <joint name="L_ANKLE" pos="0 0 0" axis="0 1 0" limited="true" range="-0.7 0.7"/>
+                    <geom name="L_FOOT" friction="1. 0.3 0.3" size="0.015 0.05" pos="0 0 -0.01" quat="0.710914 0 0.703279 0"  type="capsule" rgba="0.8 0.8 0.8 1"/>
+                    <site name="l_foot" quat="0.710914 0 0.703279 0"/>
+
+                  </body> <!--  L_FOOT -->
+                </body> <!--  L_LOWER_LEG -->
+              </body> <!--  L_UPPER_LEG -->
+            </body> <!--  L_SHOULDER -->
+          </body> <!--  L_SPRING_PITCH -->
+        </body> <!--  L_SPRING_ROLL -->
       </body> <!--  L_HIP -->
 
 
@@ -103,34 +113,43 @@
         <inertial pos="-0.0542 0 -0.072" mass="0.624" diaginertia="0.0018 0.001 0.001"/>
         <joint name="R_YAW" pos="0 0 0" axis="0 0 1" limited="true" range="-0.3 0.3"/>
         <geom name="R_HIP" type="mesh" contype="0" conaffinity="0" rgba="0.69804 0.69804 0.69804 1" mesh="R_HIP"/>
-        
-        <body name="R_SHOULDER" pos="0.005 0 -0.086">
-          <inertial pos="-0.0020134 0.022813 -0.00077458" quat="0.5 0.5 0.5 0.5" mass="0.524" diaginertia="0.00068 0.00048 0.0003"/>
-          <joint name="R_HAA" pos="0 0 0" axis="1 0 0" limited="true" range="-0.25 0.25"/>
-          <geom name="R_SHOULDER" type="mesh" contype="0" conaffinity="0" rgba="1 0 0 1" mesh="R_SHOULDER"/>
-          
-          <body name="R_UPPER_LEG" pos="0 0 0">
-            <inertial pos="0 -0.058 -0.054" quat="1. 0. 0. 0." mass="0.88" diaginertia="0.008 0.008 0.001"/>
-            <joint name="R_HFE" pos="0 0 0" axis="0 1 0" limited="true" range="-1.5 1.5"/>
-            <geom name="R_UPPER_LEG" type="mesh" contype="0" conaffinity="0" rgba="1 0 0 1" mesh="R_UPPER_LEG"/>
-            
-            <body name="R_LOWER_LEG" pos="0 -0.0584 -0.23405">
-              <inertial pos="0 0.017 -0.15" quat="1. 0. 0. 0." mass="0.118" diaginertia="0.001 0.001 1e-05"/>
-              <joint name="R_KFE" pos="0 0 0" axis="0 1 0" limited="true" range="-2.2 2.2"/>
-              <geom name="R_LOWER_LEG" type="mesh" contype="0" conaffinity="0" rgba="0.792157 0.819608 0.933333 1" mesh="R_LOWER_LEG"/>
-              
-              <body name="R_FOOT" pos="0.0019 0.0173 -0.30326">
-                <inertial pos="-0.00185 4.9998e-05 -0.0083528" quat="0.710914 0 0.703279 0" mass="0.03134" diaginertia="3.39896e-05 3.35525e-05 1.53506e-06"/>
-                <joint name="R_ANKLE" pos="0 0 0" axis="0 1 0" limited="true" range="-0.7 0.7"/>
-                <geom name="R_FOOT" friction="1. 0.3 0.3" size="0.015 0.05" pos="0 0 -0.01" quat="0.710914 0 0.703279 0"  type="capsule" rgba="0.8 0.8 0.8 1"/>
-                <site name="r_foot" quat="0.710914 0 0.703279 0"/>
 
-              </body> <!--  R_FOOT -->
-            </body> <!--  R_LOWER_LEG -->
-          </body> <!--  R_UPPER_LEG -->
-        </body> <!--  R_SHOULDER -->
-      </body> <!--  R_HIP -->
+        <body name="R_SPRING_ROLL" pos="0 0 0">
+          <geom name="R_SPRING_ROLL" type="cylinder" contype="2" rgba="1 1 1 1" size="0.01 0.01"/>
+          <joint name="R_SPRING_ROLL" pos="0 0 0" axis="1 0 0"/>
 
+          <body name="R_SPRING_PITCH" pos="0 0 0">
+            <geom name="R_SPRING_PITCH" type="cylinder" contype="2" rgba="1 1 1 1" size="0.01 0.01"/>
+            <joint name="R_SPRING_PITCH" pos="0 0 0" axis="0 1 0"/>
+
+            <body name="R_SHOULDER" pos="0.005 0 -0.086">
+              <inertial pos="-0.0020134 0.022813 -0.00077458" quat="0.5 0.5 0.5 0.5" mass="0.524" diaginertia="0.00068 0.00048 0.0003"/>
+              <joint name="R_HAA" pos="0 0 0" axis="1 0 0" limited="true" range="-0.25 0.25"/>
+              <geom name="R_SHOULDER" type="mesh" contype="0" conaffinity="0" rgba="1 0 0 1" mesh="R_SHOULDER"/>
+
+              <body name="R_UPPER_LEG" pos="0 0 0">
+                <inertial pos="0 -0.058 -0.054" quat="1. 0. 0. 0." mass="0.88" diaginertia="0.008 0.008 0.001"/>
+                <joint name="R_HFE" pos="0 0 0" axis="0 1 0" limited="true" range="-1.5 1.5"/>
+                <geom name="R_UPPER_LEG" type="mesh" contype="0" conaffinity="0" rgba="1 0 0 1" mesh="R_UPPER_LEG"/>
+
+                <body name="R_LOWER_LEG" pos="0 -0.0584 -0.23405">
+                  <inertial pos="0 0.017 -0.15" quat="1. 0. 0. 0." mass="0.118" diaginertia="0.001 0.001 1e-05"/>
+                  <joint name="R_KFE" pos="0 0 0" axis="0 1 0" limited="true" range="-2.2 2.2"/>
+                  <geom name="R_LOWER_LEG" type="mesh" contype="0" conaffinity="0" rgba="0.792157 0.819608 0.933333 1" mesh="R_LOWER_LEG"/>
+
+                  <body name="R_FOOT" pos="0.0019 0.0173 -0.30326">
+                    <inertial pos="-0.00185 4.9998e-05 -0.0083528" quat="0.710914 0 0.703279 0" mass="0.03134" diaginertia="3.39896e-05 3.35525e-05 1.53506e-06"/>
+                    <joint name="R_ANKLE" pos="0 0 0" axis="0 1 0" limited="true" range="-0.7 0.7"/>
+                    <geom name="R_FOOT" friction="1. 0.3 0.3" size="0.015 0.05" pos="0 0 -0.01" quat="0.710914 0 0.703279 0"  type="capsule" rgba="0.8 0.8 0.8 1"/>
+                    <site name="r_foot" quat="0.710914 0 0.703279 0"/>
+
+                  </body> <!--  R_FOOT -->
+                </body> <!--  R_LOWER_LEG -->
+              </body> <!--  R_UPPER_LEG -->
+            </body> <!--  R_SHOULDER -->
+          </body> <!--  R_HIP -->
+        </body> <!--  R_SPRING_PITCH -->
+      </body> <!--  R_SPRING_ROLL -->
     </body> <!--  base_link -->
   </worldbody>
 
@@ -169,16 +188,25 @@
 
     <actuator>
       <position name="L_YAW" joint="L_YAW" kp="38.1" kv="0.5"/>
+
+      <position joint="L_SPRING_ROLL" name="L_SPRING_ROLL" kp="65.55" kv="0.5"/>
+      <position joint="L_SPRING_PITCH" name="L_SPRING_PITCH" kp="140.0" kv="2.0"/>
+
       <position name="L_HAA" joint="L_HAA" kp="38.1" kv="3.18"/>
       <position name="L_HFE" joint="L_HFE" kp="38.1" kv="3.18"/>
       <position name="L_KFE" joint="L_KFE" kp="38.1" kv="0.95"/>
       <position name="L_ANKLE" joint="L_ANKLE" kp="0.1" kv="0.005"/>
 
       <position name="R_YAW" joint="R_YAW" kp="38.1" kv="0.5"/>
+
+      <position joint="R_SPRING_ROLL" name="R_SPRING_ROLL" kp="65.55" kv="0.5"/>
+      <position joint="R_SPRING_PITCH" name="R_SPRING_PITCH" kp="140.0" kv="2.0"/>
+
       <position name="R_HAA" joint="R_HAA" kp="38.1" kv="3.18"/>
       <position name="R_HFE" joint="R_HFE" kp="38.1" kv="3.18"/>
       <position name="R_KFE" joint="R_KFE" kp="38.1" kv="0.95"/>
       <position name="R_ANKLE" joint="R_ANKLE" kp="0.1" kv="0.005"/>
+
     </actuator>
 
 </mujoco>
