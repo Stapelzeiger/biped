@@ -14,6 +14,8 @@ from etils import epath
 import json
 import threading
 
+import time
+
 from scipy.spatial.transform import Rotation as R
 
 import xml.etree.ElementTree as ET
@@ -24,6 +26,8 @@ from nav_msgs.msg import Odometry
 
 from rcl_interfaces.srv import SetParameters
 from rclpy.parameter import Parameter
+
+import pandas as pd
 
 # Check JAX devices and set the CPU.
 jax.config.update('jax_platform_name', 'cpu')
@@ -53,18 +57,28 @@ class JointTrajectoryPublisher(Node):
 
         # Load PPO policy.
         self.get_logger().info('Loading PPO policy...')
-        latest_results_folder = sorted(os.listdir(POLICY_PATH))[-1]
-        folders = sorted(os.listdir(epath.Path(POLICY_PATH) / latest_results_folder))
-        folders = [f for f in folders if os.path.isdir(epath.Path(POLICY_PATH) / latest_results_folder / f)]
-        if len(folders) == 0:
-            raise ValueError(f'No folders found in {epath.Path(POLICY_PATH) / latest_results_folder}')
-        if len(folders) > 1:
-            latest_weights_folder = folders[-1]
+        folders = [f for f in os.listdir(POLICY_PATH) if os.path.isdir(os.path.join(POLICY_PATH, f))]
+        if not folders:
+            raise ValueError(f'No folders found in {POLICY_PATH}')
+        self.latest_results_folder = sorted(folders)[-1]
+
+        weight_folders = sorted(os.listdir(epath.Path(POLICY_PATH) / self.latest_results_folder))
+        weight_folders = [f for f in weight_folders if os.path.isdir(epath.Path(POLICY_PATH) / self.latest_results_folder / f)]
+        if len(weight_folders) == 0:
+            raise ValueError(f'No weight_folders found in {epath.Path(POLICY_PATH) / self.latest_results_folder}')
+        if len(weight_folders) > 1:
+            latest_weights_folder = weight_folders[-1]
         else:
-            latest_weights_folder = folders
+            latest_weights_folder = weight_folders
         self.get_logger().info(f'    Latest weights folder: {latest_weights_folder}')
-        path = epath.Path(POLICY_PATH) / latest_results_folder / latest_weights_folder
+        path = epath.Path(POLICY_PATH) / self.latest_results_folder / latest_weights_folder
         self.get_logger().info(f'    Loading policy from: {path}')
+
+        # Record RL outputs to a CSV file for a certain period of time.
+        self.t_record_rl_outputs = 10.0 # seconds
+        self.data_output_list = []
+        self.stop_recording_rl_outputs = False
+        self.time_ = 0.0
 
         # Go through the sharding and replace the CUDA with CPU.
         for shard in os.listdir(path):
@@ -80,13 +94,13 @@ class JointTrajectoryPublisher(Node):
         self.rng = jax.random.PRNGKey(1)
 
         # Actuator mapping.
-        actuator_mapping_PPO_file = epath.Path(POLICY_PATH) / latest_results_folder / 'policy_actuator_mapping.json'
+        actuator_mapping_PPO_file = os.path.join(POLICY_PATH, self.latest_results_folder, 'policy_actuator_mapping.json')
         with open(actuator_mapping_PPO_file) as f:
             self.actuator_mapping_PPO = json.load(f)
-        self.actuator_mapping_PPO = self.actuator_mapping_PPO['joint_names_to_policy_idx']
+        self.actuator_mapping_PPO = self.actuator_mapping_PPO['actuated_joint_names_to_policy_idx_dict']
 
         # Load params of the PPO policy.
-        network_config_file_path = epath.Path(POLICY_PATH) / latest_results_folder / 'ppo_network_config.json'
+        network_config_file_path = epath.Path(POLICY_PATH) / self.latest_results_folder / 'ppo_network_config.json'
         with open(network_config_file_path) as f:
             self.network_config = json.load(f)
         self.get_logger().info(f'Network config: {self.network_config}')
@@ -101,14 +115,14 @@ class JointTrajectoryPublisher(Node):
         self.state_size = self.network_config['observation_size']['state'][0]
 
         # Config default joint angles.
-        default_joint_angles_file = epath.Path(POLICY_PATH) / latest_results_folder / 'initial_qpos.json'
+        default_joint_angles_file = epath.Path(POLICY_PATH) / self.latest_results_folder / 'initial_qpos.json'
         with open(default_joint_angles_file) as f:
             self.default_q_joints = json.load(f)
             # Remove root joint.
             self.default_q_joints = {k: v for k, v in self.default_q_joints.items() if k != 'root'}
         self.get_logger().info(f'Default joint angles: {self.default_q_joints}')
         # Configs for the controller.
-        configs_training = epath.Path(POLICY_PATH) / latest_results_folder / 'config.json'
+        configs_training = epath.Path(POLICY_PATH) / self.latest_results_folder / 'config.json'
         with open(configs_training) as f:
             self.configs_training = json.load(f)
         self.get_logger().info(f'Configs training: {self.configs_training}')
@@ -196,8 +210,8 @@ class JointTrajectoryPublisher(Node):
         self.start_q_joints = self.default_q_joints.copy()
         self.timeout_for_no_feet_in_contact = 0.0
 
-        self.publisher_joints = self.create_publisher(JointTrajectory, 'joint_trajectory', 10)
-        self.publisher_joints_ppo = self.create_publisher(JointTrajectory, '~/joint_trajectory_ppo', 10)
+        self.publisher_joints = self.create_publisher(JointTrajectory, 'joint_trajectory_compensated', 1)
+        self.publisher_joints_ppo = self.create_publisher(JointTrajectory, '~/joint_trajectory_ppo', 1)
         self.timer = self.create_timer(self.dt_ctrl, self.step_controller)
 
 
@@ -242,6 +256,8 @@ class JointTrajectoryPublisher(Node):
                     self.joints_from_urdf[name] = (min_limit, max_limit)
         except ET.ParseError as e:
             self.get_logger().error(f"Failed to parse URDF: {e}")
+
+        print(f'Extracted Joints: {self.joints_from_urdf}')
         self.get_logger().info(f'Extracted Joints: {self.joints_from_urdf}')
         # assert len(self.joints_from_urdf.keys()) == self.action_size, \
         #     f"Number of joints in URDF ({len(self.joints_from_urdf.keys())}) does not match the action size ({self.action_size})."
@@ -370,11 +386,29 @@ class JointTrajectoryPublisher(Node):
         self.publish_joints(motor_targets)
         self.publish_ppo_residual_joints(motor_targets_ppo)
 
-        self.last_action = action_ppo_np.copy()
+        # Record RL outputs to a CSV file.
+        if self.use_sim_time == True and self.stop_recording_rl_outputs == False:
+            current_clock_time = self.get_clock().now().nanoseconds / 1e9
+            self.data_output_list.append([current_clock_time, *action_ppo_np, lin_vel_B[0], lin_vel_B[1], lin_vel_B[2]])
+            if self.time_ > self.t_record_rl_outputs:
+                self.get_logger().info(f'Recording RL outputs to a CSV file.')
+                self.stop_recording_rl_outputs = True
+                header = ['time',
+                          *[key for key in self.actuator_mapping_PPO.keys() if self.actuator_mapping_PPO[key] is not None],
+                          'lin_vel_x',
+                          'lin_vel_y',
+                          'lin_vel_z']
+                df = pd.DataFrame(self.data_output_list, columns=header)
+                df.to_csv(os.path.join(POLICY_PATH, self.latest_results_folder, 'rl_outputs.csv'), index=False)
 
+        self.last_action = action_ppo_np.copy()
+        self.time_ += self.dt_ctrl
+        # toc = time.time()
+        # self.get_logger().info(f'PPO policy took {toc - tic} seconds')
 
     def step_controller(self):
         time_now = self.get_clock().now().nanoseconds / 1e9
+
         if self.joints_from_urdf == {}:
             self.get_logger().error('Joint limits not set. Cannot publish trajectory.')
             return
