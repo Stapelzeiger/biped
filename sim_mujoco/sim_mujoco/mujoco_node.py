@@ -77,13 +77,13 @@ class MujocoNode(Node):
 
         self.stop_pub = self.create_publisher(Bool, '~/stop', 10)
 
-        self.joint_states_pub = self.create_publisher(JointState, 'joint_states', 10)
+        self.joint_states_pub = self.create_publisher(JointState, '~/joint_states', 10)
         self.imu_pub = self.create_publisher(Imu, '~/imu', 10)
         self.fake_vicon_pub = self.create_publisher(PoseStamped, '~/fake_vicon', 10)
         self.tf_broadcaster = TransformBroadcaster(self)
 
         # Subscribers.
-        self.joint_traj_sub = self.create_subscription(JointTrajectory, 'joint_trajectory', self.joint_traj_cb, 10)
+        self.joint_traj_sub = self.create_subscription(JointTrajectory, '~/joint_trajectory', self.joint_traj_cb, 10)
         self.joint_traj_msg = None
 
         self.initial_pose_sub = self.create_subscription(PoseWithCovarianceStamped, 'initialpose', self.init_cb, 10)
@@ -163,9 +163,9 @@ class MujocoNode(Node):
                 self.biped.let_go_of_the_robot()
 
         # Step the simulation.
+        is_valid_traj_msg = False if self.joint_traj_msg is None else True
         for _ in range(2):
-            is_valid_traj_msg = False if self.joint_traj_msg is None else True
-            # # Build a joint_traj_dict.
+            # Build a joint_traj_dict.
             if is_valid_traj_msg is True:
                 joint_traj_dict = {}
                 for name in self.joint_traj_msg.joint_names:
@@ -272,15 +272,6 @@ class MujocoNode(Node):
             msg_tau_actuators.name.append(key)
             msg_tau_actuators.effort.append(value['total_tau'])
         self.tau_actuators_pub.publish(msg_tau_actuators)
-
-        # qfrc passive
-        msg_qfrc_passive = JointState()
-        msg_qfrc_passive.header.stamp.sec = int(self.time)
-        msg_qfrc_passive.header.stamp.nanosec = int((self.time - clock_msg.clock.sec) * 1e9)
-        for key, value in self.q_joints.items():
-            msg_qfrc_passive.name.append(key)
-            msg_qfrc_passive.effort.append(value['qfrc_passive'])
-        self.qfrc_passive_pub.publish(msg_qfrc_passive)
 
         gyro = self.biped.get_sensor_data(name='gyro')
         accel = self.biped.get_sensor_data(name='accelerometer')
