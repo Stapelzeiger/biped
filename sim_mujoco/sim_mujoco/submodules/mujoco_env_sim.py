@@ -44,8 +44,7 @@ class Biped():
                 'desired_vel': 0.0,
                 'feedforward_torque': 0.0,
                 'qfrc_actuator': 0.0,
-                'total_tau': 0.0,
-                'qfrc_passive': 0.0
+                'total_tau': 0.0
             }
         self.previous_q_vel = np.zeros(self.get_nv())
 
@@ -153,15 +152,21 @@ class Biped():
         for key, value in self.q_joints.items():
             if key in joint_traj_dict.keys():
                 value['desired_pos'] = joint_traj_dict[key]['pos']
-
+        joints_to_exclude = ['L_SPRING_ROLL', 'L_SPRING_PITCH', 'R_SPRING_ROLL', 'R_SPRING_PITCH']
         for key, value in self.q_joints.items():
-            # if key != 'L_ANKLE' and key != 'R_ANKLE':
-            self.data.ctrl[self.q_actuator_addr[str(key)]] = value['desired_pos']
+            if key not in joints_to_exclude:
+                self.data.ctrl[self.q_actuator_addr[str(key)]] = value['desired_pos']
 
     def run_joint_controllers(self, joint_traj_dict: dict):
         '''Runs the joint controllers.'''
         if joint_traj_dict is None:
             return
+        kp_moteus = 240.0
+        Kp = (kp_moteus/(2*math.pi)) * np.ones(self.model.njnt - 1) # exclude root
+        joints_to_exclude = ['L_ANKLE', 'R_ANKLE', 'L_SPRING_ROLL', 'L_SPRING_PITCH', 'R_SPRING_ROLL', 'R_SPRING_PITCH']
+
+        i = 0
+
         for key, value in self.q_joints.items():
             id_joint_mj = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_JOINT, key)
             if key in joint_traj_dict.keys():
@@ -173,14 +178,8 @@ class Biped():
                         value['feedforward_torque'] = joint_traj_dict[key]['effort']
                     else:
                         value['feedforward_torque'] = 0.0
-        self.previous_q_vel = self.data.qvel.copy()
 
-        kp_moteus = 240.0
-        Kp = (kp_moteus/(2*math.pi)) * np.ones(self.model.njnt - 1) # exclude root
-
-        i = 0
-        for key, value in self.q_joints.items():
-            if key != 'L_ANKLE' and key != 'R_ANKLE':
+            if key not in joints_to_exclude:
                 # Q: why are we not using a PD controller
                 error = value['actual_pos'] - value['desired_pos']
                 actuators_torque = - Kp[i] * error
