@@ -60,7 +60,7 @@
     <body name="base_link" pos="0.0 0.0 1.0">
     <camera name="front" pos="1.210 -0.435 0.32" xyaxes="0.342 0.940 0.000 -0.321 0.117 0.940" mode="trackcom"/>
     <camera name="track" pos="0.805 -1.105 0.2" xyaxes="0.814 0.580 0.000 -0.140 0.196 0.971" mode="trackcom"/>
-      <inertial pos="-0.022 0 0.068" quat="1. 0. 0. 0." mass="3.272" diaginertia="0.018 0.030 0.026" />
+      <inertial pos="0.091 0 0.068" quat="1. 0. 0. 0." mass="3.272" diaginertia="0.018 0.030 0.026" />
       <geom name="base_link" type="mesh" contype="0" conaffinity="0" rgba="1 1 1 1" mesh="base_link_v2"/>
       <joint armature="0" damping="0" limited="false" name="root" pos="0 0 0" stiffness="0" type="free"/>
       <site name="imu_location" pos="0 0 0" euler="0 0 0" size="0.01" type="sphere" rgba="1 0 0 1"/>
@@ -72,11 +72,11 @@
         <geom name="L_HIP" type="mesh" contype="0" conaffinity="0" rgba="1 1 1 1" mesh="L_HIP"/>
 
         <body name="L_SPRING_ROLL" pos="0 0 0">
-          <geom name="L_SPRING_ROLL" type="cylinder" contype="2" rgba="1 1 1 1" size="0.01 0.01"/>
+          <geom name="L_SPRING_ROLL" type="cylinder" contype="0" conaffinity="0" rgba="1 1 1 1" size="0.01 0.01"/>
           <joint name="L_SPRING_ROLL" pos="0 0 0" axis="1 0 0"/>
 
           <body name="L_SPRING_PITCH" pos="0 0 0">
-            <geom name="L_SPRING_PITCH" type="cylinder" contype="2" rgba="1 1 1 1" size="0.01 0.01"/>
+            <geom name="L_SPRING_PITCH" type="cylinder" contype="0" conaffinity="0" rgba="1 1 1 1" size="0.01 0.01"/>
             <joint name="L_SPRING_PITCH" pos="0 0 0" axis="0 1 0"/>
 
             <body name="L_SHOULDER" pos="0.005 0 -0.086">
@@ -96,7 +96,7 @@
 
                   <body name="L_FOOT" pos="0.0019 -0.0173 -0.30326">
                     <inertial pos="-0.00185 -4.9998e-05 -0.0083528" quat="0.710914 0 0.703279 0" mass="0.03134" diaginertia="3.39896e-05 3.35525e-05 1.53506e-06"/>
-                    <joint name="L_ANKLE" pos="0 0 0" axis="0 1 0" limited="true" range="-0.7 0.7"/>
+                    <joint name="L_ANKLE" pos="0 0 0" axis="0 1 0" limited="true" range="-1.6 1.6"/>
                     <geom name="L_FOOT" friction="1. 0.3 0.3" size="0.015 0.05" pos="0 0 -0.01" quat="0.710914 0 0.703279 0"  type="capsule" rgba="0.8 0.8 0.8 1"/>
                     <site name="l_foot" quat="0.710914 0 0.703279 0"/>
 
@@ -108,18 +108,17 @@
         </body> <!--  L_SPRING_ROLL -->
       </body> <!--  L_HIP -->
 
-
       <body name="R_HIP" pos="0 -0.07 -0.005">
         <inertial pos="-0.0542 0 -0.072" mass="0.624" diaginertia="0.0018 0.001 0.001"/>
         <joint name="R_YAW" pos="0 0 0" axis="0 0 1" limited="true" range="-0.3 0.3"/>
         <geom name="R_HIP" type="mesh" contype="0" conaffinity="0" rgba="0.69804 0.69804 0.69804 1" mesh="R_HIP"/>
 
         <body name="R_SPRING_ROLL" pos="0 0 0">
-          <geom name="R_SPRING_ROLL" type="cylinder" contype="2" rgba="1 1 1 1" size="0.01 0.01"/>
+          <geom name="R_SPRING_ROLL" type="cylinder" contype="0" conaffinity="0" rgba="1 1 1 1" size="0.01 0.01"/>
           <joint name="R_SPRING_ROLL" pos="0 0 0" axis="1 0 0"/>
 
           <body name="R_SPRING_PITCH" pos="0 0 0">
-            <geom name="R_SPRING_PITCH" type="cylinder" contype="2" rgba="1 1 1 1" size="0.01 0.01"/>
+            <geom name="R_SPRING_PITCH" type="cylinder" contype="0" conaffinity="0" rgba="1 1 1 1" size="0.01 0.01"/>
             <joint name="R_SPRING_PITCH" pos="0 0 0" axis="0 1 0"/>
 
             <body name="R_SHOULDER" pos="0.005 0 -0.086">
@@ -139,7 +138,7 @@
 
                   <body name="R_FOOT" pos="0.0019 0.0173 -0.30326">
                     <inertial pos="-0.00185 4.9998e-05 -0.0083528" quat="0.710914 0 0.703279 0" mass="0.03134" diaginertia="3.39896e-05 3.35525e-05 1.53506e-06"/>
-                    <joint name="R_ANKLE" pos="0 0 0" axis="0 1 0" limited="true" range="-0.7 0.7"/>
+                    <joint name="R_ANKLE" pos="0 0 0" axis="0 1 0" limited="true" range="-1.6 1.6"/>
                     <geom name="R_FOOT" friction="1. 0.3 0.3" size="0.015 0.05" pos="0 0 -0.01" quat="0.710914 0 0.703279 0"  type="capsule" rgba="0.8 0.8 0.8 1"/>
                     <site name="r_foot" quat="0.710914 0 0.703279 0"/>
 
@@ -147,9 +146,9 @@
                 </body> <!--  R_LOWER_LEG -->
               </body> <!--  R_UPPER_LEG -->
             </body> <!--  R_SHOULDER -->
-          </body> <!--  R_HIP -->
         </body> <!--  R_SPRING_PITCH -->
       </body> <!--  R_SPRING_ROLL -->
+          </body> <!--  R_HIP -->
     </body> <!--  base_link -->
   </worldbody>
 
@@ -206,7 +205,6 @@
       <position name="R_HFE" joint="R_HFE" kp="38.1" kv="3.18"/>
       <position name="R_KFE" joint="R_KFE" kp="38.1" kv="0.95"/>
       <position name="R_ANKLE" joint="R_ANKLE" kp="0.1" kv="0.005"/>
-
     </actuator>
 
 </mujoco>
