@@ -13,7 +13,7 @@ launch:
       - name: time_init_traj
         value: 1.0
       - name: time_no_feet_in_contact
-        value: 0.2
+        value: 0.5
     remap:
       - from: /rl_controller/contact_foot_right
         to: /poll_R_FOOT/gpio

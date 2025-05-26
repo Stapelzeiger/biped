@@ -18,6 +18,8 @@ git clone https://github.com/stack-of-tasks/pinocchio.git --branch v3.6.0
 ln -s pinocchio path/to/your/ros2_ws/src/pinocchio
 ```
 
+Note: For faster build, you can disable tests, python bindings, and examples.
+
 # MuJoCo latest (tested on 3.3.0)
 ```
 pip3 --break-system-packages install mujoco
