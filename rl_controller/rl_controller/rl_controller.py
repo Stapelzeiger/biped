@@ -83,7 +83,7 @@ class JointTrajectoryPublisher(Node):
         actuator_mapping_PPO_file = epath.Path(POLICY_PATH) / latest_results_folder / 'policy_actuator_mapping.json'
         with open(actuator_mapping_PPO_file) as f:
             self.actuator_mapping_PPO = json.load(f)
-        self.actuator_mapping_PPO = self.actuator_mapping_PPO['joint_names_to_policy_idx']
+        self.actuator_mapping_PPO = self.actuator_mapping_PPO['actuated_joint_names_to_policy_idx_dict']
 
         # Load params of the PPO policy.
         network_config_file_path = epath.Path(POLICY_PATH) / latest_results_folder / 'ppo_network_config.json'
