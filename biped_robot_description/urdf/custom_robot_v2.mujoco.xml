@@ -40,7 +40,7 @@
     <geom name="floor" friction="1 .1 .1" condim="3" material="MatPlane" pos="0 0 0" rgba="0.8 0.9 0.8 1" size="40 40 0.01" type="plane"/>
 
     <body name="base_link" pos="0.0 0.0 1.0">
-      <inertial pos="-0.022 0 0.068" quat="1. 0. 0. 0." mass="3.272" diaginertia="0.018 0.030 0.026" />
+      <inertial pos="-0.1048 0 0.068" quat="1. 0. 0. 0." mass="3.272" diaginertia="0.018 0.030 0.026" />
       <geom name="base_link" type="mesh" contype="2" rgba="1 1 1 1" mesh="base_link"/>
       <joint armature="0" damping="0" limited="false" name="root" pos="0 0 0" stiffness="0" type="free"/>
       <site name="imu_location" pos="0 0 0" euler="-3.141592 0 0" size="0.01" type="sphere" rgba="1 0 0 1"/>
