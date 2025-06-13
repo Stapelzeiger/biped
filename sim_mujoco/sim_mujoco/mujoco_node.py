@@ -77,13 +77,13 @@ class MujocoNode(Node):
 
         self.stop_pub = self.create_publisher(Bool, '~/stop', 10)
 
-        self.joint_states_pub = self.create_publisher(JointState, 'joint_states', 10)
+        self.joint_states_pub = self.create_publisher(JointState, '~/joint_states', 10)
         self.imu_pub = self.create_publisher(Imu, '~/imu', 10)
         self.fake_vicon_pub = self.create_publisher(PoseStamped, '~/fake_vicon', 10)
         self.tf_broadcaster = TransformBroadcaster(self)
 
         # Subscribers.
-        self.joint_traj_sub = self.create_subscription(JointTrajectory, 'joint_trajectory', self.joint_traj_cb, 10)
+        self.joint_traj_sub = self.create_subscription(JointTrajectory, '~/joint_trajectory', self.joint_traj_cb, 10)
         self.joint_traj_msg = None
 
         self.initial_pose_sub = self.create_subscription(PoseWithCovarianceStamped, 'initialpose', self.init_cb, 10)

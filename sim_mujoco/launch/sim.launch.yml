@@ -28,6 +28,10 @@ launch:
         to: /imu
       - from: /mujoco_sim/gravity
         to: /gravity
+      - from: /mujoco_sim/joint_trajectory
+        to: /joint_trajectory
+      - from: /mujoco_sim/joint_states
+        to: /joint_states
     output: screen
     # print GDB backtrace:
     # launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args
