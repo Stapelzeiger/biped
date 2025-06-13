@@ -5,7 +5,7 @@ from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 import numpy as np
 from rclpy.qos import QoSProfile, QoSDurabilityPolicy, QoSHistoryPolicy
 from biped_bringup.msg import StampedBool
-
+from geometry_msgs.msg import TwistStamped
 from brax.training.agents.ppo import checkpoint as ppo_checkpoint
 import jax
 from jax import numpy as jp
@@ -182,6 +182,15 @@ class JointTrajectoryPublisher(Node):
             self.odom_cb,
             1)
 
+        self.vel_cmd_x = 0.0
+        self.vel_cmd_y = 0.0
+        self.vel_cmd_sub = None
+        self.vel_cmd_sub = self.create_subscription(
+            TwistStamped,
+            '~/vel_cmd',
+            self.vel_cmd_cb,
+            1)
+
         gait_freq = 1.5
         phase_dt = 2 * np.pi * self.dt_ctrl * gait_freq
         phase = np.array([0, np.pi])
@@ -226,6 +235,10 @@ class JointTrajectoryPublisher(Node):
 
     def foot_right_contact_callback(self, msg: StampedBool):
         self.foot_right_contact = msg.data
+
+    def vel_cmd_cb(self, msg: TwistStamped):
+        self.vel_cmd_x = msg.twist.linear.x
+        self.vel_cmd_y = msg.twist.linear.y
 
     def urdf_callback(self, msg: String):
         """Extracts all joint names along with their min and max limits from the URDF."""
@@ -329,7 +342,7 @@ class JointTrajectoryPublisher(Node):
         phase = np.concatenate([cos, sin])
 
         # Command.
-        command = np.array([0.0, 0.0, 0.0])
+        command = np.array([self.vel_cmd_x, self.vel_cmd_y, 0.0])
 
         # Input to the PPO policy.
         current_state = np.hstack([

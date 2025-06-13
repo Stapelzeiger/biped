@@ -27,6 +27,8 @@ launch:
         to: /joint_trajectory
       - from: /rl_controller/odometry
         to: /odometry
+      - from: /rl_controller/vel_cmd
+        to: /vel_cmd
     output: screen
     # print GDB backtrace:
     # launch-prefix: gdb -batch --return-child-result -ex run -ex backtrace --args
