@@ -17,7 +17,7 @@ launch:
     default: "$(find-pkg-share biped_robot_description)/urdf/biped_RL.xml"
 
 - include:
-    file: "$(find-pkg-share biped_robot_description)/launch/launch_RL.yaml"
+    file: "$(find-pkg-share biped_robot_description)/launch/launch.yaml"
     arg:
       - name: "use_sim_time"
         value: $(var use_sim_time)
