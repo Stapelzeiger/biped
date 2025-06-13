@@ -25,6 +25,8 @@ from nav_msgs.msg import Odometry
 from rcl_interfaces.srv import SetParameters
 from rclpy.parameter import Parameter
 
+import shutil
+
 # Check JAX devices and set the CPU.
 jax.config.update('jax_platform_name', 'cpu')
 os.environ['JAX_PLATFORM_NAME'] = 'cpu'
@@ -75,6 +77,8 @@ class JointTrajectoryPublisher(Node):
                     content = content.replace('cuda:0', 'TFRT_CPU_0')
                     with open(os.path.join(path, shard), 'w') as f:
                         f.write(content)
+        # Copy the file ppo_network_config.json one back from the path
+        shutil.copy(os.path.join(path, 'ppo_network_config.json'), os.path.join(path, '..', 'ppo_network_config.json')) # Required for the ppo_checkpoint.load_policy
         self.policy_fn = ppo_checkpoint.load_policy(path)
         self.jit_policy = jax.jit(self.policy_fn)
         self.rng = jax.random.PRNGKey(1)
@@ -86,7 +90,7 @@ class JointTrajectoryPublisher(Node):
         self.actuator_mapping_PPO = self.actuator_mapping_PPO['actuated_joint_names_to_policy_idx_dict']
 
         # Load params of the PPO policy.
-        network_config_file_path = epath.Path(POLICY_PATH) / latest_results_folder / 'ppo_network_config.json'
+        network_config_file_path = epath.Path(POLICY_PATH) / latest_results_folder / latest_weights_folder / 'ppo_network_config.json'
         with open(network_config_file_path) as f:
             self.network_config = json.load(f)
         self.get_logger().info(f'Network config: {self.network_config}')
