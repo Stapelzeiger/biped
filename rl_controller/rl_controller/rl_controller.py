@@ -379,6 +379,8 @@ class JointTrajectoryPublisher(Node):
         motor_targets_ppo = {}
         for joint_name, idx in self.actuator_mapping_PPO.items():
             if idx is not None:  # Skip None values (like for ANKLE joints)
+                if joint_name == 'L_YAW' or joint_name == 'R_YAW':
+                    action_ppo_np[idx] = 0.0
                 motor_targets[joint_name] += action_ppo_np[idx]
                 motor_targets_ppo[joint_name] = action_ppo_np[idx]
         self.publish_joints(motor_targets)
