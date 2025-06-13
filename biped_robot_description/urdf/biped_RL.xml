@@ -1,6 +1,8 @@
 <mujoco model="biped">
-  <compiler angle="radian" meshdir="../meshes_v2/" autolimits="true"/>
-  <option integrator="RK4"/>
+  <compiler angle="radian" meshdir="../meshes" autolimits="true"/>
+  <option iterations="3" ls_iterations="5" integrator="Euler">
+    <flag eulerdamp="disable"/>
+  </option>
   <default/>
 
   <visual>
@@ -48,7 +50,7 @@
     <framexaxis objtype="site" objname="r_foot" name="r_foot_upvector"/>
     <framepos objtype="site" objname="l_foot" name="l_foot_pos"/>
     <framepos objtype="site" objname="r_foot" name="r_foot_pos"/>
-
+    
   </sensor>
   <equality>
 		<weld body1="base_link" solimp="1.0 1.0 1.0" solref="0.06 1"></weld>
@@ -57,10 +59,11 @@
   <worldbody>
     <geom name="floor" size="0 0 0.01" type="plane" material="groundplane" contype="1" conaffinity="0" priority="1" friction="0.6" condim="3"/>
 
+    <camera name="track" pos="1.805 -2.105 1.0" xyaxes="0.814 0.580 0.000 -0.140 0.196 0.971"/>
+
     <body name="base_link" pos="0.0 0.0 1.0">
     <camera name="front" pos="1.210 -0.435 0.32" xyaxes="0.342 0.940 0.000 -0.321 0.117 0.940" mode="trackcom"/>
-    <camera name="track" pos="0.805 -1.105 0.2" xyaxes="0.814 0.580 0.000 -0.140 0.196 0.971" mode="trackcom"/>
-      <inertial pos="-0.022 0 0.068" quat="1. 0. 0. 0." mass="3.272" diaginertia="0.018 0.030 0.026" />
+      <inertial pos="-0.1048 0 0.068" quat="1. 0. 0. 0." mass="3.272" diaginertia="0.018 0.030 0.026" />
       <geom name="base_link" type="mesh" contype="0" conaffinity="0" rgba="1 1 1 1" mesh="base_link_v2"/>
       <joint armature="0" damping="0" limited="false" name="root" pos="0 0 0" stiffness="0" type="free"/>
       <site name="imu_location" pos="0 0 0" euler="0 0 0" size="0.01" type="sphere" rgba="1 0 0 1"/>
@@ -80,15 +83,15 @@
             <inertial pos="3.4626e-05 0.058 -0.054" mass="0.88" diaginertia="0.008 0.008 0.001"/>
             <joint name="L_HFE" pos="0 0 0" axis="0 1 0" limited="true" range="-1.5 1.5"/>
             <geom name="L_UPPER_LEG" type="mesh" contype="0" conaffinity="0"  rgba="1 0 0 1" mesh="L_UPPER_LEG"/>
-            
+
             <body name="L_LOWER_LEG" pos="0 0.0589 -0.23405">
               <inertial pos="-1.356e-05 -0.017 -0.15" mass="0.118" diaginertia="0.001 0.001 1e-05"/>
               <joint name="L_KFE" pos="0 0 0" axis="0 1 0" limited="true" range="-2.2 2.2"/>
               <geom name="L_LOWER_LEG" type="mesh" contype="0" conaffinity="0" rgba="0.792157 0.819608 0.933333 1" mesh="L_LOWER_LEG"/>
-              
+
               <body name="L_FOOT" pos="0.0019 -0.0173 -0.30326">
                 <inertial pos="-0.00185 -4.9998e-05 -0.0083528" quat="0.710914 0 0.703279 0" mass="0.03134" diaginertia="3.39896e-05 3.35525e-05 1.53506e-06"/>
-                <joint name="L_ANKLE" pos="0 0 0" axis="0 1 0" limited="true" range="-0.7 0.7"/>
+                <joint name="L_ANKLE" pos="0 0 0" axis="0 1 0" limited="true" range="-1.6 1.6"/>
                 <geom name="L_FOOT" friction="1. 0.3 0.3" size="0.015 0.05" pos="0 0 -0.01" quat="0.710914 0 0.703279 0"  type="capsule" rgba="0.8 0.8 0.8 1"/>
                 <site name="l_foot" quat="0.710914 0 0.703279 0"/>
 
@@ -98,30 +101,29 @@
         </body> <!--  L_SHOULDER -->
       </body> <!--  L_HIP -->
 
-
       <body name="R_HIP" pos="0 -0.07 -0.005">
         <inertial pos="-0.0542 0 -0.072" mass="0.624" diaginertia="0.0018 0.001 0.001"/>
         <joint name="R_YAW" pos="0 0 0" axis="0 0 1" limited="true" range="-0.3 0.3"/>
         <geom name="R_HIP" type="mesh" contype="0" conaffinity="0" rgba="0.69804 0.69804 0.69804 1" mesh="R_HIP"/>
-        
+
         <body name="R_SHOULDER" pos="0.005 0 -0.086">
           <inertial pos="-0.0020134 0.022813 -0.00077458" quat="0.5 0.5 0.5 0.5" mass="0.524" diaginertia="0.00068 0.00048 0.0003"/>
           <joint name="R_HAA" pos="0 0 0" axis="1 0 0" limited="true" range="-0.25 0.25"/>
           <geom name="R_SHOULDER" type="mesh" contype="0" conaffinity="0" rgba="1 0 0 1" mesh="R_SHOULDER"/>
-          
+
           <body name="R_UPPER_LEG" pos="0 0 0">
             <inertial pos="0 -0.058 -0.054" quat="1. 0. 0. 0." mass="0.88" diaginertia="0.008 0.008 0.001"/>
             <joint name="R_HFE" pos="0 0 0" axis="0 1 0" limited="true" range="-1.5 1.5"/>
             <geom name="R_UPPER_LEG" type="mesh" contype="0" conaffinity="0" rgba="1 0 0 1" mesh="R_UPPER_LEG"/>
-            
+
             <body name="R_LOWER_LEG" pos="0 -0.0584 -0.23405">
               <inertial pos="0 0.017 -0.15" quat="1. 0. 0. 0." mass="0.118" diaginertia="0.001 0.001 1e-05"/>
               <joint name="R_KFE" pos="0 0 0" axis="0 1 0" limited="true" range="-2.2 2.2"/>
               <geom name="R_LOWER_LEG" type="mesh" contype="0" conaffinity="0" rgba="0.792157 0.819608 0.933333 1" mesh="R_LOWER_LEG"/>
-              
+
               <body name="R_FOOT" pos="0.0019 0.0173 -0.30326">
                 <inertial pos="-0.00185 4.9998e-05 -0.0083528" quat="0.710914 0 0.703279 0" mass="0.03134" diaginertia="3.39896e-05 3.35525e-05 1.53506e-06"/>
-                <joint name="R_ANKLE" pos="0 0 0" axis="0 1 0" limited="true" range="-0.7 0.7"/>
+                <joint name="R_ANKLE" pos="0 0 0" axis="0 1 0" limited="true" range="-1.6 1.6"/>
                 <geom name="R_FOOT" friction="1. 0.3 0.3" size="0.015 0.05" pos="0 0 -0.01" quat="0.710914 0 0.703279 0"  type="capsule" rgba="0.8 0.8 0.8 1"/>
                 <site name="r_foot" quat="0.710914 0 0.703279 0"/>
 
@@ -130,55 +132,37 @@
           </body> <!--  R_UPPER_LEG -->
         </body> <!--  R_SHOULDER -->
       </body> <!--  R_HIP -->
-
     </body> <!--  base_link -->
+
   </worldbody>
-
-      <!-- <actuator>
-
-        <motor gear="1"  joint="L_YAW" name="L_YAW"/>
-            <velocity gear="1" joint="L_YAW" name="L_YAW_VEL" kv="0.5" />
-
-        <motor gear="1"  joint="L_HAA" name="L_HAA"/>
-            <velocity gear="1" joint="L_HAA" name="L_HAA_VEL" kv="3.18" />
-
-        <motor gear="1"  joint="L_HFE" name="L_HFE"/>
-            <velocity gear="1" joint="L_HFE" name="L_HFE_VEL" kv="3.18" />
-
-        <motor gear="1"  joint="L_KFE" name="L_KFE"/>
-            <velocity gear="1" joint="L_KFE" name="L_KFE_VEL" kv="0.95" />
-
-        <motor gear="1"  joint="L_ANKLE" name="L_ANKLE"/>
-            <velocity gear="1" joint="L_ANKLE" name="L_ANKLE_VEL" kv="0.005" />
-
-        <motor gear="1"  joint="R_YAW" name="R_YAW"/>
-            <velocity gear="1" joint="R_YAW" name="R_YAW_VEL" kv="0.5" />
-
-        <motor gear="1"  joint="R_HAA" name="R_HAA"/>
-            <velocity gear="1" joint="R_HAA" name="R_HAA_VEL" kv="3.18" />
-
-        <motor gear="1"  joint="R_HFE" name="R_HFE"/>
-            <velocity gear="1" joint="R_HFE" name="R_HFE_VEL" kv="3.18" />
-
-        <motor gear="1"  joint="R_KFE" name="R_KFE"/>
-            <velocity gear="1" joint="R_KFE" name="R_KFE_VEL" kv="0.95" />
-
-        <motor gear="1"  joint="R_ANKLE" name="R_ANKLE"/>
-            <velocity gear="1" joint="R_ANKLE" name="R_ANKLE_VEL" kv="0.005" />
-    </actuator> -->
 
     <actuator>
       <position name="L_YAW" joint="L_YAW" kp="38.1" kv="0.5"/>
+
       <position name="L_HAA" joint="L_HAA" kp="38.1" kv="3.18"/>
       <position name="L_HFE" joint="L_HFE" kp="38.1" kv="3.18"/>
       <position name="L_KFE" joint="L_KFE" kp="38.1" kv="0.95"/>
       <position name="L_ANKLE" joint="L_ANKLE" kp="0.1" kv="0.005"/>
 
       <position name="R_YAW" joint="R_YAW" kp="38.1" kv="0.5"/>
+
       <position name="R_HAA" joint="R_HAA" kp="38.1" kv="3.18"/>
       <position name="R_HFE" joint="R_HFE" kp="38.1" kv="3.18"/>
       <position name="R_KFE" joint="R_KFE" kp="38.1" kv="0.95"/>
       <position name="R_ANKLE" joint="R_ANKLE" kp="0.1" kv="0.005"/>
+
     </actuator>
+
+    <keyframe>
+      <key name="home"
+          qpos="
+        0 0 0.7
+        1 0 0 0
+        0.0 0.0 -0.65 0.983 -0.35
+        0.0 -0.0 -0.65 0.983 -0.35"
+          ctrl="
+        0.0 0.0 -0.65 0.983 -0.35
+        0.0 0.0 -0.65 0.983 -0.35"/>
+  </keyframe>
 
 </mujoco>
