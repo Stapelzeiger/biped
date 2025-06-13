@@ -23,6 +23,8 @@ launch:
         to: /imu
       - from: /rl_controller/joint_states
         to: /joint_states
+      - from: /rl_controller/joint_trajectory
+        to: /joint_trajectory
       - from: /rl_controller/odometry
         to: /odometry
     output: screen

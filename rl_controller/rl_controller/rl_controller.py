@@ -196,7 +196,8 @@ class JointTrajectoryPublisher(Node):
         self.start_q_joints = self.default_q_joints.copy()
         self.timeout_for_no_feet_in_contact = 0.0
 
-        self.publisher_joints = self.create_publisher(JointTrajectory, 'joint_trajectory', 10)
+        # TODO: put _compensated in the name of the topic for hardware.
+        self.publisher_joints = self.create_publisher(JointTrajectory, '~/joint_trajectory', 10)
         self.publisher_joints_ppo = self.create_publisher(JointTrajectory, '~/joint_trajectory_ppo', 10)
         self.timer = self.create_timer(self.dt_ctrl, self.step_controller)
 
