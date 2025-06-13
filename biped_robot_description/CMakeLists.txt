@@ -4,7 +4,7 @@ project(biped_robot_description)
 find_package(ament_cmake REQUIRED)
 
 install(
-  DIRECTORY config launch meshes_v2 urdf
+  DIRECTORY config launch meshes urdf
   DESTINATION share/${PROJECT_NAME}
 )
 
