@@ -100,7 +100,7 @@ class JointTrajectoryPublisher(Node):
             'state': jp.zeros(self.network_config['observation_size']['state'])
         }
 
-        # Initialize state history
+        # Initialize state history.
         self.state_history = None
         self.state_size = self.network_config['observation_size']['state'][0]
 
