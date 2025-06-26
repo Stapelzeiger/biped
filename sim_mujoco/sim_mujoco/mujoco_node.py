@@ -54,15 +54,10 @@ class MujocoNode(Node):
         self.accel_bias = np.random.normal(0, self.accel_bias_random_walk * np.sqrt(100), 3)
         self.gyro_bias = np.random.normal(0, self.gyro_bias_random_walk * np.sqrt(100), 3)
 
-        self.name_joints = self.biped.get_joint_names()
         self.q_joints = self.biped.get_q_joints_dict()
 
-        self.name_actuators = self.biped.get_name_actuators()
-        self.q_actuator_addr = self.biped.get_q_actuator_addr()
-        self.q_pos_addr_joints = self.biped.get_q_pos_addr_joints()
-
         self.counter = 0
-        self.init(p=[0.0, 0.0, 0.0])
+        self.init(q=[0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0])
 
         # Publishers.
         self.clock_pub = self.create_publisher(Clock, '/clock', 10)
