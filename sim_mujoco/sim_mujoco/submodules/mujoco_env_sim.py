@@ -47,6 +47,11 @@ class Biped():
 
         self.time_ = 0.0
 
+        # Set q_actuator_addr and q_pos_addr_joints.
+        self.set_name_actuators()
+        self.set_q_actuator_addr()
+        self.set_q_pos_addr_joints()
+
         # Visualize.
         self.visualize_mujoco = visualize_mujoco
         if self.visualize_mujoco is True:
@@ -253,21 +258,19 @@ class Biped():
                 self.model, mj.mjtObj.mjOBJ_JOINT, i))
         return self.name_joints
 
-    def get_name_actuators(self):
+    def set_name_actuators(self):
         '''Returns the names of the actuators.'''
         self.name_actuators = []
         for i in range(0, self.model.nu):  # skip root
             self.name_actuators.append(mj.mj_id2name(self.model, mj.mjtObj.mjOBJ_ACTUATOR, i))
-        return self.name_actuators
     
-    def get_q_actuator_addr(self):
+    def set_q_actuator_addr(self):
         ''' Returns the address of the actuators.'''
         self.q_actuator_addr = {}
         for name in self.name_actuators:
             self.q_actuator_addr[name] = mj.mj_name2id(self.model, mj.mjtObj.mjOBJ_ACTUATOR, name)
-        return self.q_actuator_addr
-    
-    def get_q_pos_addr_joints(self):
+
+    def set_q_pos_addr_joints(self):
         ''' Returns the address of the position of the joints.'''
         self.q_pos_addr_joints = {}
         for name in self.name_joints:
