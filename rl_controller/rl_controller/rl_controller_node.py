@@ -16,6 +16,8 @@ import threading
 
 from scipy.spatial.transform import Rotation as R
 
+from rl_controller.rl_controller import RL_Controller
+
 import xml.etree.ElementTree as ET
 from std_msgs.msg import String
 from sensor_msgs.msg import Imu
@@ -68,20 +70,8 @@ class JointTrajectoryPublisher(Node):
         path = epath.Path(POLICY_PATH) / latest_results_folder / latest_weights_folder
         self.get_logger().info(f'    Loading policy from: {path}')
 
-        # Go through the sharding and replace the CUDA with CPU.
-        for shard in os.listdir(path):
-            if shard.endswith('sharding'):
-                with open(os.path.join(path, shard), 'r') as f:
-                    content = f.read()
-                    print(content)
-                    content = content.replace('cuda:0', 'TFRT_CPU_0')
-                    with open(os.path.join(path, shard), 'w') as f:
-                        f.write(content)
-        # Copy the file ppo_network_config.json one back from the path
-        shutil.copy(os.path.join(path, 'ppo_network_config.json'), os.path.join(path, '..', 'ppo_network_config.json')) # Required for the ppo_checkpoint.load_policy
-        self.policy_fn = ppo_checkpoint.load_policy(path)
-        self.jit_policy = jax.jit(self.policy_fn)
-        self.rng = jax.random.PRNGKey(1)
+        # Initialize the RL controller.
+        self.rl_controller = RL_Controller(path)
 
         # Actuator mapping.
         actuator_mapping_PPO_file = epath.Path(POLICY_PATH) / latest_results_folder / 'policy_actuator_mapping.json'
@@ -102,7 +92,6 @@ class JointTrajectoryPublisher(Node):
 
         # Initialize state history.
         self.state_history = None
-        self.state_size = self.network_config['observation_size']['state'][0]
 
         # Config default joint angles.
         default_joint_angles_file = epath.Path(POLICY_PATH) / latest_results_folder / 'initial_qpos.json'
@@ -111,6 +100,7 @@ class JointTrajectoryPublisher(Node):
             # Remove root joint.
             self.default_q_joints = {k: v for k, v in self.default_q_joints.items() if k != 'root'}
         self.get_logger().info(f'Default joint angles: {self.default_q_joints}')
+
         # Configs for the controller.
         configs_training = epath.Path(POLICY_PATH) / latest_results_folder / 'config.json'
         with open(configs_training) as f:
@@ -374,9 +364,8 @@ class JointTrajectoryPublisher(Node):
             'state': jp.array(self.state_history.ravel())
         }
 
-        act_rng, self.rng = jax.random.split(self.rng)
-        action_ppo, _ = self.jit_policy(self.obs, act_rng)
-        action_ppo_np = np.array(action_ppo)
+        # Run the PPO controller.
+        action_ppo_np = self.rl_controller.run(self.obs)
 
         # Map the action to the joint names.
         motor_targets = self.default_q_joints.copy()
@@ -391,7 +380,6 @@ class JointTrajectoryPublisher(Node):
         self.publish_ppo_residual_joints(motor_targets_ppo)
 
         self.last_action = action_ppo_np.copy()
-
 
     def step_controller(self):
         time_now = self.get_clock().now().nanoseconds / 1e9
