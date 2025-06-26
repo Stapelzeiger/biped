@@ -1,5 +1,5 @@
 <mujoco model="biped">
-  <compiler angle="radian" meshdir="../meshes_no_yaw/" autolimits="true"/>
+  <compiler angle="radian" meshdir="../meshes_no_yaw" autolimits="true"/>
   <option iterations="3" ls_iterations="5" integrator="Euler">
     <flag eulerdamp="disable"/>
   </option>
@@ -47,9 +47,9 @@
     <framepos objtype="site" objname="r_foot" name="r_foot_pos"/>
     
   </sensor>
-  <!-- <equality>
+  <equality>
 		<weld body1="base_link" solimp="1.0 1.0 1.0" solref="0.06 1"></weld>
-	</equality> -->
+	</equality>
 
   <worldbody>
   <geom name="floor" size="0 0 0.01" type="plane" material="groundplane" contype="1" conaffinity="0" priority="1" friction="0.6" condim="3"/>
