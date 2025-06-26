@@ -15,19 +15,19 @@ launch:
       - name: time_no_feet_in_contact
         value: 0.5
     remap:
-      - from: /rl_controller/contact_foot_right
+      - from: /rl_controller_node/contact_foot_right
         to: /poll_R_FOOT/gpio
-      - from: /rl_controller/contact_foot_left
+      - from: /rl_controller_node/contact_foot_left
         to: /poll_L_FOOT/gpio
-      - from: /rl_controller/imu
+      - from: /rl_controller_node/imu
         to: /imu
-      - from: /rl_controller/joint_states
+      - from: /rl_controller_node/joint_states
         to: /joint_states
-      - from: /rl_controller/joint_trajectory
+      - from: /rl_controller_node/joint_trajectory
         to: /joint_trajectory
-      - from: /rl_controller/odometry
+      - from: /rl_controller_node/odometry
         to: /odometry
-      - from: /rl_controller/vel_cmd
+      - from: /rl_controller_node/vel_cmd
         to: /vel_cmd
     output: screen
     # print GDB backtrace:
