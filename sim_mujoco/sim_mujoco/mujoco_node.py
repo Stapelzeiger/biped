@@ -57,7 +57,7 @@ class MujocoNode(Node):
         self.q_joints = self.biped.get_q_joints_dict()
 
         self.counter = 0
-        self.init(q=[0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0])
+        self.init(p=[0.0, 0.0, 0.0], q=[1.0, 0.0, 0.0, 0.0])
 
         # Publishers.
         self.clock_pub = self.create_publisher(Clock, '/clock', 10)
@@ -111,10 +111,13 @@ class MujocoNode(Node):
         with self.lock:
             p = msg.pose.pose.position
             q = msg.pose.pose.orientation
-            self.init([p.x, p.y, p.z], q=[q.w, q.x, q.y, q.z])
+            self.init(p=[p.x, p.y, p.z], q=[q.w, q.x, q.y, q.z])
 
     def init(self, p: list, q: list=[1.0, 0.0, 0.0, 0.0]):
-        self.biped.init(p, q)
+        # Concatenate p and q
+        pos_quat = np.concatenate([p, q])
+        self.get_logger().info(f"initializing with {pos_quat}")
+        self.biped.init(pos_quat)
         self.get_logger().info("initialize")
         self.initialization_done = False
         self.initialization_timeout = 0.2
