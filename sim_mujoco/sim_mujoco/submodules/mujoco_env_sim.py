@@ -5,10 +5,6 @@ import math
 import numpy as np
 from collections import deque
 
-import os
-from etils import epath
-import sys
-
 class Biped():
     def __init__(self,
                  xml: str,
@@ -56,24 +52,27 @@ class Biped():
         if self.visualize_mujoco is True:
             self.viewer = mujoco.viewer.launch_passive(self.model, self.data)
 
-    def init(self,p: list, q: list = [1.0, 0.0, 0.0, 0.0]):
+    def init(self, q: list):
         '''Initializes the robot at a given position, orientation and vel.'''
-        self.model.eq_data[0][0] = p[0]
-        self.model.eq_data[0][1] = p[1]
-        self.model.eq_data[0][2] = 1.0 # one meter above gnd
+        self.model.eq_data[0][0] = q[0]
+        self.model.eq_data[0][1] = q[1]
+        self.model.eq_data[0][2] = 1.0 # One meter above gnd
 
         self.data.qpos = [0.0] * self.model.nq
-        self.data.qpos[3] = q[0]
-        self.data.qpos[4] = q[1]
-        self.data.qpos[5] = q[2]
-        self.data.qpos[6] = q[3]
+        self.data.qpos[3] = q[3]
+        self.data.qpos[4] = q[4]
+        self.data.qpos[5] = q[5]
+        self.data.qpos[6] = q[6]
+        if len(q) > 7:
+            print("q has more than 7 elements")
+            self.model.qpos0[7:] = q[7:]
+            self.data.qpos[7:] = q[7:]
 
-        self.zero_the_velocities()
-
-        self.data.qpos[0] = p[0]
-        self.data.qpos[1] = p[1]
+        self.data.qpos[0] = q[0]
+        self.data.qpos[1] = q[1]
         self.data.qpos[2] = self.model.eq_data[0][2]
 
+        self.zero_the_velocities()
         self.data.eq_active[0] = 1
         mj.mj_step(self.model, self.data)
 
@@ -278,3 +277,52 @@ class Biped():
     def get_base_link_addr(self):
         ''' Returns the address of the base link.'''
         return self.data.body("base_link").id
+
+def main():
+    import sys
+    sys.path.append("../../../rl_controller/rl_controller")
+
+    biped = Biped(xml="../../../biped_robot_description/urdf/biped_RL_no_yaw.mujoco.xml",
+                  use_RL=True,
+                  visualize_mujoco=True)
+
+    q_init = np.array(biped.model.keyframe("home").qpos)
+    print(q_init)
+    biped.init(q=q_init)
+
+    # Lower the robot until contact is detected.
+    contact_detected = False
+    step_count = 0
+    max_steps = 10000  # Safety limit.
+
+    print("Lowering robot until contact is detected...")
+
+    while not contact_detected and step_count < max_steps:
+        # Step the simulation.
+        biped.step(joint_traj_dict=None)
+
+        # Check for contact.
+        contact_states = biped.read_contact_states()
+        if contact_states['L_FOOT'] or contact_states['R_FOOT']:
+            contact_detected = True
+            print(f"Contact detected at step {step_count}!")
+            print(f"Left foot contact: {contact_states['L_FOOT']}")
+            print(f"Right foot contact: {contact_states['R_FOOT']}")
+        else:
+            # Lower the robot.
+            biped.lower_robot(step=0.001)  # Lower by 0.5mm per step
+
+        step_count += 1
+
+        # Print progress every 1000 steps.
+        if step_count % 1000 == 0:
+            print(f"Step {step_count}: Still lowering...")
+
+    if not contact_detected:
+        print("Warning: No contact detected within maximum steps!")
+    else:
+        print(f"Robot successfully lowered to contact in {step_count} steps")
+
+
+if __name__ == "__main__":
+    main()
