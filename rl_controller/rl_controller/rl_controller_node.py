@@ -205,7 +205,7 @@ class JointTrajectoryPublisher(Node):
         self.timer = self.create_timer(self.dt_ctrl, self.step_controller)
 
 
-    def update_moteus_parameter(self, name_param, value):
+    def update_moteus_parameter(self, name_param: str, value: float):
         req = SetParameters.Request()
         req.parameters = [Parameter(name=name_param, value=value).to_parameter_msg()]
         self.moteus_param_requests.append(self.moteus_set_param.call_async(req))
