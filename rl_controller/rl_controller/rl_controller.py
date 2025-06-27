@@ -109,9 +109,9 @@ def main():
     # Lower the robot until contact is detected.
     step_count = 0
     max_steps = 10000  # Safety limit.
-    
+
     state_history = None
-    
+
     gait_freq = 1.5
     phase_dt = 2 * np.pi * dt_ctrl * gait_freq
     phase = np.array([0, np.pi])
@@ -122,7 +122,7 @@ def main():
     }
 
     last_action = np.zeros(action_size)
-    
+
     motor_targets = {}
     for joint_name, idx in actuator_mapping_PPO.items():
         if idx is not None:  # Skip None values (like for ANKLE joints)
@@ -139,12 +139,9 @@ def main():
     N_CTRL = int(DT_CTRL / DT_SIM)
 
     while step_count < max_steps:
-        
-        # Set the joint states.
-        biped.set_joint_state()
 
         # Run the PPO controller.
-        if counter_for_ctrl % N_CTRL == 0:
+        if counter_for_ctrl % int(N_CTRL / 2) == 0:
 
             # Get the state.
             q_w = biped.data.qpos[3]
@@ -174,7 +171,7 @@ def main():
                 else:
                     joints_pos.append(0)
                     joints_vel.append(0)
-                
+
             # Phase.
             phase_tp1 = info["phase"] + info["phase_dt"]
             info["phase"] = np.fmod(phase_tp1 + np.pi, 2 * np.pi) - np.pi
@@ -231,7 +228,8 @@ def main():
         
         counter_for_ctrl += 1
 
-        biped.step(joint_traj_dict=motor_targets)
+        for i in range(2):
+            biped.step(joint_traj_dict=motor_targets)
         step_count += 1
 
 if __name__ == "__main__":
