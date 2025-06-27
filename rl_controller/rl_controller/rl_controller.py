@@ -11,7 +11,7 @@ import jax.numpy as jp
 from scipy.spatial.transform import Rotation as R
 
 class RL_Controller:
-    def __init__(self, path):
+    def __init__(self, path: str):
         self.path = path
 
         # Go through the sharding and replace the CUDA with CPU.
