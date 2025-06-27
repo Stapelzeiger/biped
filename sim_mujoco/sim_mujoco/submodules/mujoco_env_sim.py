@@ -38,6 +38,8 @@ class Biped():
                 'actual_effort': 0.0,
                 'desired_pos': 0.0,
                 'desired_vel': 0.0,
+                'max_pos': 0.0,
+                'min_pos': 0.0,
                 'feedforward_torque': 0.0,
                 'qfrc_actuator': 0.0,
                 'total_tau': 0.0,
@@ -149,6 +151,8 @@ class Biped():
             actual_acc = (self.data.qvel[self.model.jnt_dofadr[id_joint_mj]] - self.previous_q_vel[self.model.jnt_dofadr[id_joint_mj]])/self.dt_sim
             value['actual_acc'] = actual_acc
             value['actual_effort'] = self.data.qfrc_actuator[self.model.jnt_dofadr[id_joint_mj]] + self.data.qfrc_applied[self.model.jnt_dofadr[id_joint_mj]]
+            value['min_pos'] = self.model.jnt_range[id_joint_mj][0]
+            value['max_pos'] = self.model.jnt_range[id_joint_mj][1]
 
     def run_joint_controllers_RL(self, joint_traj_dict: dict):
         ''' Runs the joint controllers using RL.'''
