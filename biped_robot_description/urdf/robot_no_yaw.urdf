@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <robot
-    name="biped">
+      name="biped">
 
   <mujoco>
         <compiler 
@@ -35,17 +35,17 @@
     name="base_link">
     <inertial>
       <origin
-        xyz="-0.05098 -0.00073407 0.018957"
+        xyz="-0.025692 -0.003004 0.025162"
         rpy="0 0 0" />
       <mass
-        value="3.3034" />
+        value="4.8" />
       <inertia
-        ixx="0.010838"
-        ixy="7.6921E-06"
-        ixz="2.5146E-06"
-        iyy="0.0046213"
-        iyz="7.6178E-06"
-        izz="0.011175" />
+        ixx="0.056665"
+        ixy="0"
+        ixz="0"
+        iyy="0.046196"
+        iyz="0"
+        izz="0.042241" />
     </inertial>
     <visual>
       <origin
@@ -58,7 +58,7 @@
       <material
         name="">
         <color
-          rgba="0.69804 0.69804 0.69804 1" />
+          rgba="1 0 0 1" />
       </material>
     </visual>
     <collision>
@@ -75,17 +75,17 @@
     name="R_SHOULDER">
     <inertial>
       <origin
-        xyz="-0.0016808 0.022465 -0.001043"
+        xyz="-0.00039 0.022865 -0.000966"
         rpy="0 0 0" />
       <mass
-        value="0.32272" />
+        value="0.52963" />
       <inertia
-        ixx="0.00020959"
-        ixy="-6.3669E-07"
-        ixz="8.2757E-10"
-        iyy="0.00032664"
-        iyz="4.3744E-06"
-        izz="0.00020279" />
+        ixx="0.000368"
+        ixy="0"
+        ixz="0"
+        iyy="0.000691"
+        iyz="0"
+        izz="0.000491" />
     </inertial>
     <visual>
       <origin
@@ -98,7 +98,7 @@
       <material
         name="">
         <color
-          rgba="0.75294 0.75294 0.75294 1" />
+          rgba="1 1 1 1" />
       </material>
     </visual>
     <collision>
@@ -115,7 +115,7 @@
     name="R_HAA"
     type="revolute">
     <origin
-      xyz="0.005 -0.07 -0.090999"
+      xyz="0.005 -0.07 -0.091"
       rpy="0 0 0" />
     <parent
       link="base_link" />
@@ -133,17 +133,17 @@
     name="R_UPPER_LEG">
     <inertial>
       <origin
-        xyz="-3.422E-05 -0.048944 -0.040238"
+        xyz="-2.3E-05 -0.054429 -0.064678"
         rpy="0 0 0" />
       <mass
-        value="0.47701" />
+        value="0.95843" />
       <inertia
-        ixx="0.0014369"
-        ixy="-3.6567E-08"
-        ixz="-5.0375E-07"
-        iyy="0.001677"
-        iyz="-1.383E-05"
-        izz="0.00032683" />
+        ixx="0.009526"
+        ixy="0"
+        ixz="0"
+        iyy="0.009483"
+        iyz="0"
+        izz="0.001012" />
     </inertial>
     <visual>
       <origin
@@ -156,7 +156,7 @@
       <material
         name="">
         <color
-          rgba="0.79216 0.81961 0.93333 1" />
+          rgba="1 1 1 1" />
       </material>
     </visual>
     <collision>
@@ -191,17 +191,17 @@
     name="R_LOWER_LEG">
     <inertial>
       <origin
-        xyz="-0.0002936 0.024135 -0.08883"
+        xyz="-0.000245 0.0242 -0.12419"
         rpy="0 0 0" />
       <mass
-        value="0.096474" />
+        value="0.11574" />
       <inertia
-        ixx="0.00042592"
-        ixy="1.8426E-08"
-        ixz="-4.0325E-07"
-        iyy="0.00042592"
-        iyz="1.409E-06"
-        izz="1.7862E-05" />
+        ixx="0.001579"
+        ixy="0"
+        ixz="0"
+        iyy="0.001579"
+        iyz="0"
+        izz="2.1E-05" />
     </inertial>
     <visual>
       <origin
@@ -214,7 +214,7 @@
       <material
         name="">
         <color
-          rgba="0.69804 0.69804 0.69804 1" />
+          rgba="1 1 1 1" />
       </material>
     </visual>
     <collision>
@@ -249,17 +249,17 @@
     name="R_FOOT">
     <inertial>
       <origin
-        xyz="4.0569E-11 -1.4903E-10 0.0073376"
+        xyz="0 0 -0.002962"
         rpy="0 0 0" />
       <mass
-        value="0.046986" />
+        value="0.029476" />
       <inertia
-        ixx="3.6498E-06"
-        ixy="-6.3548E-14"
-        ixz="3.4263E-15"
-        iyy="1.5455E-05"
-        iyz="9.5735E-16"
-        izz="1.5652E-05" />
+        ixx="1E-06"
+        ixy="0"
+        ixz="0"
+        iyy="4.8E-05"
+        iyz="0"
+        izz="4.8E-05" />
     </inertial>
     <visual>
       <origin
@@ -272,7 +272,7 @@
       <material
         name="">
         <color
-          rgba="0.69804 0.69804 0.69804 1" />
+          rgba="1 1 1 1" />
       </material>
     </visual>
     <collision>
@@ -304,7 +304,7 @@
       velocity="20" />
   </joint>
 
-  <link name="R_FOOT_CONTACT"></link>
+    <link name="R_FOOT_CONTACT"></link>
   <joint
     name="R_FOOT_CONTACT_JOINT"
     type="fixed">
@@ -318,17 +318,17 @@
     name="L_SHOULDER">
     <inertial>
       <origin
-        xyz="-0.0016808 -0.022465 0.001043"
+        xyz="-0.00039 -0.022865 0.000966"
         rpy="0 0 0" />
       <mass
-        value="0.32272" />
+        value="0.52963" />
       <inertia
-        ixx="0.00020959"
-        ixy="6.3669E-07"
-        ixz="-8.2667E-10"
-        iyy="0.00032664"
-        iyz="4.3745E-06"
-        izz="0.00020279" />
+        ixx="0.000368"
+        ixy="0"
+        ixz="0"
+        iyy="0.000691"
+        iyz="0"
+        izz="0.000491" />
     </inertial>
     <visual>
       <origin
@@ -341,7 +341,7 @@
       <material
         name="">
         <color
-          rgba="0.75294 0.75294 0.75294 1" />
+          rgba="1 1 1 1" />
       </material>
     </visual>
     <collision>
@@ -358,7 +358,7 @@
     name="L_HAA"
     type="revolute">
     <origin
-      xyz="0.005 0.07 -0.090999"
+      xyz="0.005 0.07 -0.091"
       rpy="0 0 0" />
     <parent
       link="base_link" />
@@ -376,17 +376,17 @@
     name="L_UPPER_LEG">
     <inertial>
       <origin
-        xyz="3.3553E-05 0.04908 -0.039453"
+        xyz="2.3E-05 0.054429 -0.064678"
         rpy="0 0 0" />
       <mass
-        value="0.4865" />
+        value="0.958425" />
       <inertia
-        ixx="0.0014381"
-        ixy="-3.6567E-08"
-        ixz="5.0375E-07"
-        iyy="0.0016794"
+        ixx="0.009526"
+        ixy="0"
+        ixz="0"
+        iyy="0.009483"
         iyz="1.383E-05"
-        izz="0.00032806" />
+        izz="0.001012" />
     </inertial>
     <visual>
       <origin
@@ -399,7 +399,7 @@
       <material
         name="">
         <color
-          rgba="0.75294 0.75294 0.75294 1" />
+          rgba="1 1 1 1" />
       </material>
     </visual>
     <collision>
@@ -434,17 +434,17 @@
     name="L_LOWER_LEG">
     <inertial>
       <origin
-        xyz="0.0002936 -0.019356 -0.087313"
+        xyz="0.000245 -0.019422 -0.122672"
         rpy="0 0 0" />
       <mass
-        value="0.096474" />
+        value="0.115744" />
       <inertia
-        ixx="0.00042592"
-        ixy="1.8426E-08"
-        ixz="4.0325E-07"
-        iyy="0.00042592"
-        iyz="-1.409E-06"
-        izz="1.7862E-05" />
+        ixx="0.001579"
+        ixy="0"
+        ixz="0"
+        iyy="0.001579"
+        iyz="0"
+        izz="2.1E-05" />
     </inertial>
     <visual>
       <origin
@@ -457,7 +457,7 @@
       <material
         name="">
         <color
-          rgba="0.69804 0.69804 0.69804 1" />
+          rgba="1 1 1 1" />
       </material>
     </visual>
     <collision>
@@ -474,7 +474,7 @@
     name="L_KFE"
     type="revolute">
     <origin
-      xyz="0 0.0594 -0.23405"
+      xyz="0 0.0594000000000001 -0.234046496851871"
       rpy="0 0 0" />
     <parent
       link="L_UPPER_LEG" />
@@ -492,17 +492,17 @@
     name="L_FOOT">
     <inertial>
       <origin
-        xyz="-5.1546E-05 6.3917E-11 0.0073383"
+        xyz="-8.2E-05 0 -0.002961"
         rpy="0 0 0" />
       <mass
-        value="0.046986" />
+        value="0.029476" />
       <inertia
-        ixx="3.659E-06"
-        ixy="-6.3897E-14"
-        ixz="3.2843E-07"
-        iyy="1.5455E-05"
-        iyz="-9.4371E-16"
-        izz="1.5643E-05" />
+        ixx="1E-06"
+        ixy="0"
+        ixz="0"
+        iyy="4.8E-05"
+        iyz="0"
+        izz="4.8E-05" />
     </inertial>
     <visual>
       <origin
@@ -515,7 +515,7 @@
       <material
         name="">
         <color
-          rgba="0.69804 0.69804 0.69804 1" />
+          rgba="1 1 1 1" />
       </material>
     </visual>
     <collision>
@@ -547,7 +547,7 @@
       velocity="20" />
   </joint>
 
-    <link name="L_FOOT_CONTACT"></link>
+     <link name="L_FOOT_CONTACT"></link>
   <joint
     name="L_FOOT_CONTACT_JOINT"
     type="fixed">
