@@ -1,9 +1,10 @@
 session_name: biped_sim
 windows:
 - layout: tiled
-  # shell_command_before:
-  # - source $ROS_WS/install/local_setup.bash
+  shell_command_before:
+  - export RMW_IMPLEMENTATION=rmw_zenoh_cpp
   panes:
+  # - export ZENOH_ROUTER_CONFIG_URI=src/biped/biped_bringup/config/zenoh/DEFAULT_RMW_ZENOH_ROUTER_CONFIG.json5 && ros2 run rmw_zenoh_cpp rmw_zenohd
   - ros2 launch biped_bringup launch_control_sim.yaml
   - rviz2 -d src/biped/biped_bringup/rviz/biped.rviz --ros-args --param use_sim_time:=true
   - ros2 run joy joy_node; ros2 param set /joy_node use_sim_time:=true
