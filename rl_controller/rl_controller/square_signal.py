@@ -62,11 +62,24 @@ class MinimalPublisher(Node):
             new_msg.joint_names = self.joints_msg.joint_names
             new_msg.header.stamp = self.get_clock().now().to_msg()
 
+            point = JointTrajectoryPoint()
+            joints_out = []
             for joint_name in new_msg.joint_names:
                 self.get_logger().info(f"Processing joint: {joint_name}")
                 min_limit, max_limit = self.joints_from_urdf[joint_name]
                 self.get_logger().info(f"Joint {joint_name} limits: min={min_limit}, max={max_limit}")
 
+                # Write square signal code
+                # depending if 1 or 0, then we will publish the max or min limit.
+                value = max_limit # TODO;
+
+                joints_out.append(value)
+            
+            point.positions = joints_out
+            point.velocities = [0.0] * len(joints_out)
+            point.effort = [0.0] * len(joints_out)
+            new_msg.points.append(point)
+            self.publisher_joints.publish(new_msg)
 
     
     def urdf_callback(self, msg: String):
