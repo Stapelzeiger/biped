@@ -23,7 +23,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'rl_controller = rl_controller.rl_controller_node:main'
+            'rl_controller = rl_controller.rl_controller_node:main',
+            'square_signal = rl_controller.square_signal:main'
         ],
     },
 )
