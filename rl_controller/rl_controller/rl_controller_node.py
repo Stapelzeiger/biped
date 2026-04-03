@@ -65,7 +65,7 @@ class JointTrajectoryPublisher(Node):
         if len(folders) > 1:
             latest_weights_folder = folders[-1]
         else:
-            latest_weights_folder = folders
+            latest_weights_folder = folders[0]
         self.get_logger().info(f'    Latest weights folder: {latest_weights_folder}')
         path = epath.Path(POLICY_PATH) / latest_results_folder / latest_weights_folder
         self.get_logger().info(f'    Loading policy from: {path}')
