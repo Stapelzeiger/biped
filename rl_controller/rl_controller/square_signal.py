@@ -17,6 +17,11 @@ class MinimalPublisher(Node):
     def __init__(self):
         super().__init__('minimal_publisher')
 
+        #MARTHEL: minimal logic snippet in __init__
+        self.period_s = 2.0
+        self.duty_cycle = 0.5
+        self.start_time_ns = self.get_clock().now().nanoseconds
+
         # joint_states
         self.subscription = self.create_subscription(
             JointState,
@@ -88,10 +93,20 @@ class MinimalPublisher(Node):
         try:
             root = ET.fromstring(urdf_str)
             for joint in root.findall('joint'):
+                # MARTHEL MINIMAL TEST LOGIC
+                now_ns = self.get_clock().now().nanoseconds
+                elapsed_s = (now_ns - self.start_time_ns)/1e9
+                phase_s = elapsed_s % self.period_s
+                high_phase = phase_s < (self.period_s * self.duty_cycle)
+                #END OF MARTHEL TEST LOGIC
+
                 name = joint.get('name')
                 limit = joint.find('limit')
                 min_limit = limit.get('lower') if limit is not None else "N/A"
                 max_limit = limit.get('upper') if limit is not None else "N/A"
+
+                self.get_logger().info( f"{name}: phase={'HIGH' if high_phase else 'LOW'} cmd={limit:.3f}"
+)
                 if min_limit == "N/A" or max_limit == "N/A":
                     self.get_logger().warn(f"Joint {name} has no limits. Will not add to the dictionary.")
                 else:
