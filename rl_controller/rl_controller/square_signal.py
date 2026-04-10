@@ -13,6 +13,26 @@ from rclpy.qos import QoSProfile, QoSDurabilityPolicy, QoSHistoryPolicy
 import xml.etree.ElementTree as ET
 
 
+def get_square_signal_value(current_time_sec, period, min_limit, max_limit):
+    """
+    Generates a square wave alternating between min_limit and max_limit.
+    """
+    min_lim = float(min_limit)
+    max_lim = float(max_limit)
+    
+    if period <= 0:
+        return max_lim # Fallback to avoid division by zero
+        
+    # Determine where we are in the current cycle
+    phase = current_time_sec % period
+    
+    # First half of the period is max, second half is min
+    if phase < (period / 2.0):
+        return max_lim
+    else:
+        return min_lim
+
+
 class MinimalPublisher(Node):
     def __init__(self):
         super().__init__('minimal_publisher')
@@ -20,7 +40,7 @@ class MinimalPublisher(Node):
         # joint_states
         self.subscription = self.create_subscription(
             JointState,
-            '~/joint_states',
+            '/joint_states',
             self.joint_states_cb,
             10)
         self.subscription  # prevent unused variable warning
@@ -28,7 +48,7 @@ class MinimalPublisher(Node):
         self.lock = threading.Lock()
 
         # publish joint_trajectory
-        self.publisher_joints = self.create_publisher(JointTrajectory, '~/joint_trajectory', 10)
+        self.publisher_joints = self.create_publisher(JointTrajectory, '/joint_trajectory', 10)
 
         # URDF
         # Read the URDF file for the robot to ensure we have the correct joint names.
@@ -59,19 +79,25 @@ class MinimalPublisher(Node):
             new_msg = JointTrajectory()
             # process the message and convert to joint trajectory
             # TODO: convert this into a joint Trajectry and then publush.
-            new_msg.joint_names = self.joints_msg.joint_names
+            new_msg.joint_names = self.joints_msg.name
             new_msg.header.stamp = self.get_clock().now().to_msg()
+
+            # Get current time in seconds for the signal wave
+            current_time_sec = self.get_clock().now().nanoseconds / 1e9
+            
+            # Define your period parameter (e.g., 2.0 seconds per full cycle)
+            signal_period = 2.0
 
             point = JointTrajectoryPoint()
             joints_out = []
             for joint_name in new_msg.joint_names:
-                self.get_logger().info(f"Processing joint: {joint_name}")
+                # self.get_logger().info(f"Processing joint: {joint_name}")
                 min_limit, max_limit = self.joints_from_urdf[joint_name]
-                self.get_logger().info(f"Joint {joint_name} limits: min={min_limit}, max={max_limit}")
+                # self.get_logger().info(f"Joint {joint_name} limits: min={min_limit}, max={max_limit}")
 
                 # Write square signal code
                 # depending if 1 or 0, then we will publish the max or min limit.
-                value = max_limit # TODO;
+                value = get_square_signal_value(current_time_sec, signal_period, min_limit, max_limit)
 
                 joints_out.append(value)
             
@@ -79,7 +105,8 @@ class MinimalPublisher(Node):
             point.velocities = [0.0] * len(joints_out)
             point.effort = [0.0] * len(joints_out)
             new_msg.points.append(point)
-            self.publisher_joints.publish(new_msg)
+            self.get_logger().info(f"Publishing joint trajectory: {new_msg}")
+            # self.publisher_joints.publish(new_msg)
 
     
     def urdf_callback(self, msg: String):
