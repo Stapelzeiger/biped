@@ -39,6 +39,27 @@ print(str(jax.local_devices()[0]))
 POLICY_PATH = os.getenv('POLICY_PATH',
                         '~/.ros/policy')
 
+
+def get_square_signal_value(current_time_sec, period, min_limit, max_limit):
+    """
+    Generates a square wave alternating between min_limit and max_limit.
+    """
+    min_lim = float(min_limit)
+    max_lim = float(max_limit)
+    
+    if period <= 0:
+        return max_lim # Fallback to avoid division by zero
+        
+    # Determine where we are in the current cycle
+    phase = current_time_sec % period
+    
+    # First half of the period is max, second half is min
+    if phase < (period / 2.0):
+        return max_lim
+    else:
+        return min_lim
+
+
 class JointTrajectoryPublisher(Node):
     def __init__(self):
         super().__init__('joint_trajectory_publisher_rl')
@@ -447,31 +468,64 @@ class JointTrajectoryPublisher(Node):
             if abs(dt_ctrl) > self.dt_ctrl:
                 self.get_logger().warn(f'Controller took too long: {dt_ctrl} s')
 
+    # def publish_joints(self, joints: dict):
+    #     ''' Publishes the joint angles to the robot. '''
+    #     msg = JointTrajectory()
+    #     msg.joint_names = list(joints.keys())
+    #     msg.header.stamp = self.get_clock().now().to_msg()
+    #     point = JointTrajectoryPoint()
+
+    #     # Ensure the limits are satisfied.
+    #     joints_out = []
+    #     for joint_name in joints.keys():
+    #         value = joints[joint_name]
+    #         min_limit, max_limit = self.joints_from_urdf[joint_name]
+    #         if value < float(min_limit):
+    #             self.get_logger().warn(f'Joint {joint_name} is below the min limit {min_limit}. It wants to be {value}. Setting to min limit')
+    #             value = float(min_limit)
+    #         if value > float(max_limit):
+    #             self.get_logger().warn(f'Joint {joint_name} is above the max limit {max_limit}. It wants to be {value}. Setting to max limit')
+    #             value = float(max_limit)
+    #         joints_out.append(value)
+
+    #     point.positions = joints_out
+    #     point.velocities = [0.0] * len(joints_out)
+    #     point.effort = [0.0] * len(joints_out)
+    #     msg.points.append(point)
+    #     self.publisher_joints.publish(msg)
+
     def publish_joints(self, joints: dict):
-        ''' Publishes the joint angles to the robot. '''
-        msg = JointTrajectory()
-        msg.joint_names = list(joints.keys())
-        msg.header.stamp = self.get_clock().now().to_msg()
+        new_msg = JointTrajectory()
+        # process the message and convert to joint trajectory
+        # TODO: convert this into a joint Trajectry and then publush.
+        new_msg.joint_names = list(joints.keys())
+        new_msg.header.stamp = self.get_clock().now().to_msg()
+
+        # Get current time in seconds for the signal wave
+        current_time_sec = self.get_clock().now().nanoseconds / 1e9
+        
+        # Define your period parameter (e.g., 2.0 seconds per full cycle)
+        signal_period = 2.0
+
         point = JointTrajectoryPoint()
-
-        # Ensure the limits are satisfied.
         joints_out = []
-        for joint_name in joints.keys():
-            value = joints[joint_name]
+        for joint_name in new_msg.joint_names:
+            # self.get_logger().info(f"Processing joint: {joint_name}")
             min_limit, max_limit = self.joints_from_urdf[joint_name]
-            if value < float(min_limit):
-                self.get_logger().warn(f'Joint {joint_name} is below the min limit {min_limit}. It wants to be {value}. Setting to min limit')
-                value = float(min_limit)
-            if value > float(max_limit):
-                self.get_logger().warn(f'Joint {joint_name} is above the max limit {max_limit}. It wants to be {value}. Setting to max limit')
-                value = float(max_limit)
-            joints_out.append(value)
+            # self.get_logger().info(f"Joint {joint_name} limits: min={min_limit}, max={max_limit}")
 
+            # Write square signal code
+            # depending if 1 or 0, then we will publish the max or min limit.
+            value = get_square_signal_value(current_time_sec, signal_period, min_limit, max_limit)
+
+            joints_out.append(value)
+        
         point.positions = joints_out
         point.velocities = [0.0] * len(joints_out)
         point.effort = [0.0] * len(joints_out)
-        msg.points.append(point)
-        self.publisher_joints.publish(msg)
+        new_msg.points.append(point)
+        self.get_logger().info(f"Publishing joint trajectory: {new_msg}")
+        self.publisher_joints.publish(new_msg)
 
     def publish_ppo_residual_joints(self, joints_ppo: dict):
         msg = JointTrajectory()
