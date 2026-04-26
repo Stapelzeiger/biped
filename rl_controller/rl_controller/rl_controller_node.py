@@ -3,10 +3,12 @@ import rclpy
 from rclpy.node import Node
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 import numpy as np
+from std_msgs.msg import Float32MultiArray, Float32
 from rclpy.qos import QoSProfile, QoSDurabilityPolicy, QoSHistoryPolicy
-from biped_bringup.msg import StampedBool
+from biped_bringup.msg import StampedBool, StampedFloat
 from geometry_msgs.msg import TwistStamped
 from brax.training.agents.ppo import checkpoint as ppo_checkpoint
+from diagnostic_msgs.msg import KeyValue
 import jax
 from jax import numpy as jp
 import os
@@ -40,6 +42,7 @@ POLICY_PATH = os.getenv('POLICY_PATH',
                         '~/.ros/policy')
 
 class JointTrajectoryPublisher(Node):
+
     def __init__(self):
         super().__init__('joint_trajectory_publisher_rl')
 
@@ -86,8 +89,8 @@ class JointTrajectoryPublisher(Node):
         self.get_logger().info(f'Network config: {self.network_config}')
         self.action_size = self.network_config['action_size']
         self.obs = {
-            'privileged_state': jp.zeros(self.network_config['observation_size']['privileged_state']),
-            'state': jp.zeros(self.network_config['observation_size']['state'])
+            'privileged_state': jp.zeros(self._get_observation_shape('privileged_state')),
+            'state': jp.zeros(self._get_observation_shape('state'))
         }
 
         # Initialize state history.
@@ -162,7 +165,7 @@ class JointTrajectoryPublisher(Node):
             self.imu_cb,
             1)
 
-        self.joints_msg = None
+        self.joints_state_msg = None
         self.joint_states_sub = self.create_subscription(
             JointState,
             '~/joint_states',
@@ -185,6 +188,9 @@ class JointTrajectoryPublisher(Node):
             self.vel_cmd_cb,
             1)
 
+        self.current_state_pub = self.create_publisher(Float32MultiArray, '~/current_state', 10)
+        self.max_torque_pub = self.create_publisher(StampedFloat, '~/max_torque', 10)
+
         gait_freq = 1.5
         phase_dt = 2 * np.pi * self.dt_ctrl * gait_freq
         phase = np.array([0, np.pi])
@@ -198,11 +204,22 @@ class JointTrajectoryPublisher(Node):
 
         self.start_q_joints = self.default_q_joints.copy()
         self.timeout_for_no_feet_in_contact = 0.0
+        self.max_torque = None
 
         # TODO: put _compensated in the name of the topic for hardware.
         self.publisher_joints = self.create_publisher(JointTrajectory, '~/joint_trajectory', 10)
         self.publisher_joints_ppo = self.create_publisher(JointTrajectory, '~/joint_trajectory_ppo', 10)
         self.timer = self.create_timer(self.dt_ctrl, self.step_controller)
+
+    def _get_observation_shape(self, obs_key: str):
+        """Returns observation shape compatible with old/new PPO config formats."""
+        obs_size = self.network_config['observation_size'][obs_key]
+        shape = obs_size.get('shape', obs_size) if isinstance(obs_size, dict) else obs_size
+
+        # JAX expects a concrete integer shape sequence (or scalar int).
+        if isinstance(shape, (list, tuple)):
+            return tuple(int(dim) for dim in shape)
+        return int(shape)
 
 
     def update_moteus_parameter(self, name_param: str, value: float):
@@ -264,7 +281,7 @@ class JointTrajectoryPublisher(Node):
 
     def joint_states_cb(self, msg: JointState):
         with self.lock:
-            self.joints_msg = msg
+            self.joints_state_msg = msg
 
     def run_ppo_ctrl(self):
         ''' Runs the PPO controller. '''
@@ -280,7 +297,7 @@ class JointTrajectoryPublisher(Node):
             return
 
         # Add robustness to run only when joints are available.
-        if self.joints_msg is None:
+        if self.joints_state_msg is None:
             self.get_logger().warn('Joint data not received. Skipping this step.')
             return
 
@@ -291,7 +308,7 @@ class JointTrajectoryPublisher(Node):
             self.get_logger().warn('IMU data is old. Skipping this step.')
             return
 
-        joints_state_time = self.joints_msg.header.stamp.sec + self.joints_msg.header.stamp.nanosec / 1e9
+        joints_state_time = self.joints_state_msg.header.stamp.sec + self.joints_state_msg.header.stamp.nanosec / 1e9
         if abs(time_now - joints_state_time) > 0.1:
             self.get_logger().warn('Joint state data is old. Skipping this step.')
             return
@@ -321,9 +338,9 @@ class JointTrajectoryPublisher(Node):
         joints_vel = []
         for joint_name in self.default_q_joints.keys():
             # Get the joint position and velocity from the joint state message.
-            if joint_name in self.joints_msg.name:
-                joints_pos.append(self.joints_msg.position[self.joints_msg.name.index(joint_name)])
-                joints_vel.append(self.joints_msg.velocity[self.joints_msg.name.index(joint_name)])
+            if joint_name in self.joints_state_msg.name:
+                joints_pos.append(self.joints_state_msg.position[self.joints_state_msg.name.index(joint_name)])
+                joints_vel.append(self.joints_state_msg.velocity[self.joints_state_msg.name.index(joint_name)])
             else:
                 joints_pos.append(0)
                 joints_vel.append(0)
@@ -338,17 +355,22 @@ class JointTrajectoryPublisher(Node):
         # Command.
         command = np.array([self.vel_cmd_x, self.vel_cmd_y, 0.0])
 
+        delta_pos = joints_pos - np.array(list(self.default_q_joints.values()))
         # Input to the PPO policy.
         current_state = np.hstack([
             lin_vel_B,   # 3
             gyro,     # 3
             up_B,  # 3
             command,  # 3
-            joints_pos - np.array(list(self.default_q_joints.values())),  # 10
+            delta_pos,  # 10
             joints_vel,  # 10
             self.last_action,  # 8
             phase,
         ])
+
+        current_state_msg = Float32MultiArray()
+        current_state_msg.data = current_state.tolist()
+        self.current_state_pub.publish(current_state_msg)
 
         # Initialize state history if needed.
         if self.state_history is None:
@@ -360,7 +382,7 @@ class JointTrajectoryPublisher(Node):
         self.state_history[-1] = current_state
 
         self.obs = {
-            'privileged_state': jp.zeros(self.network_config['observation_size']['privileged_state']),
+            'privileged_state': jp.zeros(self._get_observation_shape('privileged_state')),
             'state': jp.array(self.state_history.ravel())
         }
 
@@ -372,8 +394,6 @@ class JointTrajectoryPublisher(Node):
         motor_targets_ppo = {}
         for joint_name, idx in self.actuator_mapping_PPO.items():
             if idx is not None:  # Skip None values (like for ANKLE joints)
-                if joint_name == 'L_YAW' or joint_name == 'R_YAW':
-                    action_ppo_np[idx] = 0.0
                 motor_targets[joint_name] += action_ppo_np[idx]
                 motor_targets_ppo[joint_name] = action_ppo_np[idx]
         self.publish_joints(motor_targets)
@@ -392,7 +412,7 @@ class JointTrajectoryPublisher(Node):
             self.get_logger().warn('IMU data not received. Skipping this step.')
             return
 
-        if self.joints_msg is None:
+        if self.joints_state_msg is None:
             self.get_logger().warn('Joint data not received. Skipping this step.')
             return
 
@@ -407,7 +427,7 @@ class JointTrajectoryPublisher(Node):
             self.get_logger().warn('IMU data is old. Skipping this step.')
             return
 
-        joints_state_time = self.joints_msg.header.stamp.sec + self.joints_msg.header.stamp.nanosec / 1e9
+        joints_state_time = self.joints_state_msg.header.stamp.sec + self.joints_state_msg.header.stamp.nanosec / 1e9
         if abs(time_now - joints_state_time) > 0.1:
             self.get_logger().warn('Joint state data is old. Skipping this step.')
             return
@@ -423,12 +443,15 @@ class JointTrajectoryPublisher(Node):
         else:
             self.timeout_for_no_feet_in_contact = self.time_no_feet_in_contact
 
+        max_torque_msg = StampedFloat()
+        max_torque_msg.header.stamp = self.get_clock().now().to_msg()
         if self.state == "RAMP_TO_STARTING_POS":
             if feet_in_contact:
                 self.state = "WALKING"
                 if self.use_sim_time == False:
                     self.get_logger().info("Feet in contact. Setting high torque.")
                     self.update_moteus_parameter('global_max_torque', self.high_torque)
+                    self.max_torque = self.high_torque
 
         elif self.state == "WALKING":
             if self.timeout_for_no_feet_in_contact < 0:
@@ -437,6 +460,11 @@ class JointTrajectoryPublisher(Node):
                 if self.use_sim_time == False:
                     self.get_logger().info("No feet in contact for too long. Setting low torque.")
                     self.update_moteus_parameter('global_max_torque', self.low_torque)
+                    self.max_torque = self.low_torque
+
+        if self.max_torque is not None:
+            max_torque_msg.data = self.max_torque
+            self.max_torque_pub.publish(max_torque_msg)
 
         if self.state == "RAMP_TO_STARTING_POS":
             self.publish_joints(self.start_q_joints)
@@ -449,14 +477,17 @@ class JointTrajectoryPublisher(Node):
 
     def publish_joints(self, joints: dict):
         ''' Publishes the joint angles to the robot. '''
+        joints_to_not_publish = ['L_ANKLE', 'R_ANKLE']
         msg = JointTrajectory()
-        msg.joint_names = list(joints.keys())
+        msg.joint_names = [joint_name for joint_name in joints.keys() if joint_name not in joints_to_not_publish]
         msg.header.stamp = self.get_clock().now().to_msg()
         point = JointTrajectoryPoint()
 
         # Ensure the limits are satisfied.
         joints_out = []
         for joint_name in joints.keys():
+            if joint_name in joints_to_not_publish:
+                continue
             value = joints[joint_name]
             min_limit, max_limit = self.joints_from_urdf[joint_name]
             if value < float(min_limit):
