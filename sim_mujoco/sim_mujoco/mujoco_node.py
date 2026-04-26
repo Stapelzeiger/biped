@@ -42,6 +42,7 @@ class MujocoNode(Node):
 
         self.time = time.time()
         self.dt = self.biped.get_sim_dt()
+        self.real_time_factor = 1.0
 
         self.accel_noise_density = 0.14 * 9.81/1000 # [m/s2 * sqrt(s)]
         self.accel_bias_random_walk = 0.0004 # [m/s2 / sqrt(s)]
@@ -94,7 +95,7 @@ class MujocoNode(Node):
         self.cmd = None
         self.cmd_vel_sub = self.create_subscription(TwistStamped, "/vel_cmd", self.cmd_vel_cb, 1)
 
-        self.timer = self.create_timer(self.dt*2, self.timer_cb, clock=rclpy.clock.Clock(clock_type=rclpy.clock.ClockType.STEADY_TIME))
+        self.timer = self.create_timer(self.dt/self.real_time_factor, self.timer_cb, clock=rclpy.clock.Clock(clock_type=rclpy.clock.ClockType.STEADY_TIME))
 
     def cmd_vel_cb(self, msg: TwistStamped):
         self.cmd = np.zeros(3)
@@ -161,23 +162,23 @@ class MujocoNode(Node):
                 self.biped.let_go_of_the_robot()
 
         # Step the simulation.
-        for _ in range(2):
-            is_valid_traj_msg = False if self.joint_traj_msg is None else True
-            # # Build a joint_traj_dict.
-            if is_valid_traj_msg is True:
-                joint_traj_dict = {}
-                for name in self.joint_traj_msg.joint_names:
-                    joint_traj_dict[name] = {
-                        'pos': self.joint_traj_msg.points[0].positions[self.joint_traj_msg.joint_names.index(name)],
-                        'vel': self.joint_traj_msg.points[0].velocities[self.joint_traj_msg.joint_names.index(name)],
-                        'effort': self.joint_traj_msg.points[0].effort[self.joint_traj_msg.joint_names.index(name)]
-                    }
-            else:
-                joint_traj_dict = None
+        # for _ in range(2):
+        is_valid_traj_msg = False if self.joint_traj_msg is None else True
+        # # Build a joint_traj_dict.
+        if is_valid_traj_msg is True:
+            joint_traj_dict = {}
+            for name in self.joint_traj_msg.joint_names:
+                joint_traj_dict[name] = {
+                    'pos': self.joint_traj_msg.points[0].positions[self.joint_traj_msg.joint_names.index(name)],
+                    'vel': self.joint_traj_msg.points[0].velocities[self.joint_traj_msg.joint_names.index(name)],
+                    'effort': self.joint_traj_msg.points[0].effort[self.joint_traj_msg.joint_names.index(name)]
+                }
+        else:
+            joint_traj_dict = None
 
-            qpos, qvel = self.biped.step(joint_traj_dict, wrench_perturbation=self.wrench_perturbation)
-            self.time += self.dt
-            self.counter += 1
+        qpos, qvel = self.biped.step(joint_traj_dict, wrench_perturbation=self.wrench_perturbation)
+        self.time += self.dt
+        self.counter += 1
 
         self.q_joints = self.biped.get_q_joints_dict()
 
