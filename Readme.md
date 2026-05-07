@@ -1,5 +1,7 @@
 # Setup (Ubuntu24.04)
 
+`git clone --recurse-submodules git@github.com:Stapelzeiger/biped.git`
+
 `git submodule update --init --recursive`
 
 # Dependencies
