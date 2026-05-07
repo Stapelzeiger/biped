@@ -1,3 +1,6 @@
 [submodule "lib_external/pi3hat"]
 	path = moteus_drv/lib_external/pi3hat
 	url = https://github.com/mjbots/pi3hat
+[submodule "robot_learning"]
+	path = robot_learning
+	url = git@github.com:lupusorina/robot_learning.git
