@@ -66,22 +66,22 @@
 
     <body name="L_SHOULDER" pos="0.005 0.07 -0.091">
       <inertial pos="-0.00039 -0.022865 0.000966" quat="0.5 0.5 0.5 0.5" mass="0.52963" diaginertia="0.000691 0.000491 0.000368"/>
-      <joint name="L_HAA" pos="0 0 0" axis="1 0 0" range="-0.25 0.25" limited="true"/>
+      <joint name="L_HAA" pos="0 0 0" axis="1 0 0" range="-0.25 0.25" limited="true" armature="0.001"/>
       <geom type="mesh" contype="0" conaffinity="0" rgba="1 1 1 1" mesh="L_SHOULDER"/>
 
       <body name="L_UPPER_LEG">
         <inertial pos="2.3e-05 0.054429 -0.064678" quat="1 0 0 0" mass="0.958425" diaginertia="0.009526 0.00948302 0.00101198"/>
-        <joint name="L_HFE" pos="0 0 0" axis="0 1 0" range="-1.5 1.5" limited="true"/>
+        <joint name="L_HFE" pos="0 0 0" axis="0 1 0" range="-1.5 1.5" limited="true" armature="0.001"/>
         <geom type="mesh" contype="0" conaffinity="0" rgba="1 1 1 1" mesh="L_UPPER_LEG"/>
 
         <body name="L_LOWER_LEG" pos="0 0.0594 -0.234046">
           <inertial pos="0.000245 -0.019422 -0.122672" mass="0.115744" diaginertia="0.001579 0.001579 2.1e-05"/>
-          <joint name="L_KFE" pos="0 0 0" axis="0 1 0" limited="true" range="-2.2 2.2"/>
+          <joint name="L_KFE" pos="0 0 0" axis="0 1 0" limited="true" range="-2.2 2.2" armature="0.001"/>
           <geom type="mesh" contype="0" conaffinity="0" rgba="1 1 1 1" mesh="L_LOWER_LEG"/>
 
           <body name="L_FOOT" pos="0 -0.01975 -0.3247">
             <inertial pos="-8.2e-05 0 -0.002961" quat="0.5 0.5 0.5 0.5" mass="0.029476" diaginertia="4.8e-05 4.8e-05 1e-06"/>
-            <joint name="L_ANKLE" pos="0 0 0" axis="0 1 0" range="-1.6 1.6" limited="true"/>
+            <joint name="L_ANKLE" pos="0 0 0" axis="0 1 0" range="-1.6 1.6" limited="true" armature="0.001"/>
             <geom type="mesh" contype="0" conaffinity="0" rgba="1 1 1 1" mesh="L_FOOT"/>
             <geom name="L_FOOT" friction="1. 0.3 0.3" size="0.015 0.05" pos="0 0 -0.01" quat="0.710914 0 0.703279 0"  type="capsule" rgba="0.8 0.8 0.8 1"/>
             <site name="l_foot" quat="0.710914 0 0.703279 0"/>
@@ -95,28 +95,28 @@
 
     <body name="R_SHOULDER" pos="0.005 -0.07 -0.091">
       <inertial pos="-0.00039 0.022865 -0.000966" quat="0.5 0.5 0.5 0.5" mass="0.52963" diaginertia="0.000691 0.000491 0.000368"/>
-      <joint name="R_HAA" pos="0 0 0" axis="1 0 0" range="-0.25 0.25" limited="true"/>
+      <joint name="R_HAA" pos="0 0 0" axis="1 0 0" range="-0.25 0.25" limited="true" armature="0.001"/>
       <geom type="mesh" contype="0" conaffinity="0" rgba="1 1 1 1" mesh="R_SHOULDER"/>
       <body name="R_UPPER_LEG">
         <inertial pos="-2.3e-05 -0.054429 -0.064678" mass="0.95843" diaginertia="0.009526 0.009483 0.001012"/>
-        <joint name="R_HFE" pos="0 0 0" axis="0 1 0" range="-1.5 1.5" limited="true"/>
+        <joint name="R_HFE" pos="0 0 0" axis="0 1 0" range="-1.5 1.5" limited="true" armature="0.001"/>
         <geom type="mesh" contype="0" conaffinity="0" rgba="1 1 1 1" mesh="R_UPPER_LEG"/>
 
         <body name="R_LOWER_LEG" pos="0 -0.0641789 -0.232529">
           <inertial pos="-0.000245 0.0242 -0.12419" mass="0.11574" diaginertia="0.001579 0.001579 2.1e-05"/>
-          <joint name="R_KFE" pos="0 0 0" axis="0 1 0" range="-2.2 2.2" limited="true"/>
+          <joint name="R_KFE" pos="0 0 0" axis="0 1 0" range="-2.2 2.2" limited="true" armature="0.001"/>
           <geom type="mesh" contype="0" conaffinity="0" rgba="1 1 1 1" mesh="R_LOWER_LEG"/>
 
           <body name="R_FOOT" pos="0 0.0245289 -0.326217">
             <inertial pos="0 0 -0.002962" quat="0.5 0.5 0.5 0.5" mass="0.029476" diaginertia="4.8e-05 4.8e-05 1e-06"/>
-            <joint name="R_ANKLE" pos="0 0 0" axis="0 1 0" range="-1.6 1.6" limited="true"/>
+            <joint name="R_ANKLE" pos="0 0 0" axis="0 1 0" range="-1.6 1.6" limited="true" armature="0.001"/>
             <geom type="mesh" contype="0" conaffinity="0" rgba="1 1 1 1" mesh="R_FOOT"/>
             <geom name="R_FOOT" friction="1. 0.3 0.3" size="0.015 0.05" pos="0 0 -0.01" quat="0.710914 0 0.703279 0"  type="capsule" rgba="0.8 0.8 0.8 1"/>
             <site name="r_foot" quat="0.710914 0 0.703279 0"/>
           </body> <!-- R_FOOT -->
 
           </body> <!-- R_LOWER_LEG -->
-
+  
         </body> <!-- R_UPPER_LEG -->
 
       </body> <!-- R_SHOULDER -->
@@ -143,11 +143,11 @@
           qpos="
         0 0 0.7
         1 0 0 0
-        0.0 -0.65 0.983 -0.35
-        0.0 -0.65 0.983 -0.35"
+        0.0 -0.325 0.4915 -0.175
+        0.0 -0.325 0.4915 -0.175"
           ctrl="
-        0.0 -0.65 0.983 -0.35
-        0.0 -0.65 0.983 -0.35"/>
+        0.0 -0.325 0.4915 -0.175
+        0.0 -0.325 0.4915 -0.175"/>
   </keyframe>
 
 </mujoco>
