@@ -62,12 +62,6 @@ class JointTrajectoryPublisher(Node):
         else:
             latest_weights_folder = folders
 
-        # Actuator mapping.
-        actuator_mapping_PPO_file = epath.Path(POLICY_PATH) / latest_results_folder / 'policy_actuator_mapping.json'
-        with open(actuator_mapping_PPO_file) as f:
-            self.actuator_mapping_PPO = json.load(f)
-        self.actuator_mapping_PPO = self.actuator_mapping_PPO['actuated_joint_names_to_policy_idx_dict']
-
         # Configs for the controller.
         configs_training = epath.Path(POLICY_PATH) / latest_results_folder / 'robot_config.json'
         with open(configs_training) as f:
@@ -80,6 +74,8 @@ class JointTrajectoryPublisher(Node):
         self.history_len = self.configs_training['HISTORY_LEN']
         self.state_size = self.configs_training['state_size']
         self.privileged_state_size = self.configs_training['privileged_state_size']
+        self.actuator_mapping_PPO = self.configs_training['actuated_joint_names_to_policy_idx_dict']
+        self.idx_actuators = self.configs_training['idx_actuators_dict']
 
         # Initialize the RL controller.
         results_folder = epath.Path(POLICY_PATH) / latest_results_folder
@@ -93,19 +89,10 @@ class JointTrajectoryPublisher(Node):
         self.state_history = None
         self.history_idx = 0
 
-        # Config default joint angles (qpos[7:] order when idx_actuators_dict.json exists).
-        default_joint_angles_file = epath.Path(POLICY_PATH) / latest_results_folder / 'initial_qpos.json'
-        with open(default_joint_angles_file) as f:
-            raw_default_q = json.load(f)
-            raw_default_q = {k: v for k, v in raw_default_q.items() if k != 'root'}
-        idx_actuators_path = results_folder / 'idx_actuators_dict.json'
-        if idx_actuators_path.exists():
-            with open(idx_actuators_path) as f:
-                idx_actuators = json.load(f)
-            ordered = sorted(raw_default_q.keys(), key=lambda n: idx_actuators[n])
-            self.default_q_joints = {k: raw_default_q[k] for k in ordered}
-        else:
-            self.default_q_joints = raw_default_q
+        # Build default_q_joints from robot_config.json (initial_qpos ordered by idx_actuators_dict).
+        raw_default_q = {k: v for k, v in self.configs_training['initial_qpos'].items() if k != 'root'}
+        ordered_joint_names = sorted(raw_default_q.keys(), key=lambda n: self.idx_actuators[n])
+        self.default_q_joints = {k: raw_default_q[k] for k in ordered_joint_names}
         self.get_logger().info(f'Default joint angles: {self.default_q_joints}')
 
         # Same per-joint scaling as biped.BipedSim.step / ACTION_TARGET_OFFSETS.
@@ -362,14 +349,14 @@ class JointTrajectoryPublisher(Node):
         delta_pos = joints_pos - np.array(list(self.default_q_joints.values()))
         # Input to the PPO policy.
         current_state = np.hstack([
-            lin_vel_B,   # 3
-            gyro,     # 3
-            up_B,  # 3
-            command,  # 3
-            delta_pos,  # 10
-            joints_vel,  # 10
-            self.last_action,  # 8
-            phase,
+            lin_vel_B,        # 3
+            gyro,             # 3
+            up_B,             # 3
+            command,          # 3
+            delta_pos,        # 8  (all joints in idx_actuators order)
+            joints_vel,       # 8
+            self.last_action, # action_size
+            phase,            # 4
         ])
 
         if self.state_history is None:
@@ -402,7 +389,7 @@ class JointTrajectoryPublisher(Node):
             motor_targets[joint_name] += delta
             motor_targets_ppo[joint_name] = delta
         self.publish_joints(motor_targets)
-        self.publish_ppo_residual_joints(motor_targets_ppo)
+        # self.publish_ppo_residual_joints(motor_targets_ppo)
 
         self.last_action = action_ppo_np.copy()
 
