@@ -1,4 +1,5 @@
 import os
+import time
 import json
 import shutil
 import threading
@@ -49,7 +50,7 @@ class JointTrajectoryPublisher(Node):
         self.time_init_traj = self.get_parameter("time_init_traj").get_parameter_value().double_value
         self.time_no_feet_in_contact = self.get_parameter("time_no_feet_in_contact").get_parameter_value().double_value
 
-        # Load PPO policy.
+        # Get the latest results folder.
         self.get_logger().info('Loading PPO policy...')
         latest_results_folder = sorted(os.listdir(POLICY_PATH))[-1]
         folders = sorted(os.listdir(epath.Path(POLICY_PATH) / latest_results_folder))
@@ -80,11 +81,6 @@ class JointTrajectoryPublisher(Node):
         self.state_size = self.configs_training['state_size']
         self.privileged_state_size = self.configs_training['privileged_state_size']
 
-        self.obs = {
-            'privileged_state': np.zeros(self.privileged_state_size),
-            'state': np.zeros(self.state_size)
-        }
-
         # Initialize the RL controller.
         results_folder = epath.Path(POLICY_PATH) / latest_results_folder
         self.rl_controller = RL_Controller(results_folder, 
@@ -93,16 +89,27 @@ class JointTrajectoryPublisher(Node):
                                             self.action_size)
         self.get_logger().info(f'Checkpoint path: {self.rl_controller.checkpoint_path}')
 
-        # Initialize state history.
+        # Initialize state history (doubled-buffer ring buffer; see run_ppo_ctrl).
         self.state_history = None
+        self.history_idx = 0
 
-        # Config default joint angles.
+        # Config default joint angles (qpos[7:] order when idx_actuators_dict.json exists).
         default_joint_angles_file = epath.Path(POLICY_PATH) / latest_results_folder / 'initial_qpos.json'
         with open(default_joint_angles_file) as f:
-            self.default_q_joints = json.load(f)
-            # Remove root joint.
-            self.default_q_joints = {k: v for k, v in self.default_q_joints.items() if k != 'root'}
+            raw_default_q = json.load(f)
+            raw_default_q = {k: v for k, v in raw_default_q.items() if k != 'root'}
+        idx_actuators_path = results_folder / 'idx_actuators_dict.json'
+        if idx_actuators_path.exists():
+            with open(idx_actuators_path) as f:
+                idx_actuators = json.load(f)
+            ordered = sorted(raw_default_q.keys(), key=lambda n: idx_actuators[n])
+            self.default_q_joints = {k: raw_default_q[k] for k in ordered}
+        else:
+            self.default_q_joints = raw_default_q
         self.get_logger().info(f'Default joint angles: {self.default_q_joints}')
+
+        # Same per-joint scaling as biped.BipedSim.step / ACTION_TARGET_OFFSETS.
+        self._action_target_offsets = self.configs_training.get('ACTION_TARGET_OFFSETS', {})
 
         # Read the URDF file for the robot to ensure we have the correct joint names.
         qos_profile = QoSProfile(
@@ -182,8 +189,8 @@ class JointTrajectoryPublisher(Node):
         self.current_state_pub = self.create_publisher(Float32MultiArray, '~/current_state', 10)
         self.max_torque_pub = self.create_publisher(StampedFloat, '~/max_torque', 10)
 
-        gait_freq = 1.5
-        phase_dt = 2 * np.pi * self.dt_ctrl * gait_freq
+        gait_period = self.configs_training['GAIT_PERIOD']
+        phase_dt = 2 * np.pi * self.dt_ctrl / gait_period
         phase = np.array([0, np.pi])
 
         self.info = {
@@ -196,11 +203,24 @@ class JointTrajectoryPublisher(Node):
         self.start_q_joints = self.default_q_joints.copy()
         self.timeout_for_no_feet_in_contact = 0.0
         self.max_torque = None
+        self.previous_time = self.get_clock().now().nanoseconds / 1e9
+
+        # Cache of {joint_name: index_in_joint_states_msg.name}; rebuilt only when the
+        # underlying names list changes (avoids O(N^2) list scans every timer tick).
+        self._cached_joint_state_names = None
+        self._joint_state_name_to_idx = {}
 
         # TODO: put _compensated in the name of the topic for hardware.
         self.publisher_joints = self.create_publisher(JointTrajectory, '~/joint_trajectory', 10)
         self.publisher_joints_ppo = self.create_publisher(JointTrajectory, '~/joint_trajectory_ppo', 10)
         self.timer = self.create_timer(self.dt_ctrl, self.step_controller)
+
+    @staticmethod
+    def _normalized_action_to_offset(action: float, neg_off: float, pos_off: float) -> float:
+        """Same as biped.BipedSim.step: offsets for targets around default qpos."""
+        if action >= 0.0:
+            return action * pos_off
+        return -action * neg_off
 
     def update_moteus_parameter(self, name_param: str, value: float):
         req = SetParameters.Request()
@@ -262,6 +282,9 @@ class JointTrajectoryPublisher(Node):
     def joint_states_cb(self, msg: JointState):
         with self.lock:
             self.joints_state_msg = msg
+            if msg.name != self._cached_joint_state_names:
+                self._cached_joint_state_names = list(msg.name)
+                self._joint_state_name_to_idx = {name: i for i, name in enumerate(msg.name)}
 
     def run_ppo_ctrl(self):
         ''' Runs the PPO controller. '''
@@ -316,11 +339,12 @@ class JointTrajectoryPublisher(Node):
         # Joints position and velocity.
         joints_pos = []
         joints_vel = []
+        name_to_idx = self._joint_state_name_to_idx
         for joint_name in self.default_q_joints.keys():
-            # Get the joint position and velocity from the joint state message.
-            if joint_name in self.joints_state_msg.name:
-                joints_pos.append(self.joints_state_msg.position[self.joints_state_msg.name.index(joint_name)])
-                joints_vel.append(self.joints_state_msg.velocity[self.joints_state_msg.name.index(joint_name)])
+            idx = name_to_idx.get(joint_name)
+            if idx is not None:
+                joints_pos.append(self.joints_state_msg.position[idx])
+                joints_vel.append(self.joints_state_msg.velocity[idx])
             else:
                 joints_pos.append(0)
                 joints_vel.append(0)
@@ -348,41 +372,35 @@ class JointTrajectoryPublisher(Node):
             phase,
         ])
 
-        current_state_msg = Float32MultiArray()
-        current_state_msg.data = current_state.tolist()
-        self.current_state_pub.publish(current_state_msg)
-
-        # Initialize state history if needed.
         if self.state_history is None:
             self.get_logger().info(f'Initializing state history with shape: {(self.history_len, current_state.shape[0])}')
-            self.state_history = np.zeros((self.history_len, current_state.shape[0]))
+            self.state_history = np.zeros((2 * self.history_len, current_state.shape[0]))
+            self.history_idx = 0
 
-        # Update state history.
-        self.state_history = np.roll(self.state_history, -1, axis=0)
-        self.state_history[-1] = current_state
+        self.state_history[self.history_idx] = current_state
+        self.state_history[self.history_idx + self.history_len] = current_state
+        self.history_idx = (self.history_idx + 1) % self.history_len
 
-        # Same stacking as BipedSim.build_obs: rows newest-first (k=0 .. RingBuffer),
-        # row-major flatten, then reverse the full vector (see biped.py).
-        hist_flat = np.ascontiguousarray(self.state_history[::-1]).ravel()
-        state_policy = hist_flat[::-1]
-        self.obs = {
-            'privileged_state': np.zeros((self.privileged_state_size,)),
-            'state': state_policy,
-        }
+        oldest_first = self.state_history[self.history_idx:self.history_idx + self.history_len]
+        state_for_policy = oldest_first[:, ::-1].ravel()
 
         # Run the PPO controller.
-        action_ppo_np = self.rl_controller.run(self.obs)
-        self.get_logger().info(f'Action: {action_ppo_np}')
+        action_ppo_np = self.rl_controller.run(state_for_policy)
+        # Clip action between -1 and 1.
+        action_ppo_np = np.clip(action_ppo_np, -1, 1)
 
-        # Remap the action to the joint names.
-
-        # Map the action to the joint names.
+        # Normalized actions -> joint deltas using robot_config ACTION_TARGET_OFFSETS (biped.BipedSim.step).
         motor_targets = self.default_q_joints.copy()
         motor_targets_ppo = {}
         for joint_name, idx in self.actuator_mapping_PPO.items():
-            if idx is not None:  # Skip None values (like for ANKLE joints)
-                motor_targets[joint_name] += action_ppo_np[idx]
-                motor_targets_ppo[joint_name] = action_ppo_np[idx]
+            if idx is None:
+                continue
+            neg_off, pos_off = self._action_target_offsets[joint_name]
+            delta = self._normalized_action_to_offset(
+                float(action_ppo_np[idx]), float(neg_off), float(pos_off)
+            )
+            motor_targets[joint_name] += delta
+            motor_targets_ppo[joint_name] = delta
         self.publish_joints(motor_targets)
         self.publish_ppo_residual_joints(motor_targets_ppo)
 
@@ -456,11 +474,12 @@ class JointTrajectoryPublisher(Node):
         if self.state == "RAMP_TO_STARTING_POS":
             self.publish_joints(self.start_q_joints)
         elif self.state == "WALKING":
-            time_now = self.get_clock().now().nanoseconds / 1e9
             self.run_ppo_ctrl()
-            dt_ctrl = self.get_clock().now().nanoseconds / 1e9 - time_now
+            time_now = self.get_clock().now().nanoseconds / 1e9
+            dt_ctrl = time_now - self.previous_time
             if abs(dt_ctrl) > self.dt_ctrl:
                 self.get_logger().warn(f'Controller took too long: {dt_ctrl} s')
+            self.previous_time = time_now
 
     def publish_joints(self, joints: dict):
         ''' Publishes the joint angles to the robot. '''
