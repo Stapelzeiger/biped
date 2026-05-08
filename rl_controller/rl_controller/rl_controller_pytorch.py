@@ -27,10 +27,8 @@ class RL_Controller:
 
         self.load_policy()
 
-
     def load_policy(self):
         self.agent.load_checkpoint(self.checkpoint_path)
-
 
     def run(self, obs):
         """``obs`` is either policy state array or ``{'state': ..., 'privileged_state': ...}`` (actor uses ``state`` only)."""
@@ -40,5 +38,5 @@ class RL_Controller:
         if x.ndim == 1:
             x = x.unsqueeze(0)
         with torch.no_grad():
-            action = self.agent.get_action(x)
+            action = self.agent.get_action_deterministic(x)
         return action.squeeze(0).cpu().numpy()
