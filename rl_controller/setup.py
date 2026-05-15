@@ -23,7 +23,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'rl_controller = rl_controller.rl_controller_pytorch_node:main'
+            'rl_controller = rl_controller.rl_controller_pytorch_node:main',
+            'sys_id_for_rl = rl_controller.sys_id_for_rl:main'
         ],
     },
 )
