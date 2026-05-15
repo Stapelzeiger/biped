@@ -248,6 +248,10 @@ class MujocoNode(Node):
         msg_joint_states.header.stamp.sec = int(self.time)
         msg_joint_states.header.stamp.nanosec = int((self.time - clock_msg.clock.sec) * 1e9)
         for key, value in self.q_joints.items():
+            if self.use_RL_controller is True:
+                if key == 'L_ANKLE' or key == 'R_ANKLE':
+                    continue
+
             msg_joint_states.name.append(key)
             msg_joint_states.position.append(value['actual_pos'])
             msg_joint_states.velocity.append(value['actual_vel'])
