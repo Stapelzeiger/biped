@@ -76,6 +76,10 @@ class JointTrajectoryPublisher(Node):
         self.privileged_state_size = self.configs_training['privileged_state_size']
         self.actuator_mapping_PPO = self.configs_training['actuated_joint_names_to_policy_idx_dict']
         self.idx_actuators = self.configs_training['idx_actuators_dict']
+        if 'OBS_SCALE' in self.configs_training:
+            self.obs_scale = self.configs_training['OBS_SCALE']
+        else:
+            self.obs_scale = None
 
         # Initialize the RL controller.
         results_folder = epath.Path(POLICY_PATH) / latest_results_folder
@@ -332,9 +336,9 @@ class JointTrajectoryPublisher(Node):
             if idx is not None:
                 joints_pos.append(self.joints_state_msg.position[idx])
                 joints_vel.append(self.joints_state_msg.velocity[idx])
-            else:
-                joints_pos.append(0)
-                joints_vel.append(0)
+
+        joints_pos = np.asarray(joints_pos, dtype=np.float64)
+        joints_vel = np.asarray(joints_vel, dtype=np.float64)
 
         # Phase.
         phase_tp1 = self.info["phase"] + self.info["phase_dt"]
@@ -347,17 +351,30 @@ class JointTrajectoryPublisher(Node):
         command = np.array([self.vel_cmd_x, self.vel_cmd_y, 0.0])
 
         delta_pos = joints_pos - np.array(list(self.default_q_joints.values()))
+
         # Input to the PPO policy.
-        current_state = np.hstack([
-            lin_vel_B,        # 3
-            gyro,             # 3
-            up_B,             # 3
-            command,          # 3
-            delta_pos,        # 8  (all joints in idx_actuators order)
-            joints_vel,       # 8
-            self.last_action, # action_size
-            phase,            # 4
-        ])
+        if self.obs_scale is not None:
+            current_state = np.hstack([
+                lin_vel_B * self.obs_scale['base_lin_vel'],        # 3
+                gyro * self.obs_scale['base_ang_vel'],             # 3
+                up_B * self.obs_scale['upvector'],                 # 3
+                command * self.obs_scale['command'],               # 3
+                delta_pos * self.obs_scale['joint_pos_err'],       # nu
+                joints_vel * self.obs_scale['joint_vel'],          # nu
+                self.last_action * self.obs_scale['last_action'],  # action_size
+                phase * self.obs_scale['phase'],                   # 4
+            ])
+        else:
+            current_state = np.hstack([
+                lin_vel_B,        # 3
+                gyro,             # 3
+                up_B,             # 3
+                command,          # 3
+                delta_pos,        # nu  (all joints in idx_actuators order)
+                joints_vel,       # nu
+                self.last_action, # action_size
+                phase,            # 4
+            ])
 
         if self.state_history is None:
             self.get_logger().info(f'Initializing state history with shape: {(self.history_len, current_state.shape[0])}')
