@@ -35,8 +35,6 @@ class RL_Controller:
         x = obs["state"] if isinstance(obs, dict) else obs
         # Reverses / fancy indexing can yield negative strides; PyTorch rejects those views.
         x = torch.as_tensor(np.ascontiguousarray(np.asarray(x, dtype=np.float32)))
-        if x.ndim == 1:
-            x = x.unsqueeze(0)
         with torch.no_grad():
             action = self.agent.get_action_deterministic(x)
         return action.squeeze(0).cpu().numpy()
